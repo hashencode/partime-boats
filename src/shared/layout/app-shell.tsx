@@ -38,8 +38,14 @@ type RouteContract = {
 
 const isStandaloneMenuItem = (route: RouteContract) => route.menuMode === 'standalone'
 const getMenuGroup = (route: RouteContract) => route.menuGroup ?? route.breadcrumb?.[0] ?? 'General'
-const isMenuVisibleInCurrentEnv = (route: RouteContract) =>
-  route.menuVisibility !== 'dev-only' || import.meta.env.DEV
+export const isMenuVisibleInCurrentEnv = (route: RouteContract, isDev: boolean) =>
+  route.menuVisibility !== 'dev-only' || isDev
+
+export const shouldShowDevMenuGroup = (menuRoutes: RouteContract[], isDev: boolean) =>
+  isDev && menuRoutes.some((route) => route.menuVisibility === 'dev-only')
+
+export const shouldShowMswSwitch = (isDev: boolean, isMswToggleAvailable: boolean) =>
+  isDev && isMswToggleAvailable
 
 type AppShellProps = {
   routes?: RouteContract[]
@@ -52,6 +58,7 @@ export const AppShell = ({ routes = [], headerExtra }: AppShellProps) => {
   const { role, displayName, logout } = useAuth()
   const { mode, resolvedTheme, setMode } = useTheme()
   const { token } = theme.useToken()
+  const isDev = import.meta.env.DEV
 
   const [mswEnabled, setMswEnabled] = useState(getStoredMswEnabled)
   const [switchLoading, setSwitchLoading] = useState(false)
@@ -61,13 +68,12 @@ export const AppShell = ({ routes = [], headerExtra }: AppShellProps) => {
       (contract) =>
         contract.inMenu &&
         contract.path !== '*' &&
-        isMenuVisibleInCurrentEnv(contract) &&
+        isMenuVisibleInCurrentEnv(contract, isDev) &&
         hasPermission(role, contract.permission)
     )
-  }, [role, routes])
+  }, [isDev, role, routes])
 
-  const showDevMenuGroup =
-    import.meta.env.DEV && menuRoutes.some((route) => route.menuVisibility === 'dev-only')
+  const showDevMenuGroup = shouldShowDevMenuGroup(menuRoutes, isDev)
 
   const groupedMenuItems = useMemo(() => {
     const items: {
@@ -307,7 +313,7 @@ export const AppShell = ({ routes = [], headerExtra }: AppShellProps) => {
 
         <div className="flex items-center gap-2">
           {headerExtra}
-          {isMswGlobalToggleAvailable && (
+          {shouldShowMswSwitch(isDev, isMswGlobalToggleAvailable) && (
             <Switch
               checked={mswEnabled}
               loading={switchLoading}
@@ -339,7 +345,7 @@ export const AppShell = ({ routes = [], headerExtra }: AppShellProps) => {
             </div>
           )}
 
-          <div className="flex flex-col gap-4 [&_.ant-card_.ant-card-body]:p-6 [&_.ant-card_.ant-card-head]:min-h-[50px] [&_.ant-card_.ant-card-head]:px-6 [&_.ant-card]:rounded-lg [&_.ant-card]:shadow-none [&_.ant-result]:mx-auto [&_.ant-result]:max-w-[920px] [&_.ant-result]:px-0 [&_.ant-result]:pt-8 [&_.ant-result]:pb-3 [&_.ant-statistic-content]:text-[28px] [&_.ant-table-wrapper_.ant-table]:rounded-lg">
+          <div className="min-w-[800px] flex flex-col gap-4 [&_.ant-card_.ant-card-body]:p-6 [&_.ant-card_.ant-card-head]:min-h-[50px] [&_.ant-card_.ant-card-head]:px-6 [&_.ant-card]:rounded-lg [&_.ant-card]:shadow-none [&_.ant-result]:mx-auto [&_.ant-result]:max-w-[920px] [&_.ant-result]:px-0 [&_.ant-result]:pt-8 [&_.ant-result]:pb-3 [&_.ant-statistic-content]:text-[28px] [&_.ant-table-wrapper_.ant-table]:rounded-lg">
             <Outlet />
           </div>
         </Content>

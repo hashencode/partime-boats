@@ -21,8 +21,13 @@ export const useLatestRequest = <TData, TArgs extends unknown[] = [], TError = u
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<TError | null>(null)
   const requestIdRef = useRef(0)
+  const requestRef = useRef(request)
   const mapErrorRef = useRef(mapError)
   const onErrorRef = useRef(onError)
+
+  useEffect(() => {
+    requestRef.current = request
+  }, [request])
 
   useEffect(() => {
     mapErrorRef.current = mapError
@@ -44,7 +49,7 @@ export const useLatestRequest = <TData, TArgs extends unknown[] = [], TError = u
       setError(null)
 
       try {
-        const response = await request(...args)
+        const response = await requestRef.current(...args)
         if (requestId !== requestIdRef.current) {
           return undefined
         }
@@ -66,7 +71,7 @@ export const useLatestRequest = <TData, TArgs extends unknown[] = [], TError = u
         }
       }
     },
-    [request]
+    []
   )
 
   return {

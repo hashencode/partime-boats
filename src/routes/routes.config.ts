@@ -1,12 +1,19 @@
 import {
+  ApiOutlined,
   BarChartOutlined,
+  BellOutlined,
   CheckCircleOutlined,
   CloseCircleOutlined,
+  DisconnectOutlined,
   ExclamationCircleOutlined,
   FormOutlined,
   ProfileOutlined,
+  SearchOutlined,
+  ShoppingOutlined,
   SmileOutlined,
   TableOutlined,
+  TeamOutlined,
+  UnorderedListOutlined,
 } from '@ant-design/icons'
 import { createElement, type ReactNode } from 'react'
 import { type PermissionKey } from '../infrastructure/auth/permissions'
@@ -81,13 +88,102 @@ export const templateRoutes: TemplateRoute[] = [
     key: 'order-list',
     path: '/order-list',
     title: '订单列表',
-    icon: createElement(TableOutlined),
+    icon: createElement(ShoppingOutlined),
     permission: 'list.read',
     inMenu: true,
     menuVisibility: 'always',
     menuMode: 'standalone',
     component: () =>
       lazyPage(() => import('../pages/templates/order-list/order-list-page').then((m) => ({ default: m.OrderListPage }))),
+  },
+  {
+    key: 'msk-query-list',
+    path: '/msk-query-list',
+    title: 'MSK列表',
+    icon: createElement(SearchOutlined),
+    permission: 'list.read',
+    inMenu: true,
+    menuVisibility: 'always',
+    menuMode: 'grouped',
+    menuGroup: '查询列表',
+    component: () =>
+      lazyPage(() =>
+        import('../pages/templates/msk-query-list/msk-query-list-page').then((m) => ({ default: m.MskQueryListPage }))
+      ),
+  },
+  {
+    key: 'msk-api-list',
+    path: '/msk-api-list',
+    title: 'MSK API列表',
+    icon: createElement(ApiOutlined),
+    permission: 'list.read',
+    inMenu: true,
+    menuVisibility: 'always',
+    menuMode: 'grouped',
+    menuGroup: '查询列表',
+    component: () =>
+      lazyPage(() =>
+        import('../pages/templates/msk-api-list/msk-api-list-page').then((m) => ({ default: m.MskApiListPage }))
+      ),
+  },
+  {
+    key: 'base-port-list',
+    path: '/get_base_list',
+    title: '基础端口列表',
+    icon: createElement(DisconnectOutlined),
+    permission: 'list.read',
+    inMenu: true,
+    menuVisibility: 'always',
+    menuMode: 'standalone',
+    component: () =>
+      lazyPage(() =>
+        import('../pages/templates/base-port-list/base-port-list-page').then((m) => ({ default: m.BasePortListPage }))
+      ),
+  },
+  {
+    key: 'book-task-list',
+    path: '/get_book_task_list',
+    title: '任务列表',
+    icon: createElement(UnorderedListOutlined),
+    permission: 'list.read',
+    inMenu: true,
+    menuVisibility: 'always',
+    menuMode: 'standalone',
+    component: () =>
+      lazyPage(() =>
+        import('../pages/templates/book-task-list/book-task-list-page').then((m) => ({ default: m.BookTaskListPage }))
+      ),
+  },
+  {
+    key: 'remind-list',
+    path: '/get_remined_list',
+    title: '提醒列表',
+    icon: createElement(BellOutlined),
+    permission: 'list.read',
+    inMenu: true,
+    menuVisibility: 'always',
+    menuMode: 'standalone',
+    component: () =>
+      lazyPage(() =>
+        import('../pages/templates/remind-list/remind-list-page').then((m) => ({ default: m.RemindListPage }))
+      ),
+  },
+  {
+    key: 'book-account-list',
+    path: '/book_account_list',
+    title: '订舱账号列表',
+    icon: createElement(TeamOutlined),
+    permission: 'list.read',
+    inMenu: true,
+    menuVisibility: 'always',
+    menuMode: 'grouped',
+    menuGroup: '账号列表',
+    component: () =>
+      lazyPage(() =>
+        import('../pages/templates/book-account-list/book-account-list-page').then((m) => ({
+          default: m.BookAccountListPage,
+        }))
+      ),
   },
   {
     key: 'basic-form',

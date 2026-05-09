@@ -59,6 +59,7 @@ export type StandardListPageSpec<
     icon?: ReactNode
   }
   toolbarExtra?: ReactNode
+  renderBetweenFilterAndContent?: ReactNode
   densityItems?: MenuProps['items']
   renderAfterContent?: ReactNode
   stateCopy?: ListStateCopyContract

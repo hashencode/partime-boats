@@ -11,3 +11,6 @@
 - 2026-04-30（gmxgy-admin-new迁移分析）：终端无 `python` 命令，脚本统计会直接失败（`command not found: python`）-> 运行环境未提供 python 别名 -> 统一改用 `node - <<'NODE'` 执行临时分析脚本。
 - 2026-04-30（auth-route-guard测试）：组件在测试中报 `React is not defined` -> 文件使用 JSX 但未导入 React，且当前测试链路仍依赖旧 JSX 运行时兼容 -> 在组件文件补 `import React from 'react'`（并 `void React`）后恢复。
 - 2026-05-06: 在本项目运行单测应使用 `bun run test <files>`（走 rstest/jsdom），直接 `bun test <file>` 会落到 bun 默认环境导致 `window is not defined`。
+- 2026-05-09（基础端口列表迁移）：全量 `bun run tsc -p tsconfig.app.json --noEmit` 会被仓库历史问题拦住：`ImportMetaEnv.PUBLIC_API_BASE` 未声明、`js-export-excel` 缺少类型、部分旧测试 Promise 类型不匹配 -> 本次页面验证改为“新增文件定向 ESLint + 定向 rstest”，避免把历史噪音误判为本次回归。
+- 2026-05-09（codex-admin-quick-start）：运行 `bunx eslint` 可能直接报 `Cannot find package 'eslint-plugin-unused-imports'` -> 仓库本地 ESLint 依赖未装全 -> 先用定向 rstest 验证代码逻辑，静态检查需补齐依赖后再跑。
+- 2026-05-10（提醒列表迁移）：全量 `bunx tsc -b --pretty false` 仍会被仓库既有类型问题拦住，且 `js-export-excel` 在多个列表页都缺少声明文件 -> 当前迁移验证优先使用“定向 rstest + 定向 eslint”，不要把全量类型红灯误判为本次改动回归。

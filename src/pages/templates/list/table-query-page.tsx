@@ -292,7 +292,7 @@ export const TableQueryPage = () => {
       renderAfterContent:
         selectedRows.length > 0 ? (
           <div
-            className="fixed right-0 bottom-0 left-0 z-[11] px-6 py-3 backdrop-blur-[6px] lg:left-56"
+            className="fixed right-0 bottom-0 left-0 z-[11] px-6 py-3 backdrop-blur-[6px]"
             style={{
               borderTop: `1px solid ${token.colorBorderSecondary}`,
               background: token.colorBgElevated,
@@ -304,7 +304,15 @@ export const TableQueryPage = () => {
                 <span className="font-medium">{selectedRows.reduce((sum, item) => sum + item.callNo, 0)}</span>
               </div>
               <Space>
-                <Button onClick={() => message.success('批量删除成功')}>批量删除</Button>
+                <Popconfirm
+                  title="确认批量删除已选规则吗？"
+                  description="删除后将从当前列表中移除。"
+                  okText="确认删除"
+                  cancelText="取消"
+                  onConfirm={() => message.success('批量删除成功')}
+                >
+                  <Button>批量删除</Button>
+                </Popconfirm>
                 <Button type="primary" onClick={() => message.success('批量审批成功')}>
                   批量审批
                 </Button>
@@ -313,7 +321,7 @@ export const TableQueryPage = () => {
           </div>
         ) : null,
     }),
-    [applyDeletedRules, deletedRuleKeys, filterFields, handleDeleteRule, selectedRows, token.colorBgElevated, token.colorBorderSecondary]
+    [applyDeletedRules, filterFields, handleDeleteRule, selectedRows, token.colorBgElevated, token.colorBorderSecondary]
   )
 
   return (

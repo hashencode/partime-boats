@@ -159,8 +159,6 @@ export const StandardListPageRecipe = <
     resetPage()
   }
 
-  const responseCurrent = (response as { current?: number } | null)?.current ?? current
-  const responsePageSize = (response as { size?: number } | null)?.size ?? pageSize
   const responseTotal = (response as { total?: number } | null)?.total ?? 0
 
   const tableNode = spec.buildTableNode({
@@ -171,8 +169,8 @@ export const StandardListPageRecipe = <
     selectedColumnKeys,
     setTableSize,
     setSelectedColumnKeys,
-    current: responseCurrent,
-    pageSize: responsePageSize,
+    current,
+    pageSize,
     total: responseTotal,
     tableClassName: STANDARD_LIST_TABLE_CLASS_NAME,
     pagination: tablePagination,
@@ -208,6 +206,7 @@ export const StandardListPageRecipe = <
         />
       </Card>
 
+      {spec.renderBetweenFilterAndContent ?? null}
       <Card
         variant="borderless"
         title={spec.cardTitle}
@@ -264,7 +263,6 @@ export const StandardListPageRecipe = <
           tableNode={tableNode}
         />
       </Card>
-
       {spec.renderAfterContent ?? null}
     </div>
   )

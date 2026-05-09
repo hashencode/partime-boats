@@ -1,0 +1,700 @@
+import { Button, Col, DatePicker, Form, Input, InputNumber, Modal, Popconfirm, Row, Select, Space, Table, Tag, Tooltip, Typography, message, theme } from 'antd'
+import type { ColumnsType } from 'antd/es/table'
+import dayjs, { type Dayjs } from 'dayjs'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { hasPermission } from '../../../infrastructure/auth/permissions'
+import { normalizeApiError, type ApiError } from '../../../infrastructure/http/api-client'
+import { useAuth } from '../../../infrastructure/auth/use-auth'
+import {
+  StandardListPageRecipe,
+  type StandardListPageSpec,
+  type TemplateListFilterField,
+} from '../../../shared/template-kit/list'
+import {
+  batchUpdateBookTask,
+  buildBookTaskBatchPayload,
+  buildBookTaskSavePayload,
+  clearBookTaskRouter,
+  closeBookTaskInitialization,
+  fetchBookTaskList,
+  fetchEndPortOptions,
+  fetchStartPortOptions,
+  normalizeDateValue,
+  updateBookTask,
+  type BookTaskBatchPayload,
+  type BookTaskItem,
+  type BookTaskListResponse,
+  type BookTaskQueryFilters,
+  type BookTaskSavePayload,
+} from './api'
+
+void React
+
+type BookTaskFilterValues = {
+  order_id?: string
+  origincity_name?: string
+  destinationcity_name?: string
+  box_type?: string
+  cid_group?: string
+  group_id?: string
+  list_type?: string
+}
+
+type EditableBookTask = BookTaskItem & {
+  key: number
+}
+
+type BookTaskFormValues = {
+  order_id?: number
+  account_name?: string
+  quantity?: number
+  box_type?: string
+  origincity_name?: string
+  destinationcity_name?: string
+  destination_service_mode?: string
+  order_date?: Dayjs
+  is_order?: number
+  limit_price?: string
+  is_USA?: number
+  is_plan?: number
+  is_roll?: number
+  is_cid?: number
+  limit_day?: string
+  cid_group?: number | null
+  group_id?: string
+  cid_type?: number
+  cid_loop_times?: number
+  get_cid_times?: number
+  cid_concurrent?: number
+  cid_sleep?: string
+  nac_loop_times?: string
+  nac_times?: string
+  nac_concurrent?: string
+  nac_sleep?: string
+  route_select?: string
+  is_add_data?: number
+}
+
+const PAGE_TITLE = '任务列表'
+const CARD_TITLE = '任务列表'
+const TABLE_ID = 'book-task-list'
+
+const BOX_TYPE_OPTIONS = ['20 Dry Standard', '40 Dry High', '40 Reefer High', '45 Dry High'].map((value) => ({
+  label: value,
+  value,
+}))
+
+const YES_NO_OPTIONS = [
+  { label: '是', value: 1 },
+  { label: '否', value: 0 },
+]
+
+const OPEN_CLOSE_OPTIONS = [
+  { label: '开启', value: 1 },
+  { label: '关闭', value: 0 },
+]
+
+const CID_INIT_OPTIONS = [
+  { label: '关闭', value: 0 },
+  { label: '常规初始化', value: 1 },
+  { label: '加载更多初始化', value: 2 },
+  { label: '3', value: 3 },
+  { label: '4', value: 4 },
+]
+
+const CID_TYPE_OPTIONS = [
+  { label: '常规下单', value: 0 },
+  { label: '模式下单', value: 1 },
+  { label: '模式下单2', value: 2 },
+  { label: '模式下单3', value: 3 },
+  { label: '模式下单4', value: 4 },
+]
+
+const DESTINATION_SERVICE_OPTIONS = ['CY', 'SD'].map((value) => ({ label: value, value }))
+
+// 操作列固定宽度：当前仅展示 1 个“修改”按钮，2 个汉字按 14px/字计算为 28，
+// 额外余量按 16，总计 44；考虑按钮点击热区与表格留白，向上固化为 60。
+const ACTION_COLUMN_WIDTH = 60
+
+const renderBreakAllText = (value?: string | number | null) => {
+  const text = value === null || value === undefined || value === '' ? '-' : String(value)
+  return <div className="break-all whitespace-normal">{text}</div>
+}
+
+const renderEllipsisText = (value?: string | number | null) => {
+  const text = value === null || value === undefined || value === '' ? '-' : String(value)
+  return (
+    <Tooltip title={text}>
+      <div className="truncate">{text}</div>
+    </Tooltip>
+  )
+}
+
+const createFilterOptions = (items: string[]) => items.map((item) => ({ label: item, value: item }))
+
+const numberLabel = (options: { label: string; value: number }[], value?: number | string | null) =>
+  options.find((item) => item.value === Number(value))?.label ?? String(value ?? '')
+
+const toEditableRow = (item: BookTaskItem): EditableBookTask => ({
+  ...item,
+  key: item.id,
+})
+
+const toQueryFilters = (values: BookTaskFilterValues): BookTaskQueryFilters => ({
+  order_id: values.order_id?.trim() || undefined,
+  origincity_name: values.origincity_name,
+  destinationcity_name: values.destinationcity_name,
+  box_type: values.box_type,
+  cid_group: values.cid_group?.trim() || undefined,
+  group_id: values.group_id?.trim() || undefined,
+  list_type: values.list_type?.trim() || undefined,
+})
+
+const toFormValues = (record: EditableBookTask): BookTaskFormValues => ({
+  order_id: typeof record.order_id === 'number' ? record.order_id : Number(record.order_id) || undefined,
+  account_name: record.account_name ?? '',
+  quantity: typeof record.quantity === 'number' ? record.quantity : Number(record.quantity) || undefined,
+  box_type: record.box_type ?? undefined,
+  origincity_name: record.origincity_name ?? undefined,
+  destinationcity_name: record.destinationcity_name ?? undefined,
+  destination_service_mode: record.destination_service_mode ?? undefined,
+  order_date: normalizeDateValue(record.order_date) ? dayjs(record.order_date) : undefined,
+  is_order: typeof record.is_order === 'number' ? record.is_order : undefined,
+  limit_price: record.limit_price !== undefined && record.limit_price !== null ? String(record.limit_price) : undefined,
+  is_USA: typeof record.is_USA === 'number' ? record.is_USA : undefined,
+  is_plan: typeof record.is_plan === 'number' ? record.is_plan : undefined,
+  is_roll: typeof record.is_roll === 'number' ? record.is_roll : undefined,
+  is_cid: typeof record.is_cid === 'number' ? record.is_cid : Number(record.is_cid) || undefined,
+  limit_day: record.limit_day !== undefined && record.limit_day !== null ? String(record.limit_day) : undefined,
+  cid_group: record.cid_group === null ? null : typeof record.cid_group === 'number' ? record.cid_group : Number(record.cid_group) || null,
+  group_id: record.group_id !== undefined && record.group_id !== null ? String(record.group_id) : undefined,
+  cid_type: typeof record.cid_type === 'number' ? record.cid_type : Number(record.cid_type) || undefined,
+  cid_loop_times:
+    typeof record.cid_loop_times === 'number' ? record.cid_loop_times : Number(record.cid_loop_times) || undefined,
+  get_cid_times:
+    typeof record.get_cid_times === 'number' ? record.get_cid_times : Number(record.get_cid_times) || undefined,
+  cid_concurrent:
+    typeof record.cid_concurrent === 'number' ? record.cid_concurrent : Number(record.cid_concurrent) || undefined,
+  cid_sleep: record.cid_sleep !== undefined && record.cid_sleep !== null ? String(record.cid_sleep) : undefined,
+  nac_loop_times:
+    record.nac_loop_times !== undefined && record.nac_loop_times !== null ? String(record.nac_loop_times) : undefined,
+  nac_times: record.nac_times !== undefined && record.nac_times !== null ? String(record.nac_times) : undefined,
+  nac_concurrent:
+    record.nac_concurrent !== undefined && record.nac_concurrent !== null ? String(record.nac_concurrent) : undefined,
+  nac_sleep: record.nac_sleep !== undefined && record.nac_sleep !== null ? String(record.nac_sleep) : undefined,
+  route_select: record.route_select ?? undefined,
+})
+
+const buildScopedIds = (filters: BookTaskQueryFilters, rows: EditableBookTask[], selectedIds: number[]) => {
+  if (selectedIds.length > 0) {
+    return selectedIds.join(',')
+  }
+
+  const hasFilter =
+    Boolean(filters.box_type) ||
+    Boolean(filters.cid_group) ||
+    Boolean(filters.destinationcity_name) ||
+    Boolean(filters.group_id) ||
+    Boolean(filters.list_type) ||
+    Boolean(filters.order_id) ||
+    Boolean(filters.origincity_name)
+
+  if (hasFilter && rows.length > 0) {
+    return rows.map((item) => item.id).join(',')
+  }
+
+  return undefined
+}
+
+const BookTaskFormFields = ({
+  startPortOptions,
+  endPortOptions,
+  includeRepeatAdd,
+}: {
+  startPortOptions: string[]
+  endPortOptions: string[]
+  includeRepeatAdd?: boolean
+}) => (
+  <Row gutter={16}>
+    <Col span={24}><Form.Item label="对应taskID" name="order_id"><Input /></Form.Item></Col>
+    <Col span={24}><Form.Item label="账户" name="account_name"><Input /></Form.Item></Col>
+    <Col span={12}><Form.Item label="数量" name="quantity"><Input /></Form.Item></Col>
+    <Col span={12}><Form.Item label="箱型" name="box_type"><Select options={BOX_TYPE_OPTIONS} allowClear showSearch /></Form.Item></Col>
+    <Col span={24}><Form.Item label="起始港" name="origincity_name"><Select options={createFilterOptions(startPortOptions)} allowClear showSearch /></Form.Item></Col>
+    <Col span={24}><Form.Item label="目的港" name="destinationcity_name"><Select options={createFilterOptions(endPortOptions)} allowClear showSearch /></Form.Item></Col>
+    <Col span={24}><Form.Item label="目的港类型" name="destination_service_mode"><Select options={DESTINATION_SERVICE_OPTIONS} allowClear showSearch /></Form.Item></Col>
+    <Col span={12}><Form.Item label="搜索开航日" name="order_date"><DatePicker className="!w-full" format="YYYY-MM-DD" /></Form.Item></Col>
+    <Col span={12}><Form.Item label="路由" name="route_select"><Input /></Form.Item></Col>
+    <Col span={12}><Form.Item label="是否开启" name="is_order"><Select options={OPEN_CLOSE_OPTIONS} allowClear showSearch /></Form.Item></Col>
+    <Col span={12}><Form.Item label="限价" name="limit_price"><Input /></Form.Item></Col>
+    <Col span={12}><Form.Item label="直接下单" name="is_plan"><Select options={YES_NO_OPTIONS} allowClear showSearch /></Form.Item></Col>
+    <Col span={12}><Form.Item label="is_roll" name="is_roll"><Select options={YES_NO_OPTIONS} allowClear showSearch /></Form.Item></Col>
+    <Col span={12}><Form.Item label="美线" name="is_USA"><Select options={YES_NO_OPTIONS} allowClear showSearch /></Form.Item></Col>
+    <Col span={12}><Form.Item label="是否开启CID" name="is_cid"><Select options={CID_INIT_OPTIONS} allowClear showSearch /></Form.Item></Col>
+    <Col span={12}><Form.Item label="限制天数" name="limit_day"><Input /></Form.Item></Col>
+    <Col span={12}><Form.Item label="CID分组" name="cid_group"><InputNumber className="!w-full" precision={0} /></Form.Item></Col>
+    <Col span={12}><Form.Item label="分组" name="group_id"><Input /></Form.Item></Col>
+    <Col span={12}><Form.Item label="cid类型" name="cid_type"><Select options={CID_TYPE_OPTIONS} allowClear showSearch /></Form.Item></Col>
+    <Col span={12}><Form.Item label="cid循环次数" name="cid_loop_times"><Input /></Form.Item></Col>
+    <Col span={12}><Form.Item label="cid请求次数" name="get_cid_times"><Input /></Form.Item></Col>
+    <Col span={12}><Form.Item label="cid并发次数" name="cid_concurrent"><Input /></Form.Item></Col>
+    <Col span={12}><Form.Item label="cid间隔时间" name="cid_sleep"><Input /></Form.Item></Col>
+    <Col span={12}><Form.Item label="nac循环次数" name="nac_loop_times"><Input /></Form.Item></Col>
+    <Col span={12}><Form.Item label="nac请求次数" name="nac_times"><Input /></Form.Item></Col>
+    <Col span={12}><Form.Item label="nac并发次数" name="nac_concurrent"><Input /></Form.Item></Col>
+    <Col span={12}><Form.Item label="nac间隔时间" name="nac_sleep"><Input /></Form.Item></Col>
+    {includeRepeatAdd ? (
+      <Col span={12}><Form.Item label="是否重复添加" name="is_add_data"><Select options={YES_NO_OPTIONS} allowClear showSearch /></Form.Item></Col>
+    ) : null}
+  </Row>
+)
+
+export const BookTaskListPage = () => {
+  const { role } = useAuth()
+  const { token } = theme.useToken()
+  const canWrite = hasPermission(role, 'form.write')
+  const [editForm] = Form.useForm<BookTaskFormValues>()
+  const [batchForm] = Form.useForm<BookTaskFormValues>()
+  const [editingItem, setEditingItem] = useState<EditableBookTask | null>(null)
+  const [selectedRowKeys, setSelectedRowKeys] = useState<number[]>([])
+  const [batchVisible, setBatchVisible] = useState(false)
+  const [startPortOptions, setStartPortOptions] = useState<string[]>([])
+  const [endPortOptions, setEndPortOptions] = useState<string[]>([])
+  const [saving, setSaving] = useState(false)
+  const latestFiltersRef = useRef<BookTaskQueryFilters>({})
+  const currentRowsRef = useRef<EditableBookTask[]>([])
+  const reloadRef = useRef<() => Promise<void>>(async () => {})
+
+  useEffect(() => {
+    void Promise.all([fetchStartPortOptions(), fetchEndPortOptions()])
+      .then(([startPorts, endPorts]) => {
+        setStartPortOptions(startPorts)
+        setEndPortOptions(endPorts)
+      })
+      .catch(() => {
+        setStartPortOptions([])
+        setEndPortOptions([])
+      })
+  }, [])
+
+  const filterFields = useMemo<TemplateListFilterField<BookTaskFilterValues>[]>(
+    () => [
+      { type: 'input', name: 'order_id', label: '对应taskID', inputProps: { placeholder: '请输入对应taskID' } },
+      {
+        type: 'select',
+        name: 'origincity_name',
+        label: '起始港',
+        selectProps: { showSearch: true, allowClear: true, placeholder: '请选择起始港' },
+        optionsLoader: async ({ signal }) => {
+          if (signal.aborted) return []
+          const data = await fetchStartPortOptions()
+          return createFilterOptions(data)
+        },
+      },
+      {
+        type: 'select',
+        name: 'destinationcity_name',
+        label: '目的港',
+        selectProps: { showSearch: true, allowClear: true, placeholder: '请选择目的港' },
+        optionsLoader: async ({ signal }) => {
+          if (signal.aborted) return []
+          const data = await fetchEndPortOptions()
+          return createFilterOptions(data)
+        },
+      },
+      {
+        type: 'select',
+        name: 'box_type',
+        label: '箱型',
+        selectProps: { showSearch: true, allowClear: true, placeholder: '请选择箱型' },
+        options: BOX_TYPE_OPTIONS,
+      },
+      { type: 'input', name: 'cid_group', label: 'CID分组', inputProps: { placeholder: '请输入CID分组' } },
+      { type: 'input', name: 'group_id', label: '分组', inputProps: { placeholder: '请输入分组' } },
+      { type: 'input', name: 'list_type', label: '列表分组', inputProps: { placeholder: '请输入列表分组' } },
+    ],
+    []
+  )
+
+  const handleToggleOrderStatus = useCallback(
+    async (record: EditableBookTask, reload: () => Promise<void>) => {
+      if (!canWrite) return
+      await batchUpdateBookTask({
+        ids: String(record.id),
+        is_order: record.is_order === 1 ? 0 : 1,
+      })
+      message.success(`${record.is_order === 1 ? '关闭' : '开启'}成功`)
+      await reload()
+    },
+    [canWrite]
+  )
+
+  const handleSave = useCallback(
+    async (record: EditableBookTask, reload: () => Promise<void>) => {
+      try {
+        setSaving(true)
+        const values = await editForm.validateFields()
+        const payload: BookTaskSavePayload = buildBookTaskSavePayload(values as Record<string, unknown>)
+        await updateBookTask(record.id, payload)
+        message.success('保存成功')
+        editForm.resetFields()
+        setEditingItem(null)
+        await reload()
+      } catch (error) {
+        if (error instanceof Error && 'errorFields' in error) {
+          return
+        }
+        const messageText = error instanceof Error ? error.message : '保存失败，请稍后重试。'
+        message.error(messageText)
+      } finally {
+        setSaving(false)
+      }
+    },
+    [editForm]
+  )
+
+  const handleBatchSubmit = useCallback(
+    async (reload: () => Promise<void>) => {
+      if (selectedRowKeys.length === 0) {
+        message.error('请选择要修改的数据')
+        return
+      }
+
+      try {
+        setSaving(true)
+        const values = await batchForm.validateFields()
+        const payload: BookTaskBatchPayload = buildBookTaskBatchPayload(values as Record<string, unknown>, selectedRowKeys)
+        await batchUpdateBookTask(payload)
+        message.success('修改成功')
+        batchForm.resetFields()
+        setBatchVisible(false)
+        setSelectedRowKeys([])
+        await reload()
+      } catch (error) {
+        if (error instanceof Error && 'errorFields' in error) {
+          return
+        }
+        const messageText = error instanceof Error ? error.message : '批量修改失败，请稍后重试。'
+        message.error(messageText)
+      } finally {
+        setSaving(false)
+      }
+    },
+    [batchForm, selectedRowKeys]
+  )
+
+  const spec = useMemo<
+    StandardListPageSpec<BookTaskFilterValues, BookTaskQueryFilters, BookTaskListResponse, EditableBookTask, ApiError>
+  >(
+    () => ({
+      pageTitle: PAGE_TITLE,
+      cardTitle: CARD_TITLE,
+      tableId: TABLE_ID,
+      formRoute: '/get_book_task_list/form',
+      initialFilters: {},
+      pagination: {
+        defaultPageSize: 10,
+        pageSizeOptions: [10, 100, 500, 1000],
+      },
+      toFilters: toQueryFilters,
+      request: async (filters) => {
+        latestFiltersRef.current = filters
+        return fetchBookTaskList(filters)
+      },
+      selectItems: (response) => (response?.data ?? []).map(toEditableRow),
+      mapError: normalizeApiError,
+      filterFields,
+      toolbarExtra: (
+        <Space wrap>
+          <Popconfirm
+            title="确认关闭初始化吗？"
+            okText="是"
+            cancelText="否"
+            onConfirm={async () => {
+              const ids = buildScopedIds(latestFiltersRef.current, currentRowsRef.current, selectedRowKeys)
+              await closeBookTaskInitialization(ids)
+              message.success('关闭初始化成功')
+              await reloadRef.current()
+            }}
+          >
+            <Button disabled={!canWrite}>
+              关闭初始化
+            </Button>
+          </Popconfirm>
+          <Popconfirm
+            title="确认清除路由吗？"
+            okText="是"
+            cancelText="否"
+            onConfirm={async () => {
+              const ids = buildScopedIds(latestFiltersRef.current, currentRowsRef.current, selectedRowKeys)
+              await clearBookTaskRouter(ids)
+              message.success('清除路由成功')
+              await reloadRef.current()
+            }}
+          >
+            <Button disabled={!canWrite}>
+              清除路由
+            </Button>
+          </Popconfirm>
+        </Space>
+      ),
+      buildColumns: ({ reload }) => {
+        reloadRef.current = reload
+        return [
+          { key: 'id', title: 'ID', dataIndex: 'id', width: 80, sorter: (a, b) => a.id - b.id },
+          {
+            key: 'order_id',
+            title: '对应taskID',
+            dataIndex: 'order_id',
+            width: 120,
+            render: (value) => renderEllipsisText(value),
+          },
+          { key: 'account_name', title: '账户名', dataIndex: 'account_name', width: 150 },
+          { key: 'quantity', title: '数量', dataIndex: 'quantity', width: 80 },
+          { key: 'box_type', title: '箱型', dataIndex: 'box_type', width: 140 },
+          {
+            key: 'origincity_name',
+            title: '起始港',
+            dataIndex: 'origincity_name',
+            width: 160,
+            render: (value) => renderBreakAllText(value),
+          },
+          {
+            key: 'destinationcity_name',
+            title: '目的港',
+            dataIndex: 'destinationcity_name',
+            width: 160,
+            render: (value) => renderBreakAllText(value),
+          },
+          {
+            key: 'destination_service_mode',
+            title: '目的港类型',
+            dataIndex: 'destination_service_mode',
+            width: 120,
+          },
+          { key: 'order_date', title: '搜索开航日', dataIndex: 'order_date', width: 130 },
+          {
+            key: 'is_USA',
+            title: '美线',
+            dataIndex: 'is_USA',
+            width: 90,
+            render: (value) => numberLabel(YES_NO_OPTIONS, value),
+          },
+          { key: 'route_select', title: '路由', dataIndex: 'route_select', width: 120 },
+          {
+            key: 'is_order',
+            title: '是否开启',
+            dataIndex: 'is_order',
+            width: 100,
+            render: (value, record) => {
+              const label = numberLabel(OPEN_CLOSE_OPTIONS, value)
+              return (
+                <Popconfirm
+                  title={`确认${record.is_order === 1 ? '关闭' : '开启'}当前任务吗？`}
+                  okText="是"
+                  cancelText="否"
+                  onConfirm={() => {
+                    void handleToggleOrderStatus(record, reload)
+                  }}
+                >
+                  <Button type="link" className="!px-0" disabled={!canWrite}>
+                    <Tag color={value === 1 ? 'success' : 'default'}>{label}</Tag>
+                  </Button>
+                </Popconfirm>
+              )
+            },
+          },
+          { key: 'limit_price', title: '限价', dataIndex: 'limit_price', width: 100 },
+          {
+            key: 'is_plan',
+            title: '直接下单',
+            dataIndex: 'is_plan',
+            width: 100,
+            render: (value) => numberLabel(YES_NO_OPTIONS, value),
+          },
+          {
+            key: 'is_roll',
+            title: 'is_roll',
+            dataIndex: 'is_roll',
+            width: 100,
+            render: (value) => numberLabel(YES_NO_OPTIONS, value),
+          },
+          { key: 'cid', title: 'CID', dataIndex: 'cid', width: 120 },
+          {
+            key: 'is_cid',
+            title: '是否开启CID',
+            dataIndex: 'is_cid',
+            width: 130,
+            render: (value) => numberLabel(CID_INIT_OPTIONS, value),
+          },
+          { key: 'fake_account', title: 'CID账号', dataIndex: 'fake_account', width: 120 },
+          { key: 'update_cid_time', title: 'CID更新时间', dataIndex: 'update_cid_time', width: 160 },
+          {
+            key: 'cid_type',
+            title: 'cid类型',
+            dataIndex: 'cid_type',
+            width: 120,
+            render: (value) => numberLabel(CID_TYPE_OPTIONS, value),
+          },
+          { key: 'cid_loop_times', title: 'cid循环次数', dataIndex: 'cid_loop_times', width: 120 },
+          { key: 'get_cid_times', title: 'cid请求次数', dataIndex: 'get_cid_times', width: 120 },
+          { key: 'cid_concurrent', title: 'cid并发次数', dataIndex: 'cid_concurrent', width: 120 },
+          { key: 'cid_sleep', title: 'cid间隔时间', dataIndex: 'cid_sleep', width: 120 },
+          { key: 'nac_loop_times', title: 'nac循环次数', dataIndex: 'nac_loop_times', width: 120 },
+          { key: 'nac_times', title: 'nac请求次数', dataIndex: 'nac_times', width: 120 },
+          { key: 'nac_concurrent', title: 'nac并发次数', dataIndex: 'nac_concurrent', width: 120 },
+          { key: 'nac_sleep', title: 'nac间隔时间', dataIndex: 'nac_sleep', width: 120 },
+          { key: 'limit_day', title: '限制天数', dataIndex: 'limit_day', width: 110 },
+          { key: 'cid_group', title: 'CID分组', dataIndex: 'cid_group', width: 110 },
+          { key: 'group_id', title: '分组', dataIndex: 'group_id', width: 100 },
+          {
+            key: 'operation',
+            title: '操作',
+            dataIndex: 'operation',
+            width: ACTION_COLUMN_WIDTH,
+            fixed: 'right',
+            render: (_, record) => {
+              if (!canWrite) return null
+              return (
+                <Button
+                  type="link"
+                  className="!px-0"
+                  onClick={() => {
+                    editForm.setFieldsValue(toFormValues(record))
+                    setEditingItem(record)
+                  }}
+                >
+                  修改
+                </Button>
+              )
+            },
+          },
+        ] as ColumnsType<EditableBookTask>
+      },
+      buildTableNode: ({ columns, current, dataSource, loading, pageSize, tableSize, tableClassName, pagination }) => {
+        currentRowsRef.current = dataSource
+        const pagedRows = dataSource.slice((current - 1) * pageSize, current * pageSize)
+
+        return (
+          <Table<EditableBookTask>
+            className={tableClassName}
+            rowKey="id"
+            columns={columns}
+            dataSource={pagedRows}
+            loading={loading}
+            size={tableSize}
+            pagination={pagination}
+            rowSelection={{
+              selectedRowKeys,
+              onChange: (keys) => setSelectedRowKeys(keys as number[]),
+              columnWidth: 50,
+            }}
+            scroll={{ x: 3600 }}
+          />
+        )
+      },
+      stateCopy: {
+        loadingTitle: '任务列表加载中',
+        emptyTitle: '暂无任务数据',
+        emptyDescription: '当前筛选条件下没有任务数据，请调整筛选条件后重试。',
+        emptyActionLabel: '重置筛选',
+        errorTitle: '任务列表加载失败',
+        errorDescription: '列表接口请求失败，请稍后重试。',
+        errorActionLabel: '重新加载',
+        partialTitle: '当前仅返回部分任务数据',
+        partialDescription: '部分任务数据可能延迟返回，请稍后重试。',
+        partialActionLabel: '重载完整数据',
+      },
+      renderAfterContent:
+        canWrite && selectedRowKeys.length > 0 ? (
+          <div
+            className="fixed right-0 bottom-0 left-0 z-[11] px-6 py-3"
+            style={{
+              borderTop: `1px solid ${token.colorBorderSecondary}`,
+              background: token.colorBgElevated,
+            }}
+          >
+            <div className="mx-auto flex w-full max-w-[1600px] items-center justify-between gap-3">
+              <Typography.Text>
+                已选择 <span className="font-medium">{selectedRowKeys.length}</span> 项
+              </Typography.Text>
+              <Space>
+                <Button onClick={() => setBatchVisible(true)}>批量修改</Button>
+                <Button
+                  type="primary"
+                  onClick={async () => {
+                    await batchUpdateBookTask({ ids: selectedRowKeys.join(', '), is_order: 1 })
+                    message.success('修改成功')
+                    setSelectedRowKeys([])
+                    await reloadRef.current()
+                  }}
+                >
+                  批量打开
+                </Button>
+              </Space>
+            </div>
+          </div>
+        ) : null,
+    }),
+    [canWrite, editForm, filterFields, handleToggleOrderStatus, selectedRowKeys, token.colorBgElevated, token.colorBorderSecondary]
+  )
+
+  return (
+    <>
+      <StandardListPageRecipe spec={spec} />
+      {editingItem ? (
+        <Modal
+          title="修改"
+          open
+          onOk={() => {
+            void handleSave(editingItem, reloadRef.current)
+          }}
+          onCancel={() => {
+            editForm.resetFields()
+            setEditingItem(null)
+          }}
+          confirmLoading={saving}
+          destroyOnHidden
+        >
+          <Form form={editForm} layout="vertical">
+            <BookTaskFormFields startPortOptions={startPortOptions} endPortOptions={endPortOptions} />
+          </Form>
+        </Modal>
+      ) : null}
+      <Modal
+        title="批量修改"
+        open={batchVisible}
+        onOk={() => undefined}
+        onCancel={() => {
+          batchForm.resetFields()
+          setBatchVisible(false)
+        }}
+        footer={null}
+        destroyOnHidden
+      >
+        <Form form={batchForm} layout="vertical">
+          <BookTaskFormFields startPortOptions={startPortOptions} endPortOptions={endPortOptions} includeRepeatAdd />
+          <div className="flex justify-end gap-2">
+            <Button
+              onClick={() => {
+                batchForm.resetFields()
+                setBatchVisible(false)
+              }}
+            >
+              取消
+            </Button>
+            <Button
+              type="primary"
+              loading={saving}
+              onClick={() => {
+                void handleBatchSubmit(reloadRef.current)
+              }}
+            >
+              确定
+            </Button>
+          </div>
+        </Form>
+      </Modal>
+    </>
+  )
+}
