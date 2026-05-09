@@ -1,0 +1,156 @@
+version: 1
+updatedAt: "2026-04-16"
+project: partime-boats
+
+pageModules:
+  - module: 筛选区
+    purpose: 承载查询条件输入与触发查询。
+    useWhen:
+      - 列表页有多条件过滤
+      - 查询条件需要重置和回显
+    avoidWhen:
+      - 数据一次性展示且无筛选需求
+
+  - module: 表格内容区
+    purpose: 承载列表数据展示、分页与结果态切换。
+    useWhen:
+      - 后端分页列表
+      - 需要统一空态、错误态、局部异常态
+    avoidWhen:
+      - 纯卡片流或瀑布流展示
+
+  - module: 表单主编辑区
+    purpose: 承载新增/编辑/只读同构表单的主交互区域。
+    useWhen:
+      - 新增/编辑/只读同构页面
+      - 需要 route 参数决定可编辑性
+    avoidWhen:
+      - 纯展示型详情（且业务已确认不走表单复用）
+
+  - module: 状态反馈区
+    purpose: 向用户明确展示加载、空态、错误、部分成功等状态。
+    useWhen:
+      - 有异步请求且可能出现 empty/error/partial
+      - 提交后需要成功/失败反馈
+    avoidWhen:
+      - 静态文案页
+
+  - module: 权限守卫区
+    purpose: 根据权限控制页面或区块是否可见。
+    useWhen:
+      - 页面、区块、按钮有角色或权限差异
+    avoidWhen:
+      - 完全公开内容（后台场景极少）
+
+componentCatalog:
+  - name: TemplateListFilterForm
+    source: src/shared/template-kit/list/template-list-filter-form.tsx
+    type: list-filter
+    responsibilities:
+      - 渲染筛选条件并提交过滤参数
+    useWhen:
+      - 页面目标是“列表查询”
+      - 需要 name/status/date 等过滤项
+    avoidWhen:
+      - 纯静态表格
+      - 无筛选需求的短列表
+
+  - name: TemplateListContent
+    source: src/shared/template-kit/list/template-list-content.tsx
+    type: list-content
+    responsibilities:
+      - 渲染表格和分页
+      - 处理 empty/loading/error/partial 视图切换
+    useWhen:
+      - 后端返回列表数据
+      - 页面存在分页或刷新
+    avoidWhen:
+      - 表单页面
+      - 详情页
+
+  - name: useTemplateListController
+    source: src/shared/template-kit/list/use-template-list-controller.ts
+    type: list-controller-hook
+    responsibilities:
+      - 聚合过滤器、分页、刷新与请求状态
+    useWhen:
+      - 页面希望复用“标准列表控制器”
+    avoidWhen:
+      - 页面有强定制状态机且与模板控制器冲突
+
+  - name: useTemplateListFilters
+    source: src/shared/template-kit/list/use-template-list-filters.ts
+    type: list-filter-hook
+    responsibilities:
+      - 管理列表查询参数与同步逻辑
+    useWhen:
+      - 过滤条件需要复用
+    avoidWhen:
+      - 仅单次请求，无参数状态维护
+
+  - name: TemplateFormStateGate
+    source: src/shared/template-kit/form/template-form-state-gate.tsx
+    type: form-state-gate
+    responsibilities:
+      - 根据模式与请求状态控制表单渲染和兜底态
+    useWhen:
+      - 表单有 add/modify/readonly 三态
+    avoidWhen:
+      - 页面无模式切换
+
+  - name: useTemplateFormController
+    source: src/shared/template-kit/form/use-template-form-controller.ts
+    type: form-controller-hook
+    responsibilities:
+      - 承载表单模式、提交、加载、权限相关逻辑
+    useWhen:
+      - 表单模板页
+    avoidWhen:
+      - 非表单类页面
+
+  - name: PermissionGuard
+    source: src/shared/components/permission-guard.tsx
+    type: auth-guard
+    responsibilities:
+      - 基于 PermissionKey 控制可见性
+    useWhen:
+      - 新增页面或按钮涉及权限控制
+    avoidWhen:
+      - 页面无权限限制（极少场景）
+
+  - name: QueryStateBlock
+    source: src/shared/components/query-state-block.tsx
+    type: state-feedback
+    responsibilities:
+      - 统一 loading/empty/error/partial 的可视反馈
+    useWhen:
+      - 异步加载数据
+    avoidWhen:
+      - 完全静态内容
+
+  - name: useStandardPagination
+    source: src/shared/hooks/use-standard-pagination.ts
+    type: pagination-hook
+    responsibilities:
+      - 标准分页状态与变更处理
+    useWhen:
+      - 列表页需要统一分页行为
+    avoidWhen:
+      - 数据量极小且不分页
+
+  - name: AppShell
+    source: src/shared/layout/app-shell.tsx
+    type: layout
+    responsibilities:
+      - 后台整体导航与内容容器
+    useWhen:
+      - 新增后台路由页面
+    avoidWhen:
+      - 独立登录页或纯公共页面
+
+crossCuttingRules:
+  - 先复用 template-kit 再考虑新造轮子
+  - 列表页优先走 useTemplateListController + TemplateListContent 组合
+  - 表单页优先走 form-route-contract + TemplateFormStateGate 组合
+  - 权限必须走 PermissionKey，不允许硬编码角色分支
+  - 页面设计先拆模块（筛选区/内容区/反馈区/权限区），再映射组件

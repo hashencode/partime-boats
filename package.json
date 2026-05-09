@@ -1,0 +1,65 @@
+{
+  "name": "app",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev:development": "rsbuild dev --env-mode development",
+    "dev:test": "rsbuild dev --env-mode test",
+    "dev:production": "rsbuild dev --env-mode production",
+    "build:test": "tsc -b && rsbuild build --env-mode test && rm -f dist/mockServiceWorker.js",
+    "build:production": "tsc -b && rsbuild build --env-mode production && rm -f dist/mockServiceWorker.js",
+    "test": "rstest run",
+    "test:watch": "rstest watch",
+    "test:browser": "rstest run -c rstest.browser.config.ts"
+  },
+  "dependencies": {
+    "@ant-design/icons": "^6.1.1",
+    "ahooks": "^3.9.7",
+    "antd": "^6",
+    "axios": "^1.15.0",
+    "axios-cache-interceptor": "^1.12.0",
+    "classnames": "^2.5.1",
+    "dayjs": "^1.11.20",
+    "echarts": "^6.0.0",
+    "echarts-for-react": "^3.0.6",
+    "js-cookie": "^3.0.5",
+    "lodash": "^4.18.1",
+    "msw": "^2.13.3",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "react-router-dom": "^7.14.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.4",
+    "@rsbuild/core": "^1.7.5",
+    "@rsbuild/plugin-react": "^1.4.6",
+    "@rstest/browser": "0.9.7",
+    "@rstest/core": "^0.9.7",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@types/node": "^24.12.2",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "autoprefixer": "^10.4.27",
+    "eslint": "^9.39.4",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-refresh": "^0.5.2",
+    "eslint-plugin-unused-imports": "^4.3.0",
+    "globals": "^17.4.0",
+    "jsdom": "^29.0.2",
+    "playwright": "^1.59.1",
+    "postcss": "^8.5.9",
+    "prettier": "^3.8.2",
+    "tailwindcss": "3.4.17",
+    "typescript": "~6.0.2",
+    "typescript-eslint": "^8.58.0"
+  },
+  "packageManager": "bun@1.3.5",
+  "msw": {
+    "workerDirectory": [
+      "public"
+    ]
+  }
+}
