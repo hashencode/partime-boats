@@ -1,11 +1,14 @@
 import { useCallback, useMemo, useState } from 'react'
 import type { TablePaginationConfig } from 'antd'
 
-type UseStandardPaginationOptions = {
-  total: number
+export type StandardPaginationConfig = {
   defaultPageSize?: number
   maxPageSize?: number
   pageSizeOptions?: number[]
+}
+
+type UseStandardPaginationOptions = StandardPaginationConfig & {
+  total: number
 }
 
 type StandardPaginationResult = {
@@ -84,7 +87,7 @@ export const useStandardPagination = ({
         )
 
         setPageSize(normalizedPageSize)
-        setRequestedPage(nextPage)
+        setRequestedPage(normalizedPageSize === pageSize ? nextPage : 1)
       },
     }),
     [current, maxPageSize, pageSize, safeDefaultPageSize, safePageSizeOptions, total]

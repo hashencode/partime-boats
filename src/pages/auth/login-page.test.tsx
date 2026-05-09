@@ -2,7 +2,9 @@ import React from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it, beforeEach } from '@rstest/core'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import { vi } from 'vitest'
 import { AuthProvider } from '../../infrastructure/auth/auth-context'
+import * as authApi from '../../infrastructure/auth/auth-api'
 import { useAuth } from '../../infrastructure/auth/use-auth'
 import { LoginPage } from './login-page'
 
@@ -61,39 +63,31 @@ describe('LoginPage', () => {
   })
 
   it('logs in and redirects to home after valid account submit', async () => {
+    const loginSpy = vi.spyOn(authApi, 'loginByAccount').mockResolvedValue({
+      access_token: 'token-1',
+      refresh_token: 'refresh-1',
+    })
     renderPage()
 
-    fireEvent.click(screen.getByRole('tab', { name: '账号密码登录' }))
-    fireEvent.change(screen.getByPlaceholderText('用户名: admin or user'), { target: { value: 'alice' } })
-    fireEvent.change(screen.getByPlaceholderText('密码: ant.design'), { target: { value: '12345678' } })
+    fireEvent.change(screen.getByPlaceholderText('用户名'), { target: { value: 'alice' } })
+    fireEvent.change(screen.getByPlaceholderText('密码'), { target: { value: '12345678' } })
     fireEvent.click(screen.getByRole('button', { name: '登 录' }))
 
     await waitFor(() => {
       expect(screen.getByText('AUTHED')).toBeTruthy()
       expect(screen.getByText('alice')).toBeTruthy()
     })
+    loginSpy.mockRestore()
   })
 
-  it('shows required validation errors in phone mode when form is empty', async () => {
+  it('shows required validation errors when form is empty', async () => {
     renderPage()
 
     fireEvent.click(screen.getByRole('button', { name: '登 录' }))
 
     await waitFor(() => {
-      expect(screen.getByText('请输入手机号！')).toBeTruthy()
-      expect(screen.getByText('请输入验证码！')).toBeTruthy()
-    })
-  })
-
-  it('updates captcha button text after requesting code with valid phone', async () => {
-    renderPage()
-
-    fireEvent.change(screen.getByPlaceholderText('手机号'), { target: { value: '13800138000' } })
-    fireEvent.click(screen.getByRole('button', { name: '获取验证码' }))
-
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: /获取验证码/ }).textContent).toContain('获取验证码')
-      expect(screen.getByRole('button', { name: /获取验证码/ })).toBeDisabled()
+      expect(screen.getByText('请输入用户名!')).toBeTruthy()
+      expect(screen.getByText('请输入密码！')).toBeTruthy()
     })
   })
 })

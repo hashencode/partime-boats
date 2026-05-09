@@ -7,12 +7,14 @@ import {
   Typography,
 } from 'antd'
 import type { MenuProps } from 'antd'
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { ListToolbarActions } from '../../components/list-toolbar-actions'
 import { useListViewPreferences } from '../../hooks/use-list-view-preferences'
+import { useStandardPagination } from '../../hooks/use-standard-pagination'
 import { useCrudFormNavigation } from '../hooks'
 import type { StandardListPageSpec } from '../specs/standard-list-page-spec'
 import { buildSearchGridProps } from '../list/build-search-grid-props'
+import { buildStandardListPagination, STANDARD_LIST_TABLE_CLASS_NAME } from '../list/standard-list-pagination'
 import { TemplateListContent } from '../list/template-list-content'
 import { TemplateListFilterForm } from '../list/template-list-filter-form'
 import { useTemplateListController } from '../list/use-template-list-controller'
@@ -39,9 +41,12 @@ export const StandardListPageRecipe = <
 }) => {
   const [filterForm] = Form.useForm<TFilterValues>()
   const { openFormPage } = useCrudFormNavigation(spec.formRoute)
-  const [current, setCurrent] = useState(1)
-  const [pageSize, setPageSize] = useState(10)
-  const paginationMetaRef = useRef({ current: 1, pageSize: 10 })
+  const [total, setTotal] = useState(0)
+  const { current, pageSize, pagination, resetPage } = useStandardPagination({
+    total,
+    ...spec.pagination,
+  })
+  const tablePagination = useMemo(() => buildStandardListPagination(pagination), [pagination])
 
   const {
     filters,
@@ -64,6 +69,17 @@ export const StandardListPageRecipe = <
       }) ?? filters,
     [current, filters, pageSize, spec]
   )
+  const transformResponse = spec.transformResponse
+
+  const handleTransformResponse = useCallback(
+    (nextResponse: TResponse) => {
+      const applied = transformResponse?.(nextResponse) ?? nextResponse
+      const responseTotal = (applied as { total?: number } | null)?.total
+      setTotal(typeof responseTotal === 'number' ? responseTotal : 0)
+      return applied
+    },
+    [transformResponse]
+  )
 
   const {
     response,
@@ -81,16 +97,11 @@ export const StandardListPageRecipe = <
     isPartial: spec.isPartial,
     mapError: spec.mapError,
     onError: (requestError, appliedFilters) => {
-      paginationMetaRef.current = { current, pageSize }
       spec.onError?.(requestError, appliedFilters)
     },
-    transformResponse: spec.transformResponse,
+    transformResponse: handleTransformResponse,
     refreshChannel: spec.refreshChannel,
   })
-
-  useEffect(() => {
-    paginationMetaRef.current = { current, pageSize }
-  }, [current, pageSize])
 
   const watchedFilterValues =
     (Form.useWatch(
@@ -145,8 +156,12 @@ export const StandardListPageRecipe = <
 
   const handleResetAll = () => {
     onResetFilters()
-    setCurrent(1)
+    resetPage()
   }
+
+  const responseCurrent = (response as { current?: number } | null)?.current ?? current
+  const responsePageSize = (response as { size?: number } | null)?.size ?? pageSize
+  const responseTotal = (response as { total?: number } | null)?.total ?? 0
 
   const tableNode = spec.buildTableNode({
     columns: visibleColumns,
@@ -156,15 +171,13 @@ export const StandardListPageRecipe = <
     selectedColumnKeys,
     setTableSize,
     setSelectedColumnKeys,
-    current: (response as { current?: number } | null)?.current ?? current,
-    pageSize: (response as { size?: number } | null)?.size ?? pageSize,
-    total: (response as { total?: number } | null)?.total ?? 0,
+    current: responseCurrent,
+    pageSize: responsePageSize,
+    total: responseTotal,
+    tableClassName: STANDARD_LIST_TABLE_CLASS_NAME,
+    pagination: tablePagination,
     onPageChange: (nextCurrent, nextPageSize) => {
-      setCurrent(nextCurrent)
-      if (nextPageSize !== pageSize) {
-        setPageSize(nextPageSize)
-        setCurrent(1)
-      }
+      tablePagination.onChange?.(nextCurrent, nextPageSize)
     },
   })
 
@@ -188,7 +201,7 @@ export const StandardListPageRecipe = <
           ]}
           onSubmit={(values) => {
             onSubmitFilters(values)
-            setCurrent(1)
+            resetPage()
           }}
           onValuesChange={onValuesChangeFilters}
           onReset={handleResetAll}

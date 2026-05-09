@@ -20,6 +20,7 @@
 - 新页面先复用 `src/pages/templates/*` 与 `src/shared/template-kit/*`。
 - 若需求是“从其他项目迁移页面”，优先阅读 `docs/ai/form-migration-rules.md` 或 `docs/ai/list-migration-rules.md`，先做旧新对照清单，再决定是否接入 recipe。
 - 页面先按模块拆解（筛选区/内容区/反馈区/权限区），再选组件。
+- 标准查询列表页分页必须复用 `src/shared/hooks/use-standard-pagination.ts`，禁止页面内散装实现分页状态。
 - 有异步请求必须处理 `loading / empty / error / partial`。
 - 表单模式必须遵守 `add / modify / readonly`（见 `src/routes/form-route-contract.ts`）。
 - 表单类型必须按 `docs/ai/page-recipes.yaml#formTemplateDecisionMatrix` 判别，禁止拍脑袋选型。

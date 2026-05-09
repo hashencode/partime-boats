@@ -127,4 +127,78 @@ describe('StandardListPageRecipe', () => {
     })
     expect(screen.getByTestId('table-node').textContent).toBe('alpha')
   })
+
+  it('resets to first page when page size changes', async () => {
+    const requestCalls: RequestFilters[] = []
+    const spec: StandardListPageSpec<FilterValues, RequestFilters, Response, { id: number; name: string }, Error> = {
+      pageTitle: '测试列表',
+      cardTitle: '测试数据',
+      tableId: 'recipe-test-list-page-size',
+      formRoute: '/test/form',
+      initialFilters: {},
+      toFilters: (values) => ({
+        name: values.name?.trim() || undefined,
+      }),
+      buildRequestFilters: ({ filters, current, pageSize }) => ({
+        ...filters,
+        current,
+        size: pageSize,
+      }),
+      request: async (filters) => {
+        requestCalls.push(filters)
+        return {
+          data: [{ id: 1, name: 'demo' }],
+          current: filters.current ?? 1,
+          size: filters.size ?? 10,
+          total: 200,
+        }
+      },
+      selectItems: (response) => response?.data ?? [],
+      filterFields: [],
+      buildColumns: () =>
+        [
+          {
+            key: 'name',
+            title: '名称',
+            dataIndex: 'name',
+          },
+        ] satisfies ColumnsType<{ id: number; name: string }>,
+      buildTableNode: ({ onPageChange }) => (
+        <div>
+          <button type="button" onClick={() => onPageChange(3, 10)}>
+            goto-page-3
+          </button>
+          <button type="button" onClick={() => onPageChange(3, 20)}>
+            change-size
+          </button>
+        </div>
+      ),
+    }
+
+    render(<StandardListPageRecipe spec={spec} />)
+
+    await waitFor(() => {
+      expect(requestCalls).toHaveLength(1)
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'goto-page-3' }))
+
+    await waitFor(() => {
+      expect(requestCalls).toHaveLength(2)
+    })
+    expect(requestCalls[1]).toEqual({
+      current: 3,
+      size: 10,
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'change-size' }))
+
+    await waitFor(() => {
+      expect(requestCalls).toHaveLength(3)
+    })
+    expect(requestCalls[2]).toEqual({
+      current: 1,
+      size: 20,
+    })
+  })
 })

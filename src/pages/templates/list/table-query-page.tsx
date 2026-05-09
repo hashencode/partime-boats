@@ -134,7 +134,7 @@ export const TableQueryPage = () => {
         name: 'name',
         label: '规则名称',
         inputProps: {
-          placeholder: '请输入',
+          placeholder: '请输入规则名称',
         },
       },
       {
@@ -142,7 +142,7 @@ export const TableQueryPage = () => {
         name: 'status',
         label: '状态',
         selectProps: {
-          placeholder: '请选择',
+          placeholder: '请选择状态',
         },
         options: [
           { label: '关闭', value: 0 },
@@ -167,6 +167,9 @@ export const TableQueryPage = () => {
         type: 'date',
         name: 'updatedAt',
         label: '更新时间',
+        datePickerProps: {
+          placeholder: '请选择更新时间',
+        },
         disabledWhen: (values) => values.status === 0,
       },
     ],
@@ -264,26 +267,17 @@ export const TableQueryPage = () => {
           ),
         },
       ],
-      buildTableNode: ({ columns, dataSource, loading, tableSize, current, pageSize, total, onPageChange }) => {
+      buildTableNode: ({ columns, dataSource, loading, tableSize, current, pageSize, tableClassName, pagination }) => {
         paginationMetaRef.current = { current, pageSize }
 
         return (
           <Table<RuleItem>
-            className="rule-list-table"
+            className={tableClassName}
             rowKey="key"
             dataSource={dataSource}
             columns={columns}
             size={tableSize}
-            pagination={{
-              current,
-              pageSize,
-              total,
-              size: 'middle',
-              showQuickJumper: true,
-              showSizeChanger: true,
-              showTotal: (nextTotal) => `共 ${nextTotal} 条数据`,
-              onChange: onPageChange,
-            }}
+            pagination={pagination}
             loading={loading}
             rowSelection={{
               onChange: (_, rows) => setSelectedRows(rows),

@@ -16,7 +16,7 @@ const renderWithAuth = (isAuthenticated: boolean, entry: string) =>
         displayName: '管理员',
         setRole: () => undefined,
         setDisplayName: () => undefined,
-        login: () => undefined,
+        login: async () => undefined,
         logout: () => undefined,
       }}
     >
@@ -46,12 +46,14 @@ const renderWithAuth = (isAuthenticated: boolean, entry: string) =>
 
 describe('auth-route-guards', () => {
   it('redirects anonymous users to login when visiting protected route', () => {
+    window.localStorage.removeItem('auth.access_token')
     renderWithAuth(false, '/protected')
 
     expect(screen.getByText('LOGIN_PAGE')).toBeTruthy()
   })
 
   it('redirects authenticated users away from login', () => {
+    window.localStorage.setItem('auth.access_token', 'token-1')
     renderWithAuth(true, '/login')
 
     expect(screen.getByText('HOME_PAGE')).toBeTruthy()

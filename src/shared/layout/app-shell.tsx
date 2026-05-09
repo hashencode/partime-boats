@@ -2,8 +2,6 @@ import {
   CodeOutlined,
   DesktopOutlined,
   LogoutOutlined,
-  MenuFoldOutlined,
-  MenuUnfoldOutlined,
   MoonOutlined,
   SnippetsOutlined,
   SmileOutlined,
@@ -23,7 +21,7 @@ import {
 import { useTheme } from '../contexts/theme-context'
 import { getDisplayNameAvatarText, normalizeDisplayName } from '../utils/display-name'
 
-const { Header, Content, Sider } = Layout
+const { Header, Content } = Layout
 
 type RouteContract = {
   key: string
@@ -55,7 +53,6 @@ export const AppShell = ({ routes = [], headerExtra }: AppShellProps) => {
   const { mode, resolvedTheme, setMode } = useTheme()
   const { token } = theme.useToken()
 
-  const [collapsed, setCollapsed] = useState(false)
   const [mswEnabled, setMswEnabled] = useState(getStoredMswEnabled)
   const [switchLoading, setSwitchLoading] = useState(false)
 
@@ -140,18 +137,21 @@ export const AppShell = ({ routes = [], headerExtra }: AppShellProps) => {
   const avatarText = useMemo(() => getDisplayNameAvatarText(fullDisplayName), [fullDisplayName])
 
   const selectedKey = location.pathname === '/' ? 'home' : selectedRoute?.key ?? 'home'
-  const activeGroupKey =
-    selectedRoute
-      ? showDevMenuGroup &&
-          selectedRoute.menuVisibility === 'dev-only' &&
-          selectedRoute.menuGroup === undefined
-        ? 'group-Dev'
-        : !isStandaloneMenuItem(selectedRoute)
-          ? `group-${getMenuGroup(selectedRoute)}`
-          : undefined
-      : undefined
   const breadcrumbItems = routes.find((route) => route.path === location.pathname)?.breadcrumb ?? []
   const shouldShowBreadcrumb = breadcrumbItems.length > 0
+
+  const topNavItems: MenuProps['items'] = useMemo(
+    () => [
+      {
+        key: 'home',
+        icon: <SmileOutlined />,
+        label: '欢迎',
+        onClick: () => navigate('/'),
+      },
+      ...groupedMenuItems,
+    ],
+    [groupedMenuItems, navigate]
+  )
 
   const handleLogout = () => {
     logout()
@@ -280,20 +280,29 @@ export const AppShell = ({ routes = [], headerExtra }: AppShellProps) => {
   return (
     <Layout className="h-screen overflow-hidden" style={{ background: token.colorBgLayout }}>
       <Header
-        className="flex h-14 items-center justify-between gap-3 px-5 pl-4 shadow-none"
+        className="sticky top-0 z-10 flex h-14 items-center justify-between gap-3 px-5 pl-4 shadow-none"
         style={{
           background: token.colorBgContainer,
           borderBottom: `1px solid ${token.colorBorderSecondary}`,
         }}
       >
-        <div className="flex min-w-0 items-center">
+        <div className="flex min-w-0 flex-1 items-center">
           <div
-            className="flex cursor-pointer items-center gap-2.5 pr-4"
+            className="flex shrink-0 cursor-pointer items-center gap-2.5 pr-4"
             style={{ color: token.colorText }}
             onClick={() => navigate('/')}
           >
             <span className="text-base tracking-[0.2px]">Admin Quick Start</span>
           </div>
+          <Menu
+            className="min-w-0 flex-1 border-0 [&_.ant-menu-item]:!h-14 [&_.ant-menu-item]:!leading-[56px] [&_.ant-menu-overflow-item]:!h-14 [&_.ant-menu-overflow-item]:!leading-[56px]"
+            style={{ background: token.colorBgContainer }}
+            theme={resolvedTheme === 'dark' ? 'dark' : 'light'}
+            mode="horizontal"
+            triggerSubMenuAction="click"
+            selectedKeys={selectedKey ? [selectedKey] : []}
+            items={topNavItems}
+          />
         </div>
 
         <div className="flex items-center gap-2">
@@ -317,50 +326,6 @@ export const AppShell = ({ routes = [], headerExtra }: AppShellProps) => {
       </Header>
 
       <Layout className="min-h-0 flex-1 overflow-hidden" style={{ background: token.colorBgLayout }}>
-        <Sider
-          width={224}
-          collapsible
-          collapsed={collapsed}
-          trigger={null}
-          className="flex h-full flex-col overflow-hidden [&_.ant-layout-sider-children]:flex [&_.ant-layout-sider-children]:h-full [&_.ant-layout-sider-children]:min-h-0 [&_.ant-layout-sider-children]:flex-col"
-          style={{
-            background: token.colorBgContainer,
-            borderRight: `1px solid ${token.colorBorderSecondary}`,
-          }}
-          breakpoint="lg"
-          onBreakpoint={(broken) => setCollapsed(broken)}
-        >
-          <Menu
-            key={`menu-${collapsed ? 'collapsed' : activeGroupKey ?? 'default'}`}
-            className="min-h-0 flex-1 overflow-auto !border-e-0 pt-2.5 [&_.ant-menu-item-group-title]:!hidden"
-            style={{ background: token.colorBgContainer }}
-            theme={resolvedTheme === 'dark' ? 'dark' : 'light'}
-            mode="inline"
-            selectedKeys={selectedKey ? [selectedKey] : []}
-            defaultOpenKeys={collapsed ? [] : activeGroupKey ? [activeGroupKey] : []}
-            items={[
-              {
-                key: 'home',
-                icon: <SmileOutlined />,
-                label: '欢迎',
-                onClick: () => navigate('/'),
-              },
-              ...groupedMenuItems,
-            ]}
-          />
-          <div
-            className="sticky bottom-0 z-[2] flex h-11 cursor-pointer items-center justify-center hover:opacity-90"
-            style={{
-              background: token.colorBgContainer,
-              borderTop: `1px solid ${token.colorBorderSecondary}`,
-              color: token.colorTextSecondary,
-            }}
-            onClick={() => setCollapsed((value) => !value)}
-          >
-            {collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-          </div>
-        </Sider>
-
         <Content
           className="min-h-0 overflow-y-auto p-6"
           style={{

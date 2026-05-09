@@ -1,34 +1,26 @@
 import React from 'react'
 import {
   LockOutlined,
-  MobileOutlined,
   UserOutlined,
 } from '@ant-design/icons'
 import {
   Alert,
   Button,
-  Checkbox,
   Form,
   Input,
   Space,
-  Tabs,
   Typography,
-  message,
   theme,
 } from 'antd'
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
+import { normalizeApiError } from '../../infrastructure/http/api-client'
 import { useAuth } from '../../infrastructure/auth/use-auth'
 void React
-
-type LoginType = 'phone' | 'account'
 
 type LoginValues = {
   username: string
   password: string
-  mobile: string
-  captcha: string
-  remember?: boolean
 }
 
 type LoginLocationState = {
@@ -41,21 +33,9 @@ export const LoginPage = () => {
   const { login } = useAuth()
   const { token } = theme.useToken()
   const [form] = Form.useForm<LoginValues>()
-  const [loginType, setLoginType] = useState<LoginType>('account')
   const [submitError, setSubmitError] = useState<string | null>(null)
-  const [captchaCount, setCaptchaCount] = useState(0)
 
   const from = ((location.state as LoginLocationState | null)?.from || '/') as string
-
-  useEffect(() => {
-    if (captchaCount <= 0) {
-      return
-    }
-    const timer = window.setInterval(() => {
-      setCaptchaCount((prev) => (prev > 0 ? prev - 1 : 0))
-    }, 1000)
-    return () => window.clearInterval(timer)
-  }, [captchaCount])
 
   const passwordStrength = useMemo(() => {
     const value = form.getFieldValue('password') || ''
@@ -67,33 +47,20 @@ export const LoginPage = () => {
 
   const handleSubmit = async (values: LoginValues) => {
     setSubmitError(null)
-
-    if (loginType === 'account') {
-      if (!values.username.trim() || !values.password.trim()) {
-        setSubmitError('请输入账号和密码后重试。')
-        return
-      }
-      login({ displayName: values.username.trim(), role: 'admin' })
+    if (!values.username.trim() || !values.password.trim()) {
+      setSubmitError('请输入账号和密码后重试。')
+      return
+    }
+    try {
+      await login({
+        username: values.username.trim(),
+        password: values.password,
+      })
       navigate(from, { replace: true })
-      return
+    } catch (error) {
+      const apiError = normalizeApiError(error)
+      setSubmitError(apiError.message)
     }
-
-    if (!values.mobile?.trim() || !values.captcha?.trim()) {
-      setSubmitError('请输入手机号和验证码后重试。')
-      return
-    }
-    login({ displayName: values.mobile.trim(), role: 'admin' })
-    navigate(from, { replace: true })
-  }
-
-  const handleGetCaptcha = async () => {
-    const mobile = form.getFieldValue('mobile') || ''
-    if (!/^1\d{10}$/.test(mobile)) {
-      void message.error('请先输入正确手机号')
-      return
-    }
-    setCaptchaCount(59)
-    void message.success('获取验证码成功！验证码为：1234')
   }
 
   return (
@@ -127,82 +94,33 @@ export const LoginPage = () => {
             />
           ) : null}
 
-          <Tabs
-            centered
-            activeKey={loginType}
-            onChange={(activeKey) => setLoginType(activeKey as LoginType)}
-            items={[
-              { key: 'account', label: '账号密码登录' },
-              { key: 'phone', label: '手机号登录' },
-            ]}
-          />
           <Form<LoginValues>
             form={form}
             layout="vertical"
             onFinish={handleSubmit}
-            initialValues={{ remember: true }}
           >
-            {loginType === 'account' ? (
-              <>
-                <Form.Item name="username" rules={[{ required: true, message: '请输入用户名!' }]}>
-                  <Input
-                    size="large"
-                    prefix={<UserOutlined />}
-                    placeholder="用户名"
-                    autoComplete="username"
-                  />
-                </Form.Item>
-                <Form.Item name="password" rules={[{ required: true, message: '请输入密码！' }]}>
-                  <Input.Password
-                    size="large"
-                    prefix={<LockOutlined />}
-                    placeholder="密码"
-                    autoComplete="current-password"
-                    onChange={() => form.validateFields(['password']).catch(() => undefined)}
-                  />
-                </Form.Item>
-                {passwordStrength ? (
-                  <div className="-mt-3 mb-3 text-sm" style={{ color: passwordStrength.color }}>
-                    {passwordStrength.label}
-                  </div>
-                ) : null}
-              </>
-            ) : (
-              <>
-                <Form.Item
-                  name="mobile"
-                  rules={[
-                    { required: true, message: '请输入手机号！' },
-                    { pattern: /^1\d{10}$/, message: '手机号格式错误！' },
-                  ]}
-                >
-                  <Input size="large" prefix={<MobileOutlined />} placeholder="手机号" />
-                </Form.Item>
-                <Form.Item name="captcha" rules={[{ required: true, message: '请输入验证码！' }]}>
-                  <Input
-                    size="large"
-                    prefix={<LockOutlined />}
-                    placeholder="请输入验证码"
-                    suffix={
-                      <Button
-                        size={'small'}
-                        type="link"
-                        disabled={captchaCount > 0}
-                        onClick={handleGetCaptcha}
-                      >
-                        {captchaCount > 0 ? `${captchaCount} 获取验证码` : '获取验证码'}
-                      </Button>
-                    }
-                  />
-                </Form.Item>
-              </>
-            )}
-            <div className="mb-6">
-              <Form.Item name="remember" valuePropName="checked" noStyle>
-                <Checkbox>自动登录</Checkbox>
-              </Form.Item>
-              <a className="float-right">忘记密码</a>
-            </div>
+            <Form.Item name="username" rules={[{ required: true, message: '请输入用户名!' }]}>
+              <Input
+                size="large"
+                prefix={<UserOutlined />}
+                placeholder="用户名"
+                autoComplete="username"
+              />
+            </Form.Item>
+            <Form.Item name="password" rules={[{ required: true, message: '请输入密码！' }]}>
+              <Input.Password
+                size="large"
+                prefix={<LockOutlined />}
+                placeholder="密码"
+                autoComplete="current-password"
+                onChange={() => form.validateFields(['password']).catch(() => undefined)}
+              />
+            </Form.Item>
+            {passwordStrength ? (
+              <div className="-mt-3 mb-3 text-sm" style={{ color: passwordStrength.color }}>
+                {passwordStrength.label}
+              </div>
+            ) : null}
             <Form.Item className="!mb-3">
               <Button type="primary" htmlType="submit" block>
                 登 录

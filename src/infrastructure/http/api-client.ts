@@ -1,4 +1,5 @@
 import axios, { AxiosError } from 'axios'
+import { authStorage } from '../auth/auth-storage'
 
 export type ApiErrorCode =
   | 'QUERY_TIMEOUT'
@@ -73,9 +74,63 @@ export const apiClient = axios.create({
   timeout: 5000,
 })
 
+apiClient.interceptors.request.use((config) => {
+  const accessToken = authStorage.getAccessToken()
+  if (accessToken) {
+    config.headers.Authorization = `Bearer ${accessToken}`
+  }
+  return config
+})
+
+let refreshRequest: Promise<string | null> | null = null
+
+type RefreshTokenEnvelope = {
+  bool_status?: boolean
+  data?: {
+    access_token?: string
+  }
+  access_token?: string
+}
+
+const requestTokenRefresh = async () => {
+  const refreshToken = authStorage.getRefreshToken()
+  if (!refreshToken) return null
+  const response = await axios.post<RefreshTokenEnvelope>(
+    '/admin/token',
+    '',
+    {
+      baseURL: resolveApiBaseUrl(import.meta.env.PUBLIC_API_BASE),
+      headers: { Authorization: `Bearer ${refreshToken}` },
+    }
+  )
+  if (response.data.bool_status === false) {
+    return null
+  }
+  return response.data.access_token ?? response.data.data?.access_token ?? null
+}
+
 apiClient.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
+    const status = error?.response?.status
+    const originalRequest = error?.config as (typeof error.config & { _retry?: boolean }) | undefined
+
+    if (status === 401 && originalRequest && !originalRequest._retry) {
+      originalRequest._retry = true
+      refreshRequest ??= requestTokenRefresh().finally(() => {
+        refreshRequest = null
+      })
+      const newToken = await refreshRequest
+      if (newToken) {
+        authStorage.setAccessToken(newToken)
+        originalRequest.headers.Authorization = `Bearer ${newToken}`
+        return apiClient(originalRequest)
+      }
+      authStorage.clearTokens()
+      if (typeof window !== 'undefined') {
+        window.location.href = '/login'
+      }
+    }
     return Promise.reject(normalizeApiError(error))
   }
 )

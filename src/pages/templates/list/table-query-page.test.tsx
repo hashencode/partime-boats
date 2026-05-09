@@ -154,7 +154,7 @@ describe('TableQueryPage', () => {
       expect(requestCount).toBe(1)
     })
 
-    fireEvent.change(screen.getByPlaceholderText('请输入'), { target: { value: 'alpha' } })
+    fireEvent.change(screen.getByPlaceholderText('请输入规则名称'), { target: { value: 'alpha' } })
 
     await waitFor(() => {
       expect(requestCount).toBe(1)

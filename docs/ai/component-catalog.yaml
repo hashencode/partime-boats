@@ -151,6 +151,7 @@ componentCatalog:
 crossCuttingRules:
   - 先复用 template-kit 再考虑新造轮子
   - 列表页优先走 useTemplateListController + TemplateListContent 组合
+  - 标准查询列表页分页必须复用 useStandardPagination，禁止散装分页状态实现
   - 表单页优先走 form-route-contract + TemplateFormStateGate 组合
   - 权限必须走 PermissionKey，不允许硬编码角色分支
   - 页面设计先拆模块（筛选区/内容区/反馈区/权限区），再映射组件

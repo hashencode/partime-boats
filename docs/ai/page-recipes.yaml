@@ -41,10 +41,10 @@ recipes:
       - src/shared/template-kit/list/use-template-list-controller.ts
       - src/shared/template-kit/list/template-list-filter-form.tsx
       - src/shared/template-kit/list/template-list-content.tsx
+      - src/shared/hooks/use-standard-pagination.ts
       - src/pages/templates/list/api.ts
     optionalPieces:
       - src/shared/components/query-state-block.tsx
-      - src/shared/hooks/use-standard-pagination.ts
     buildSteps:
       - 先确认是否满足 docs/ai/page-guardrail-recipes.md 的标准列表页接入条件
       - 页面通过 StandardListPageSpec 接入 StandardListPageRecipe，禁止直接散装拼装 controller 与状态区

@@ -1,8 +1,10 @@
 import type { ReactNode } from 'react'
 import type { MenuProps } from 'antd'
+import type { TablePaginationConfig } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import type { ListStateCopyContract } from '../contracts/page-state-contract'
 import type { TemplateListFilterField } from '../list/template-list-filter-form'
+import type { StandardPaginationConfig } from '../../hooks/use-standard-pagination'
 
 export type StandardListPageSpec<
   TFilterValues extends Record<string, unknown>,
@@ -48,6 +50,8 @@ export type StandardListPageSpec<
     current: number
     pageSize: number
     total: number
+    tableClassName: string
+    pagination: TablePaginationConfig
     onPageChange: (nextCurrent: number, nextPageSize: number) => void
   }) => ReactNode
   createAction?: {
@@ -58,4 +62,5 @@ export type StandardListPageSpec<
   densityItems?: MenuProps['items']
   renderAfterContent?: ReactNode
   stateCopy?: ListStateCopyContract
+  pagination?: StandardPaginationConfig
 }

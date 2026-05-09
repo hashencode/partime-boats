@@ -78,6 +78,18 @@ export const templateRoutes: TemplateRoute[] = [
       ),
   },
   {
+    key: 'order-list',
+    path: '/order-list',
+    title: '订单列表',
+    icon: createElement(TableOutlined),
+    permission: 'list.read',
+    inMenu: true,
+    menuVisibility: 'always',
+    menuMode: 'standalone',
+    component: () =>
+      lazyPage(() => import('../pages/templates/order-list/order-list-page').then((m) => ({ default: m.OrderListPage }))),
+  },
+  {
     key: 'basic-form',
     path: '/template/list/table/form',
     title: '基础表单',
