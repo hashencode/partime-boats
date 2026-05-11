@@ -108,8 +108,6 @@ export type BookTaskListResponse = {
   size: number
 }
 
-const FRONTEND_PAGINATION_FETCH_SIZE = 1000
-
 export type BookTaskSavePayload = {
   order_id?: number
   account_name?: string
@@ -183,14 +181,26 @@ const parseBookTaskListResponse = (
 }
 
 export const fetchBookTaskList = async (filters: BookTaskQueryFilters): Promise<BookTaskListResponse> => {
+  const firstPageResponse = await apiClient.get<LegacyNestedListEnvelope<BookTaskItem> | LegacyListResponse<BookTaskItem>>(
+    '/api/maersk/book/task',
+    {
+      ...PROXY_REQUEST_CONFIG,
+      params: filters,
+    }
+  )
+
+  return parseBookTaskListResponse(firstPageResponse.data, filters)
+}
+
+export const fetchAllBookTaskIds = async (filters: BookTaskQueryFilters): Promise<number[]> => {
   const requestFilters = {
     ...filters,
     page: 1,
-    per_page: FRONTEND_PAGINATION_FETCH_SIZE,
+    per_page: 1000,
   }
 
   const firstPageResponse = await apiClient.get<LegacyNestedListEnvelope<BookTaskItem> | LegacyListResponse<BookTaskItem>>(
-    '/legacy-api/maersk/book/task',
+    '/api/maersk/book/task',
     {
       ...PROXY_REQUEST_CONFIG,
       params: requestFilters,
@@ -198,13 +208,12 @@ export const fetchBookTaskList = async (filters: BookTaskQueryFilters): Promise<
   )
 
   const firstPage = parseBookTaskListResponse(firstPageResponse.data, requestFilters)
-  const aggregatedItems = [...firstPage.data]
-  const total = firstPage.total
-  const totalPages = Math.max(1, Math.ceil(total / FRONTEND_PAGINATION_FETCH_SIZE))
+  const ids = firstPage.data.map((item) => item.id)
+  const totalPages = Math.max(1, Math.ceil(firstPage.total / requestFilters.per_page))
 
   for (let page = 2; page <= totalPages; page += 1) {
     const nextResponse = await apiClient.get<LegacyNestedListEnvelope<BookTaskItem> | LegacyListResponse<BookTaskItem>>(
-      '/legacy-api/maersk/book/task',
+      '/api/maersk/book/task',
       {
         ...PROXY_REQUEST_CONFIG,
         params: {
@@ -215,40 +224,29 @@ export const fetchBookTaskList = async (filters: BookTaskQueryFilters): Promise<
     )
     const nextPage = parseBookTaskListResponse(nextResponse.data, {
       page,
-      per_page: FRONTEND_PAGINATION_FETCH_SIZE,
+      per_page: requestFilters.per_page,
     })
-    aggregatedItems.push(...nextPage.data)
+    ids.push(...nextPage.data.map((item) => item.id))
   }
 
-  return {
-    data: aggregatedItems,
-    total,
-    current: 1,
-    size: aggregatedItems.length,
-  }
+  return ids
 }
 
 export const fetchStartPortOptions = async (location = 0): Promise<string[]> => {
-  const response = await apiClient.get<string[] | LegacyEnvelope<string[]>>(
-    `/legacy-api/startport?location=${location}`,
-    PROXY_REQUEST_CONFIG
-  )
+  const response = await apiClient.get<string[] | LegacyEnvelope<string[]>>(`/api/startport?location=${location}`, PROXY_REQUEST_CONFIG)
   const payload = unwrapLegacyEnvelope(response.data)
   return assertArrayResponse<string>(payload, '起始港接口')
 }
 
 export const fetchEndPortOptions = async (location = 0): Promise<string[]> => {
-  const response = await apiClient.get<string[] | LegacyEnvelope<string[]>>(
-    `/legacy-api/endport?location=${location}`,
-    PROXY_REQUEST_CONFIG
-  )
+  const response = await apiClient.get<string[] | LegacyEnvelope<string[]>>(`/api/endport?location=${location}`, PROXY_REQUEST_CONFIG)
   const payload = unwrapLegacyEnvelope(response.data)
   return assertArrayResponse<string>(payload, '目的港接口')
 }
 
 export const updateBookTask = async (id: number, payload: BookTaskSavePayload): Promise<void> => {
   await apiClient.post(
-    '/legacy-api/maersk/book/task',
+    '/api/maersk/book/task',
     {
       ...payload,
       id,
@@ -258,15 +256,15 @@ export const updateBookTask = async (id: number, payload: BookTaskSavePayload): 
 }
 
 export const batchUpdateBookTask = async (payload: BookTaskBatchPayload): Promise<void> => {
-  await apiClient.post('/legacy-api/maersk/group/task', payload, PROXY_REQUEST_CONFIG)
+  await apiClient.post('/api/maersk/group/task', payload, PROXY_REQUEST_CONFIG)
 }
 
 export const closeBookTaskInitialization = async (ids?: string): Promise<void> => {
-  await apiClient.get(ids ? `/legacy-api/delay/cid?ids=${ids}` : '/legacy-api/delay/cid', PROXY_REQUEST_CONFIG)
+  await apiClient.get(ids ? `/api/delay/cid?ids=${ids}` : '/api/delay/cid', PROXY_REQUEST_CONFIG)
 }
 
 export const clearBookTaskRouter = async (ids?: string): Promise<void> => {
-  await apiClient.get(ids ? `/legacy-api/delay/route?ids=${ids}` : '/legacy-api/delay/route', PROXY_REQUEST_CONFIG)
+  await apiClient.get(ids ? `/api/delay/route?ids=${ids}` : '/api/delay/route', PROXY_REQUEST_CONFIG)
 }
 
 export const buildBookTaskSavePayload = (values: Record<string, unknown>): BookTaskSavePayload => ({

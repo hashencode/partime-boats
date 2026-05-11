@@ -7,6 +7,8 @@ import { hasPermission } from '../../../infrastructure/auth/permissions'
 import { useAuth } from '../../../infrastructure/auth/use-auth'
 import { normalizeApiError, type ApiError } from '../../../infrastructure/http/api-client'
 import {
+  createPortFilterFields,
+  createShippingLineFilterField,
   StandardListPageRecipe,
   type StandardListPageSpec,
   type TemplateListFilterField,
@@ -138,28 +140,18 @@ export const RemindListPage = () => {
 
   const filterFields = useMemo<TemplateListFilterField<RemindSearchValues>[]>(
     () => [
-      {
-        type: 'select',
-        name: 'origincity_name',
-        label: '起运',
-        selectProps: { showSearch: true, allowClear: true, placeholder: '请选择起运港' },
-        optionsLoader: async ({ signal }) => {
-          if (signal.aborted) return []
-          const data = await fetchStartPortOptions(1)
-          return data.map((item) => ({ label: item, value: item }))
-        },
-      },
-      {
-        type: 'select',
-        name: 'destinationcity_name',
-        label: '目的',
-        selectProps: { showSearch: true, allowClear: true, placeholder: '请选择目的港' },
-        optionsLoader: async ({ signal }) => {
-          if (signal.aborted) return []
-          const data = await fetchEndPortOptions(1)
-          return data.map((item) => ({ label: item, value: item }))
-        },
-      },
+      ...createPortFilterFields<RemindSearchValues>({
+        originName: 'origincity_name',
+        destinationName: 'destinationcity_name',
+        originLabel: '起运',
+        destinationLabel: '目的',
+        originPlaceholder: '请选择起运港',
+        destinationPlaceholder: '请选择目的港',
+        originCacheKey: 'startport:1',
+        destinationCacheKey: 'endport:1',
+        fetchOriginOptions: () => fetchStartPortOptions(1),
+        fetchDestinationOptions: () => fetchEndPortOptions(1),
+      }),
       {
         type: 'select',
         name: 'boxcode',
@@ -167,17 +159,12 @@ export const RemindListPage = () => {
         options: BOX_TYPE_OPTIONS,
         selectProps: { showSearch: true, allowClear: true, placeholder: '请选择箱型' },
       },
-      {
-        type: 'select',
+      createShippingLineFilterField<RemindSearchValues>({
         name: 'shipping_line',
-        label: '航线',
-        selectProps: { showSearch: true, allowClear: true, placeholder: '请选择航线' },
-        optionsLoader: async ({ signal }) => {
-          if (signal.aborted) return []
-          const data = await fetchShippingLineOptions()
-          return data.map((item) => ({ label: item, value: item }))
-        },
-      },
+        cacheKey: 'shippingLine',
+        fetchOptions: fetchShippingLineOptions,
+        allowClear: true,
+      }),
       {
         type: 'date',
         name: 'insert_datetime',

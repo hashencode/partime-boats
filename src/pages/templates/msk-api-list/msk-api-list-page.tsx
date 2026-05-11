@@ -4,6 +4,9 @@ import ExportJsonExcel from 'js-export-excel'
 import React, { useCallback, useMemo, useRef, useState } from 'react'
 import { normalizeApiError, type ApiError } from '../../../infrastructure/http/api-client'
 import {
+  createPortFilterFields,
+  createShippingLineFilterField,
+  getCachedListMetadata,
   StandardListPageRecipe,
   type StandardListPageSpec,
   type TemplateListFilterField,
@@ -118,47 +121,34 @@ export const MskApiListPage = () => {
 
   const filterFields = useMemo<TemplateListFilterField<SearchValues>[]>(
     () => [
-      {
-        type: 'select',
-        name: 'origincity_name',
-        label: '起始港',
-        selectProps: { showSearch: true, allowClear: true, placeholder: '请选择起始港' },
-        optionsLoader: async ({ signal }) => {
-          if (signal.aborted) return []
-          const data = await fetchStartPortOptions(1)
-          return data.map((item) => ({ label: item, value: item }))
-        },
-      },
-      {
-        type: 'select',
-        name: 'destinationcity_name',
-        label: '目的港',
-        selectProps: { showSearch: true, allowClear: true, placeholder: '请选择目的港' },
-        optionsLoader: async ({ signal }) => {
-          if (signal.aborted) return []
-          const data = await fetchEndPortOptions(1)
-          return data.map((item) => ({ label: item, value: item }))
-        },
-      },
-      {
-        type: 'select',
+      ...createPortFilterFields<SearchValues>({
+        originName: 'origincity_name',
+        destinationName: 'destinationcity_name',
+        originCacheKey: 'startport:1',
+        destinationCacheKey: 'endport:1',
+        fetchOriginOptions: () => fetchStartPortOptions(1),
+        fetchDestinationOptions: () => fetchEndPortOptions(1),
+      }),
+      createShippingLineFilterField<SearchValues>({
         name: 'host',
-        label: '航线',
-        optionsLoader: async ({ signal }) => {
-          if (signal.aborted) return []
-          const data = await fetchShippingLineOptions()
-          return data.map((item) => ({ label: item, value: item }))
-        },
-      },
+        cacheKey: 'shippingLine',
+        fetchOptions: fetchShippingLineOptions,
+        allowClear: false,
+      }),
     ],
     []
   )
 
   const requestList = useCallback(async (filters: MskApiFilters): Promise<ListResponse> => {
-    const accountInfo = await fetchAccountNum().catch(() => null)
+    const accountInfo = await getCachedListMetadata('accountNum', fetchAccountNum, { ttlMs: 60 * 1000 }).catch(
+      () => null
+    )
     setAccountNumText(accountInfo ? (Array.isArray(accountInfo) ? accountInfo.join(' ') : accountInfo) : '账号数量信息加载失败')
 
-    const [rows, lineMap] = await Promise.all([fetchMskApiList(filters), fetchShippingLineMap()])
+    const [rows, lineMap] = await Promise.all([
+      fetchMskApiList(filters),
+      getCachedListMetadata('shippingLineMap', fetchShippingLineMap),
+    ])
 
     const list = rows.map((item) => {
       const logLabel = item.log ?? ''

@@ -1,10 +1,10 @@
 import React from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { describe, expect, it, beforeEach } from '@rstest/core'
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from '@rstest/core'
+import { http, HttpResponse } from 'msw'
+import { setupServer } from 'msw/node'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
-import { vi } from 'vitest'
 import { AuthProvider } from '../../infrastructure/auth/auth-context'
-import * as authApi from '../../infrastructure/auth/auth-api'
 import { useAuth } from '../../infrastructure/auth/use-auth'
 import { LoginPage } from './login-page'
 
@@ -35,6 +35,30 @@ if (!window.ResizeObserver) {
   window.ResizeObserver = ResizeObserverMock as unknown as typeof ResizeObserver
 }
 
+const server = setupServer(
+  http.post('*/admin/login', async ({ request }) => {
+    const payload = (await request.json()) as { username?: string }
+
+    return HttpResponse.json({
+      access_token: 'token-1',
+      refresh_token: 'refresh-1',
+      username: payload.username,
+    })
+  })
+)
+
+beforeAll(() => {
+  server.listen({ onUnhandledRequest: 'error' })
+})
+
+afterEach(() => {
+  server.resetHandlers()
+})
+
+afterAll(() => {
+  server.close()
+})
+
 const HomeProbe = () => {
   const { isAuthenticated, displayName } = useAuth()
   return (
@@ -63,10 +87,6 @@ describe('LoginPage', () => {
   })
 
   it('logs in and redirects to home after valid account submit', async () => {
-    const loginSpy = vi.spyOn(authApi, 'loginByAccount').mockResolvedValue({
-      access_token: 'token-1',
-      refresh_token: 'refresh-1',
-    })
     renderPage()
 
     fireEvent.change(screen.getByPlaceholderText('用户名'), { target: { value: 'alice' } })
@@ -77,7 +97,6 @@ describe('LoginPage', () => {
       expect(screen.getByText('AUTHED')).toBeTruthy()
       expect(screen.getByText('alice')).toBeTruthy()
     })
-    loginSpy.mockRestore()
   })
 
   it('shows required validation errors when form is empty', async () => {

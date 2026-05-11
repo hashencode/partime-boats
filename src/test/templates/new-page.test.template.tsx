@@ -54,7 +54,7 @@ const renderListPageWithViewerRole = () =>
           displayName: '访客',
           setRole: () => undefined,
           setDisplayName: () => undefined,
-          login: () => undefined,
+          login: async () => Promise.resolve(),
           logout: () => undefined,
         }}
       >

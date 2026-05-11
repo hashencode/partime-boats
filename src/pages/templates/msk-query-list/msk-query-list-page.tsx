@@ -4,6 +4,9 @@ import ExportJsonExcel from 'js-export-excel'
 import React, { useCallback, useMemo, useRef, useState } from 'react'
 import { normalizeApiError, type ApiError } from '../../../infrastructure/http/api-client'
 import {
+  createPortFilterFields,
+  createShippingLineFilterField,
+  getCachedListMetadata,
   StandardListPageRecipe,
   type StandardListPageSpec,
   type TemplateListFilterField,
@@ -127,39 +130,21 @@ export const MskQueryListPage = () => {
 
   const filterFields = useMemo<TemplateListFilterField<SearchValues>[]>(
     () => [
-      {
-        type: 'select',
-        name: 'origincity_name',
-        label: '起始港',
-        selectProps: { showSearch: true, allowClear: true, placeholder: '请选择起始港' },
-        optionsLoader: async ({ signal }) => {
-          if (signal.aborted) return []
-          const data = await fetchStartPortOptions(1)
-          return data.map((item) => ({ label: item, value: item }))
-        },
-      },
-      {
-        type: 'select',
-        name: 'destinationcity_name',
-        label: '目的港',
-        selectProps: { showSearch: true, allowClear: true, placeholder: '请选择目的港' },
-        optionsLoader: async ({ signal }) => {
-          if (signal.aborted) return []
-          const data = await fetchEndPortOptions(1)
-          return data.map((item) => ({ label: item, value: item }))
-        },
-      },
+      ...createPortFilterFields<SearchValues>({
+        originName: 'origincity_name',
+        destinationName: 'destinationcity_name',
+        originCacheKey: 'startport:1',
+        destinationCacheKey: 'endport:1',
+        fetchOriginOptions: () => fetchStartPortOptions(1),
+        fetchDestinationOptions: () => fetchEndPortOptions(1),
+      }),
       { type: 'select', name: 'type_name', label: '查询类型', options: TYPE_NAME_OPTIONS },
-      {
-        type: 'select',
+      createShippingLineFilterField<SearchValues>({
         name: 'host',
-        label: '航线',
-        optionsLoader: async ({ signal }) => {
-          if (signal.aborted) return []
-          const data = await fetchShippingLineOptions()
-          return data.map((item) => ({ label: item, value: item }))
-        },
-      },
+        cacheKey: 'shippingLine',
+        fetchOptions: fetchShippingLineOptions,
+        allowClear: false,
+      }),
     ],
     []
   )
@@ -167,8 +152,8 @@ export const MskQueryListPage = () => {
   const requestList = useCallback(async (filters: MskQueryFilters): Promise<ListResponse> => {
     const [rows, lineMap, accountNum] = await Promise.all([
       fetchMskQueryList(filters),
-      fetchShippingLineMap(),
-      fetchAccountNum(),
+      getCachedListMetadata('shippingLineMap', fetchShippingLineMap),
+      getCachedListMetadata('accountNum', fetchAccountNum, { ttlMs: 60 * 1000 }),
     ])
 
     setAccountNumText(Array.isArray(accountNum) ? accountNum.join(' ') : accountNum)

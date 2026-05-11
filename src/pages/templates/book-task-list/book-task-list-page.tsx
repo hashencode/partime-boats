@@ -6,6 +6,8 @@ import { hasPermission } from '../../../infrastructure/auth/permissions'
 import { normalizeApiError, type ApiError } from '../../../infrastructure/http/api-client'
 import { useAuth } from '../../../infrastructure/auth/use-auth'
 import {
+  getCachedListMetadata,
+  createPortFilterFields,
   StandardListPageRecipe,
   type StandardListPageSpec,
   type TemplateListFilterField,
@@ -16,6 +18,7 @@ import {
   buildBookTaskSavePayload,
   clearBookTaskRouter,
   closeBookTaskInitialization,
+  fetchAllBookTaskIds,
   fetchBookTaskList,
   fetchEndPortOptions,
   fetchStartPortOptions,
@@ -112,6 +115,8 @@ const CID_TYPE_OPTIONS = [
 
 const DESTINATION_SERVICE_OPTIONS = ['CY', 'SD'].map((value) => ({ label: value, value }))
 
+const createFilterOptions = (items: string[]) => items.map((item) => ({ label: item, value: item }))
+
 // 操作列固定宽度：当前仅展示 1 个“修改”按钮，2 个汉字按 14px/字计算为 28，
 // 额外余量按 16，总计 44；考虑按钮点击热区与表格留白，向上固化为 60。
 const ACTION_COLUMN_WIDTH = 60
@@ -129,8 +134,6 @@ const renderEllipsisText = (value?: string | number | null) => {
     </Tooltip>
   )
 }
-
-const createFilterOptions = (items: string[]) => items.map((item) => ({ label: item, value: item }))
 
 const numberLabel = (options: { label: string; value: number }[], value?: number | string | null) =>
   options.find((item) => item.value === Number(value))?.label ?? String(value ?? '')
@@ -185,12 +188,8 @@ const toFormValues = (record: EditableBookTask): BookTaskFormValues => ({
   route_select: record.route_select ?? undefined,
 })
 
-const buildScopedIds = (filters: BookTaskQueryFilters, rows: EditableBookTask[], selectedIds: number[]) => {
-  if (selectedIds.length > 0) {
-    return selectedIds.join(',')
-  }
-
-  const hasFilter =
+const hasScopedFilters = (filters: BookTaskQueryFilters) => {
+  return (
     Boolean(filters.box_type) ||
     Boolean(filters.cid_group) ||
     Boolean(filters.destinationcity_name) ||
@@ -198,9 +197,21 @@ const buildScopedIds = (filters: BookTaskQueryFilters, rows: EditableBookTask[],
     Boolean(filters.list_type) ||
     Boolean(filters.order_id) ||
     Boolean(filters.origincity_name)
+  )
+}
 
-  if (hasFilter && rows.length > 0) {
-    return rows.map((item) => item.id).join(',')
+const buildScopedIds = async (filters: BookTaskQueryFilters, rows: EditableBookTask[], selectedIds: number[]) => {
+  if (selectedIds.length > 0) {
+    return selectedIds.join(',')
+  }
+
+  if (hasScopedFilters(filters)) {
+    if (rows.length === 0) {
+      return undefined
+    }
+
+    const allIds = await fetchAllBookTaskIds(filters)
+    return allIds.join(',')
   }
 
   return undefined
@@ -266,7 +277,10 @@ export const BookTaskListPage = () => {
   const reloadRef = useRef<() => Promise<void>>(async () => {})
 
   useEffect(() => {
-    void Promise.all([fetchStartPortOptions(), fetchEndPortOptions()])
+    void Promise.all([
+      getCachedListMetadata('legacy:startport:0:form', fetchStartPortOptions),
+      getCachedListMetadata('legacy:endport:0:form', fetchEndPortOptions),
+    ])
       .then(([startPorts, endPorts]) => {
         setStartPortOptions(startPorts)
         setEndPortOptions(endPorts)
@@ -280,28 +294,14 @@ export const BookTaskListPage = () => {
   const filterFields = useMemo<TemplateListFilterField<BookTaskFilterValues>[]>(
     () => [
       { type: 'input', name: 'order_id', label: '对应taskID', inputProps: { placeholder: '请输入对应taskID' } },
-      {
-        type: 'select',
-        name: 'origincity_name',
-        label: '起始港',
-        selectProps: { showSearch: true, allowClear: true, placeholder: '请选择起始港' },
-        optionsLoader: async ({ signal }) => {
-          if (signal.aborted) return []
-          const data = await fetchStartPortOptions()
-          return createFilterOptions(data)
-        },
-      },
-      {
-        type: 'select',
-        name: 'destinationcity_name',
-        label: '目的港',
-        selectProps: { showSearch: true, allowClear: true, placeholder: '请选择目的港' },
-        optionsLoader: async ({ signal }) => {
-          if (signal.aborted) return []
-          const data = await fetchEndPortOptions()
-          return createFilterOptions(data)
-        },
-      },
+      ...createPortFilterFields<BookTaskFilterValues>({
+        originName: 'origincity_name',
+        destinationName: 'destinationcity_name',
+        originCacheKey: 'legacy:startport:0',
+        destinationCacheKey: 'legacy:endport:0',
+        fetchOriginOptions: fetchStartPortOptions,
+        fetchDestinationOptions: fetchEndPortOptions,
+      }),
       {
         type: 'select',
         name: 'box_type',
@@ -411,7 +411,7 @@ export const BookTaskListPage = () => {
             okText="是"
             cancelText="否"
             onConfirm={async () => {
-              const ids = buildScopedIds(latestFiltersRef.current, currentRowsRef.current, selectedRowKeys)
+              const ids = await buildScopedIds(latestFiltersRef.current, currentRowsRef.current, selectedRowKeys)
               await closeBookTaskInitialization(ids)
               message.success('关闭初始化成功')
               await reloadRef.current()
@@ -426,7 +426,7 @@ export const BookTaskListPage = () => {
             okText="是"
             cancelText="否"
             onConfirm={async () => {
-              const ids = buildScopedIds(latestFiltersRef.current, currentRowsRef.current, selectedRowKeys)
+              const ids = await buildScopedIds(latestFiltersRef.current, currentRowsRef.current, selectedRowKeys)
               await clearBookTaskRouter(ids)
               message.success('清除路由成功')
               await reloadRef.current()
@@ -571,16 +571,15 @@ export const BookTaskListPage = () => {
           },
         ] as ColumnsType<EditableBookTask>
       },
-      buildTableNode: ({ columns, current, dataSource, loading, pageSize, tableSize, tableClassName, pagination }) => {
+      buildTableNode: ({ columns, dataSource, loading, tableSize, tableClassName, pagination }) => {
         currentRowsRef.current = dataSource
-        const pagedRows = dataSource.slice((current - 1) * pageSize, current * pageSize)
 
         return (
           <Table<EditableBookTask>
             className={tableClassName}
             rowKey="id"
             columns={columns}
-            dataSource={pagedRows}
+            dataSource={dataSource}
             loading={loading}
             size={tableSize}
             pagination={pagination}

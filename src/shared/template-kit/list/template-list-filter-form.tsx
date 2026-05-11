@@ -26,7 +26,7 @@ export const DEFAULT_TEMPLATE_LIST_FILTER_ROW_GUTTER: RowProps['gutter'] = [
 
 type FilterFieldName<TValues> = Extract<keyof TValues, string>
 
-type TemplateListFilterOption = {
+export type TemplateListFilterOption = {
   label: React.ReactNode
   value: string | number
 }
@@ -58,6 +58,11 @@ export const resolveSelectPopupMatchWidthByOptions = (
   return hasLongLabel ? POPUP_WIDTH_FOR_LONG_OPTION : undefined
 }
 
+export type TemplateListSelectOptionsLoader<TValues extends Record<string, unknown>> = (context: {
+  values: Partial<TValues>
+  signal: AbortSignal
+}) => Promise<TemplateListFilterOption[]>
+
 type TemplateListFilterFieldBase<TValues extends Record<string, unknown>> = {
   key?: string
   label?: React.ReactNode
@@ -86,10 +91,7 @@ type TemplateListSelectField<TValues extends Record<string, unknown>> =
     type: 'select'
     name: FilterFieldName<TValues>
     options?: TemplateListFilterOption[]
-    optionsLoader?: (context: {
-      values: Partial<TValues>
-      signal: AbortSignal
-    }) => Promise<TemplateListFilterOption[]>
+    optionsLoader?: TemplateListSelectOptionsLoader<TValues>
     dependsOn?: FilterFieldName<TValues>[]
     selectProps?: SelectProps
     onLoadError?: (error: unknown) => void

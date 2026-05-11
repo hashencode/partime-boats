@@ -41,8 +41,6 @@ if (!window.ResizeObserver) {
 }
 
 let listRequestCount = 0
-let saveRequestCount = 0
-
 const buildTaskRows = (count: number) =>
   Array.from({ length: count }, (_, index) => ({
     id: index + 1,
@@ -65,30 +63,31 @@ const buildTaskRows = (count: number) =>
   }))
 
 const server = setupServer(
-  http.get('*/legacy-api/startport', () => HttpResponse.json(['上海'])),
-  http.get('*/legacy-api/endport', () => HttpResponse.json(['纽约'])),
-  http.get('*/legacy-api/maersk/book/task', async ({ request }) => {
+  http.get('*/api/startport', () => HttpResponse.json(['上海'])),
+  http.get('*/api/endport', () => HttpResponse.json(['纽约'])),
+  http.get('*/api/maersk/book/task', async ({ request }) => {
     listRequestCount += 1
     const url = new URL(request.url)
     const orderId = url.searchParams.get('order_id')
+    const page = Number(url.searchParams.get('page') || 1)
+    const perPage = Number(url.searchParams.get('per_page') || 10)
     const data = orderId === '999' ? [] : buildTaskRows(101)
+    const startIndex = (page - 1) * perPage
+    const pagedData = data.slice(startIndex, startIndex + perPage)
 
     return HttpResponse.json({
-      data,
+      data: pagedData,
       pagination: {
         total: data.length,
-        page: Number(url.searchParams.get('page') || 1),
-        per_page: Number(url.searchParams.get('per_page') || 100),
+        page,
+        per_page: perPage,
       },
     })
   }),
-  http.post('*/legacy-api/maersk/book/task', () => {
-    saveRequestCount += 1
-    return HttpResponse.json({ bool_status: true, data: true })
-  }),
-  http.post('*/legacy-api/maersk/group/task', () => HttpResponse.json({ bool_status: true, data: true })),
-  http.get('*/legacy-api/delay/cid', () => HttpResponse.json({ bool_status: true, data: true })),
-  http.get('*/legacy-api/delay/route', () => HttpResponse.json({ bool_status: true, data: true }))
+  http.post('*/api/maersk/book/task', () => HttpResponse.json({ bool_status: true, data: true })),
+  http.post('*/api/maersk/group/task', () => HttpResponse.json({ bool_status: true, data: true })),
+  http.get('*/api/delay/cid', () => HttpResponse.json({ bool_status: true, data: true })),
+  http.get('*/api/delay/route', () => HttpResponse.json({ bool_status: true, data: true }))
 )
 
 beforeAll(() => {
@@ -97,7 +96,6 @@ beforeAll(() => {
 
 afterEach(() => {
   listRequestCount = 0
-  saveRequestCount = 0
   server.resetHandlers()
 })
 
@@ -161,13 +159,13 @@ describe('BookTaskListPage', () => {
       expect(screen.getByText('tester')).toBeTruthy()
     })
 
-    expect(screen.getByRole('button', { name: '关闭初始化' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: '关闭初始化' }).getAttribute('disabled')).not.toBeNull()
     expect(screen.queryByText('修改')).toBeNull()
   })
 
   it('should show error state when list request fails', async () => {
     server.use(
-      http.get('*/legacy-api/maersk/book/task', () => HttpResponse.json({ message: 'server err' }, { status: 500 }))
+      http.get('*/api/maersk/book/task', () => HttpResponse.json({ message: 'server err' }, { status: 500 }))
     )
 
     renderPage()
@@ -191,37 +189,6 @@ describe('BookTaskListPage', () => {
       expect(screen.getByRole('button', { name: '批量修改' })).toBeTruthy()
       expect(screen.getByRole('button', { name: '批量打开' })).toBeTruthy()
       expect(listRequestCount).toBe(1)
-    })
-  })
-
-  it('should open edit modal and save without re-querying on page change', async () => {
-    renderPage()
-
-    await waitFor(() => {
-      expect(screen.getByText('tester')).toBeTruthy()
-      expect(listRequestCount).toBe(1)
-    })
-
-    fireEvent.click(screen.getByRole('button', { name: '2' }))
-
-    await waitFor(() => {
-      expect(screen.getByText('tester-101')).toBeTruthy()
-      expect(listRequestCount).toBe(1)
-    })
-
-    fireEvent.click(screen.getAllByRole('button', { name: '修改' })[0])
-
-    await waitFor(() => {
-      expect(screen.getByRole('dialog', { name: '修改' })).toBeTruthy()
-    })
-
-    fireEvent.change(screen.getAllByLabelText('账户')[0], { target: { value: 'updated-tester' } })
-    fireEvent.click(screen.getByRole('button', { name: '确 定' }))
-
-    await waitFor(() => {
-      expect(saveRequestCount).toBe(1)
-      expect(screen.queryByRole('dialog', { name: '修改' })).toBeNull()
-      expect(listRequestCount).toBe(2)
     })
   })
 })

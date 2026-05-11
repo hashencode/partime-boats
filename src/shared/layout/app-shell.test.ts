@@ -64,4 +64,21 @@ describe('app-shell menu visibility helpers', () => {
     expect(shouldShowMswSwitch(false, true)).toBe(false)
     expect(shouldShowMswSwitch(true, false)).toBe(false)
   })
+
+  it('should keep always-visible routes available outside development mode', () => {
+    expect(
+      isMenuVisibleInCurrentEnv(
+        {
+          key: 'order-list',
+          path: '/order-list',
+          title: '订单列表',
+          icon: null,
+          permission: 'list.read',
+          inMenu: true,
+          menuVisibility: 'always',
+        },
+        false
+      )
+    ).toBe(true)
+  })
 })

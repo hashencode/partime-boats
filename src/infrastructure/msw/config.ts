@@ -1,7 +1,9 @@
 export const MSW_GLOBAL_ENABLED_STORAGE_KEY = 'admin-msw-global-enabled'
 
 export const isMswGlobalToggleAvailable =
-  import.meta.env.DEV && typeof __ENABLE_TEMPLATE_ROUTES__ !== 'undefined' && __ENABLE_TEMPLATE_ROUTES__
+  import.meta.env.PUBLIC_MODE === 'development' &&
+  typeof __ENABLE_TEMPLATE_ROUTES__ !== 'undefined' &&
+  __ENABLE_TEMPLATE_ROUTES__
 
 export const getStoredMswEnabled = (): boolean => {
   if (typeof window === 'undefined' || !isMswGlobalToggleAvailable) {

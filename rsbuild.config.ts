@@ -3,8 +3,6 @@ import { pluginReact } from '@rsbuild/plugin-react'
 
 export default defineConfig(({ command }) => {
   const apiProxyTarget = process.env.API_PROXY_TARGET ?? process.env.PUBLIC_API_BASE
-  const legacyApiProxyTarget =
-    process.env.LEGACY_API_PROXY_TARGET ?? process.env.API_PROXY_TARGET ?? process.env.PUBLIC_API_BASE
 
   return {
     plugins: [pluginReact()],
@@ -41,17 +39,8 @@ export default defineConfig(({ command }) => {
                 target: apiProxyTarget,
                 changeOrigin: true,
                 secure: false,
-              },
-            }
-          : {}),
-        ...(legacyApiProxyTarget
-          ? {
-              '/legacy-api': {
-                target: legacyApiProxyTarget,
-                changeOrigin: true,
-                secure: false,
                 pathRewrite: {
-                  '^/legacy-api': '',
+                  '^/api': '',
                 },
               },
             }

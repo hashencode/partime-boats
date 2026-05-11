@@ -4,6 +4,7 @@ import React, { useCallback, useMemo, useRef, useState } from 'react'
 import ExportJsonExcel from 'js-export-excel'
 import { normalizeApiError, type ApiError } from '../../../infrastructure/http/api-client'
 import {
+  createPortFilterFields,
   StandardListPageRecipe,
   type StandardListPageSpec,
   type TemplateListFilterField,
@@ -182,28 +183,18 @@ export const OrderListPage = () => {
 
   const filterFields = useMemo<TemplateListFilterField<OrderSearchValues>[]>(
     () => [
-      {
-        type: 'select',
-        name: 'origin_location',
-        label: '起始',
-        selectProps: { showSearch: true, placeholder: '请选择起始港' },
-        optionsLoader: async ({ signal }) => {
-          if (signal.aborted) return []
-          const data = await fetchStartPortOptions(1)
-          return data.map((item) => ({ label: item, value: item }))
-        },
-      },
-      {
-        type: 'select',
-        name: 'destination_location',
-        label: '目的',
-        selectProps: { showSearch: true, placeholder: '请选择目的港' },
-        optionsLoader: async ({ signal }) => {
-          if (signal.aborted) return []
-          const data = await fetchEndPortOptions(1)
-          return data.map((item) => ({ label: item, value: item }))
-        },
-      },
+      ...createPortFilterFields<OrderSearchValues>({
+        originName: 'origin_location',
+        destinationName: 'destination_location',
+        originLabel: '起始',
+        destinationLabel: '目的',
+        originCacheKey: 'startport:1',
+        destinationCacheKey: 'endport:1',
+        originAllowClear: false,
+        destinationAllowClear: false,
+        fetchOriginOptions: () => fetchStartPortOptions(1),
+        fetchDestinationOptions: () => fetchEndPortOptions(1),
+      }),
       {
         type: 'select',
         name: 'is_time_out',

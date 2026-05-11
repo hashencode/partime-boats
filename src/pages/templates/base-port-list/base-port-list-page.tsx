@@ -1,4 +1,4 @@
-import { Button, Card, Form, Input, InputNumber, Popconfirm, Select, Table, Typography, message } from 'antd'
+import { Button, Card, Form, Input, InputNumber, Popconfirm, Select, Space, Table, Typography, message } from 'antd'
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { hasPermission } from '../../../infrastructure/auth/permissions'
 import { useAuth } from '../../../infrastructure/auth/use-auth'
@@ -348,10 +348,10 @@ export const BasePortListPage = () => {
     return rows.slice(startIndex, startIndex + pageSize)
   }, [current, pageSize, rows])
 
-  const tablePagination = useMemo(
+  const tablePagination = useMemo<TablePaginationConfig>(
     () => ({
       ...pagination,
-      placement: ['bottomRight'] as const,
+      placement: ['bottomEnd'],
       showTotal: (total: number) => `共 ${total} 条数据`,
     }),
     [pagination]

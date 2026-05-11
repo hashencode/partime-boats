@@ -79,7 +79,7 @@ const renderPage = (entry: string) => {
           displayName: '管理员',
           setRole: () => undefined,
           setDisplayName: () => undefined,
-          login: () => undefined,
+          login: async () => Promise.resolve(),
           logout: () => undefined,
         }}
       >

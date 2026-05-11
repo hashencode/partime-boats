@@ -58,7 +58,7 @@ export const AppShell = ({ routes = [], headerExtra }: AppShellProps) => {
   const { role, displayName, logout } = useAuth()
   const { mode, resolvedTheme, setMode } = useTheme()
   const { token } = theme.useToken()
-  const isDev = import.meta.env.DEV
+  const isDevelopmentEnv = import.meta.env.PUBLIC_MODE === 'development'
 
   const [mswEnabled, setMswEnabled] = useState(getStoredMswEnabled)
   const [switchLoading, setSwitchLoading] = useState(false)
@@ -68,12 +68,12 @@ export const AppShell = ({ routes = [], headerExtra }: AppShellProps) => {
       (contract) =>
         contract.inMenu &&
         contract.path !== '*' &&
-        isMenuVisibleInCurrentEnv(contract, isDev) &&
+        isMenuVisibleInCurrentEnv(contract, isDevelopmentEnv) &&
         hasPermission(role, contract.permission)
     )
-  }, [isDev, role, routes])
+  }, [isDevelopmentEnv, role, routes])
 
-  const showDevMenuGroup = shouldShowDevMenuGroup(menuRoutes, isDev)
+  const showDevMenuGroup = shouldShowDevMenuGroup(menuRoutes, isDevelopmentEnv)
 
   const groupedMenuItems = useMemo(() => {
     const items: {
@@ -313,7 +313,7 @@ export const AppShell = ({ routes = [], headerExtra }: AppShellProps) => {
 
         <div className="flex items-center gap-2">
           {headerExtra}
-          {shouldShowMswSwitch(isDev, isMswGlobalToggleAvailable) && (
+          {shouldShowMswSwitch(isDevelopmentEnv, isMswGlobalToggleAvailable) && (
             <Switch
               checked={mswEnabled}
               loading={switchLoading}
