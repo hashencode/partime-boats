@@ -93,6 +93,7 @@
 7. 操作列宽度禁止运行时动态推算，必须在开发阶段按按钮文案和数量一次性计算后写成固定值。
 8. 列表右侧工具能力（刷新 / 密度 / 列设置）若旧页存在，新页应优先同构保留。
 9. 列设置渲染统一：列设置面板统一由 `ListToolbarActions` 内部渲染，页面仅传 `columnSettingOptions + selectedColumnKeys + onSelectedColumnKeysChange`，禁止页面内重复手写 `Checkbox.Group`。
+10. 筛选下拉超长文案统一策略：当筛选 `Select` 选项存在超过10个字的文案时，模板层自动设置 `popupMatchSelectWidth=300`；若页面显式传入该属性，则以页面配置为准。
 
 ### 6.2 不要再踩的红线
 1. 不要先写页面再补权限，权限必须同步设计。

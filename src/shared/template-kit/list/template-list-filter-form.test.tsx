@@ -3,7 +3,11 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it } from '@rstest/core'
 import { Button, Form } from 'antd'
 import type { TemplateListFilterField } from './template-list-filter-form'
-import { DEFAULT_TEMPLATE_LIST_FILTER_ROW_GUTTER, TemplateListFilterForm } from './template-list-filter-form'
+import {
+  DEFAULT_TEMPLATE_LIST_FILTER_ROW_GUTTER,
+  resolveSelectPopupMatchWidthByOptions,
+  TemplateListFilterForm,
+} from './template-list-filter-form'
 
 void React
 
@@ -51,6 +55,39 @@ describe('TemplateListFilterForm', () => {
       { xs: 8, sm: 12, md: 16, lg: 16, xl: 16, xxl: 16 },
       { xs: 8, sm: 10, md: 12, lg: 12, xl: 12, xxl: 12 },
     ])
+  })
+
+  it('sets popupMatchSelectWidth to 300 when any option label exceeds 10 chars', () => {
+    const resolvedWidth = resolveSelectPopupMatchWidthByOptions(
+      [
+        { label: '短文本', value: 1 },
+        { label: '这是一个超过十个字的报名计划名称', value: 2 },
+      ],
+      undefined
+    )
+
+    expect(resolvedWidth).toBe(300)
+  })
+
+  it('keeps popupMatchSelectWidth undefined when option labels are within 10 chars', () => {
+    const resolvedWidth = resolveSelectPopupMatchWidthByOptions(
+      [
+        { label: '短文本', value: 1 },
+        { label: '十个字刚刚好啊', value: 2 },
+      ],
+      undefined
+    )
+
+    expect(resolvedWidth).toBeUndefined()
+  })
+
+  it('respects explicit popupMatchSelectWidth value', () => {
+    const resolvedWidth = resolveSelectPopupMatchWidthByOptions(
+      [{ label: '这是一个超过十个字的报名计划名称', value: 2 }],
+      true
+    )
+
+    expect(resolvedWidth).toBe(true)
   })
 
   it('renders normally when custom rowGutter overrides the defaults', () => {

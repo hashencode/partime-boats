@@ -31,6 +31,33 @@ type TemplateListFilterOption = {
   value: string | number
 }
 
+const POPUP_WIDTH_TRIGGER_TEXT_LENGTH = 10
+const POPUP_WIDTH_FOR_LONG_OPTION = 300
+
+const getOptionLabelTextLength = (label: React.ReactNode): number => {
+  if (typeof label === 'string') {
+    return label.length
+  }
+
+  if (typeof label === 'number') {
+    return String(label).length
+  }
+
+  return 0
+}
+
+export const resolveSelectPopupMatchWidthByOptions = (
+  options: TemplateListFilterOption[],
+  popupMatchSelectWidth: SelectProps['popupMatchSelectWidth']
+): SelectProps['popupMatchSelectWidth'] => {
+  if (popupMatchSelectWidth !== undefined) {
+    return popupMatchSelectWidth
+  }
+
+  const hasLongLabel = options.some((option) => getOptionLabelTextLength(option.label) > POPUP_WIDTH_TRIGGER_TEXT_LENGTH)
+  return hasLongLabel ? POPUP_WIDTH_FOR_LONG_OPTION : undefined
+}
+
 type TemplateListFilterFieldBase<TValues extends Record<string, unknown>> = {
   key?: string
   label?: React.ReactNode
@@ -233,6 +260,7 @@ const TemplateListSelectFilterFieldNode = <
   }, [dependencyKey, onLoadError, optionsLoader])
 
   const options = field.optionsLoader ? dynamicOptions : (field.options ?? [])
+  const popupMatchSelectWidth = resolveSelectPopupMatchWidthByOptions(options, field.selectProps?.popupMatchSelectWidth)
 
   return (
     <Col {...colProps}>
@@ -250,6 +278,7 @@ const TemplateListSelectFilterFieldNode = <
           className="!w-full"
           disabled={disabled}
           options={options}
+          popupMatchSelectWidth={popupMatchSelectWidth}
           {...field.selectProps}
         />
       </Form.Item>
