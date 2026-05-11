@@ -175,7 +175,9 @@ export const MskApiListPage = () => {
     }
   }, [])
 
-  const spec = useMemo<StandardListPageSpec<SearchValues, MskApiFilters, ListResponse, RowView, ApiError>>(
+  const spec = useMemo<
+    StandardListPageSpec<SearchValues, MskApiFilters, ListResponse, RowView, ApiError>
+  >(
     () => ({
       pageTitle: 'MSK API列表',
       cardTitle: 'MSK API列表',
@@ -192,50 +194,67 @@ export const MskApiListPage = () => {
           新增一行
         </Button>
       ),
-      renderBetweenFilterAndContent: (
-        <div className="flex w-full items-center gap-2">
-          <Alert className="min-w-0 flex-1" type="info" showIcon title={accountNumText} />
-          <Button
-            onClick={() => {
-              const tableData = currentRowsRef.current.map((item) => ({
-                id: item.id,
-                tips: item.tips,
-                origincity_name: item.origincity_name,
-                destinationcity_name: item.destinationcity_name,
-                host: item.host,
-                box_type: item.box_type,
-                delay_time: item.delay_time_label,
-                is_run: item.is_run_label,
-                is_roll: item.is_roll_label,
-                early_date: item.early_date,
-                destination_service_mode: item.destination_service_mode,
-                limit_price: item.limit_price,
-                port: item.port,
-              }))
+      renderBeforeFilter: (
+        <Alert
+          className="min-w-0"
+          type="info"
+          showIcon
+          title={accountNumText}
+          action={
+            <Space>
+              <Button
+                className={'ml-2'}
+                type="primary"
+                ghost
+                onClick={() => {
+                  const tableData = currentRowsRef.current.map((item) => ({
+                    id: item.id,
+                    tips: item.tips,
+                    origincity_name: item.origincity_name,
+                    destinationcity_name: item.destinationcity_name,
+                    host: item.host,
+                    box_type: item.box_type,
+                    delay_time: item.delay_time_label,
+                    is_run: item.is_run_label,
+                    is_roll: item.is_roll_label,
+                    early_date: item.early_date,
+                    destination_service_mode: item.destination_service_mode,
+                    limit_price: item.limit_price,
+                    port: item.port,
+                  }))
 
-              const exporter = new ExportJsonExcel({
-                fileName: 'MSK API列表',
-                datas: [{ sheetData: tableData, sheetName: 'sheet', sheetFilter: TABLE_FILTER, sheetHeader: TABLE_HEADER }],
-              })
-              exporter.saveExcel()
-            }}
-          >
-            Excel导出
-          </Button>
-          <Popconfirm
-            title="确认要清除吗？"
-            okText="是"
-            cancelText="否"
-            onConfirm={async () => {
-              await clear429Account()
-              message.success('清除成功')
-            }}
-          >
-            <Button danger ghost>
-              清除429账号
-            </Button>
-          </Popconfirm>
-        </div>
+                  const exporter = new ExportJsonExcel({
+                    fileName: 'MSK API列表',
+                    datas: [
+                      {
+                        sheetData: tableData,
+                        sheetName: 'sheet',
+                        sheetFilter: TABLE_FILTER,
+                        sheetHeader: TABLE_HEADER,
+                      },
+                    ],
+                  })
+                  exporter.saveExcel()
+                }}
+              >
+                Excel导出
+              </Button>
+              <Popconfirm
+                title="确认要清除吗？"
+                okText="是"
+                cancelText="否"
+                onConfirm={async () => {
+                  await clear429Account()
+                  message.success('清除成功')
+                }}
+              >
+                <Button danger ghost>
+                  清除429账号
+                </Button>
+              </Popconfirm>
+            </Space>
+          }
+        />
       ),
       buildColumns: ({ reload }) => {
         reloadRef.current = reload
@@ -243,21 +262,50 @@ export const MskApiListPage = () => {
           { title: 'ID', dataIndex: 'id', key: 'id', width: 80, sorter: (a, b) => a.id - b.id },
           { title: '账号', dataIndex: 'tips', key: 'tips', width: 120 },
           { title: '起始港', dataIndex: 'origincity_name', key: 'origincity_name', width: 120 },
-          { title: '目的港', dataIndex: 'destinationcity_name', key: 'destinationcity_name', width: 160 },
+          {
+            title: '目的港',
+            dataIndex: 'destinationcity_name',
+            key: 'destinationcity_name',
+            width: 160,
+          },
           { title: '航线', dataIndex: 'host', key: 'host', width: 120 },
           { title: '箱型', dataIndex: 'box_type', key: 'box_type', width: 100 },
-          { title: '延迟时间(秒)', dataIndex: 'delay_time_label', key: 'delay_time_label', width: 120 },
+          {
+            title: '延迟时间(秒)',
+            dataIndex: 'delay_time_label',
+            key: 'delay_time_label',
+            width: 120,
+          },
           {
             title: '是否开启',
             dataIndex: 'is_run_label',
             key: 'is_run_label',
             width: 100,
-            render: (value: string) => <Tag color={value === '开启' ? 'success' : 'default'}>{value || '-'}</Tag>,
+            render: (value: string) => (
+              <Tag color={value === '开启' ? 'success' : 'default'}>{value || '-'}</Tag>
+            ),
           },
           { title: '是否翻页', dataIndex: 'is_roll_label', key: 'is_roll_label', width: 100 },
-          { title: '开航时间', dataIndex: 'early_date', key: 'early_date', width: 120, sorter: (a, b) => timeStamp(a.early_date) - timeStamp(b.early_date) },
-          { title: '目的港类型', dataIndex: 'destination_service_mode', key: 'destination_service_mode', width: 120 },
-          { title: '限价', dataIndex: 'limit_price', key: 'limit_price', width: 100, sorter: (a, b) => Number(a.limit_price ?? 0) - Number(b.limit_price ?? 0) },
+          {
+            title: '开航时间',
+            dataIndex: 'early_date',
+            key: 'early_date',
+            width: 120,
+            sorter: (a, b) => timeStamp(a.early_date) - timeStamp(b.early_date),
+          },
+          {
+            title: '目的港类型',
+            dataIndex: 'destination_service_mode',
+            key: 'destination_service_mode',
+            width: 120,
+          },
+          {
+            title: '限价',
+            dataIndex: 'limit_price',
+            key: 'limit_price',
+            width: 100,
+            sorter: (a, b) => Number(a.limit_price ?? 0) - Number(b.limit_price ?? 0),
+          },
           { title: '端口', dataIndex: 'port', key: 'port', width: 100 },
           {
             title: '操作',
@@ -334,7 +382,10 @@ export const MskApiListPage = () => {
                   okText="是"
                   cancelText="否"
                   onConfirm={() =>
-                    toggleAllByEarlyDate(0, selectedRowsRef.current.map((item) => item.id).join(',')).then(async () => {
+                    toggleAllByEarlyDate(
+                      0,
+                      selectedRowsRef.current.map((item) => item.id).join(',')
+                    ).then(async () => {
                       message.success('开启成功')
                       await reloadRef.current()
                     })
@@ -347,7 +398,10 @@ export const MskApiListPage = () => {
                   okText="是"
                   cancelText="否"
                   onConfirm={() =>
-                    toggleAllByEarlyDate(-1, selectedRowsRef.current.map((item) => item.id).join(',')).then(async () => {
+                    toggleAllByEarlyDate(
+                      -1,
+                      selectedRowsRef.current.map((item) => item.id).join(',')
+                    ).then(async () => {
                       message.success('关闭成功')
                       await reloadRef.current()
                     })
@@ -376,7 +430,15 @@ export const MskApiListPage = () => {
         partialActionText: '重载完整数据',
       },
     }),
-    [accountNumText, editForm, filterFields, requestList, selectedCount, token.colorBgElevated, token.colorBorderSecondary]
+    [
+      accountNumText,
+      editForm,
+      filterFields,
+      requestList,
+      selectedCount,
+      token.colorBgElevated,
+      token.colorBorderSecondary,
+    ]
   )
 
   return (

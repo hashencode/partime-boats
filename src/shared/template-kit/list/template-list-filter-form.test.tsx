@@ -52,8 +52,8 @@ const baseLayoutProps = {
 describe('TemplateListFilterForm', () => {
   it('uses the shared responsive row gutter defaults', () => {
     expect(DEFAULT_TEMPLATE_LIST_FILTER_ROW_GUTTER).toEqual([
-      { xs: 8, sm: 12, md: 16, lg: 16, xl: 16, xxl: 16 },
-      { xs: 8, sm: 10, md: 12, lg: 12, xl: 12, xxl: 12 },
+      { xs: 12, sm: 12, md: 12, lg: 16, xl: 16, xxl: 16 },
+      { xs: 10, sm: 10, md: 10, lg: 10, xl: 10, xxl: 10 },
     ])
   })
 

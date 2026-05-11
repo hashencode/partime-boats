@@ -1,6 +1,7 @@
 import { describe, expect, it } from '@rstest/core'
 import {
   isMenuVisibleInCurrentEnv,
+  moveMenuGroupToEnd,
   shouldShowDevMenuGroup,
   shouldShowMswSwitch,
 } from './app-shell'
@@ -80,5 +81,18 @@ describe('app-shell menu visibility helpers', () => {
         false
       )
     ).toBe(true)
+  })
+
+  it('should move the system settings group to the end when present', () => {
+    expect(
+      moveMenuGroupToEnd(
+        [
+          { key: 'order-list', label: '订单管理' },
+          { key: 'group-系统设置', label: '系统设置' },
+          { key: 'group-查询管理', label: '查询管理' },
+        ],
+        'group-系统设置'
+      ).map((item) => item.key)
+    ).toEqual(['order-list', 'group-查询管理', 'group-系统设置'])
   })
 })

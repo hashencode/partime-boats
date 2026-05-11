@@ -87,7 +87,7 @@ export const templateRoutes: TemplateRoute[] = [
   {
     key: 'order-list',
     path: '/order-list',
-    title: '订单列表',
+    title: '订单管理',
     icon: createElement(ShoppingOutlined),
     permission: 'list.read',
     inMenu: true,
@@ -105,7 +105,7 @@ export const templateRoutes: TemplateRoute[] = [
     inMenu: true,
     menuVisibility: 'always',
     menuMode: 'grouped',
-    menuGroup: '查询列表',
+    menuGroup: '查询管理',
     component: () =>
       lazyPage(() =>
         import('../pages/templates/msk-query-list/msk-query-list-page').then((m) => ({ default: m.MskQueryListPage }))
@@ -120,7 +120,7 @@ export const templateRoutes: TemplateRoute[] = [
     inMenu: true,
     menuVisibility: 'always',
     menuMode: 'grouped',
-    menuGroup: '查询列表',
+    menuGroup: '查询管理',
     component: () =>
       lazyPage(() =>
         import('../pages/templates/msk-api-list/msk-api-list-page').then((m) => ({ default: m.MskApiListPage }))
@@ -134,7 +134,8 @@ export const templateRoutes: TemplateRoute[] = [
     permission: 'list.read',
     inMenu: true,
     menuVisibility: 'always',
-    menuMode: 'standalone',
+    menuMode: 'grouped',
+    menuGroup: '系统设置',
     component: () =>
       lazyPage(() =>
         import('../pages/templates/base-port-list/base-port-list-page').then((m) => ({ default: m.BasePortListPage }))
@@ -143,7 +144,7 @@ export const templateRoutes: TemplateRoute[] = [
   {
     key: 'book-task-list',
     path: '/get_book_task_list',
-    title: '任务列表',
+    title: '订舱管理',
     icon: createElement(UnorderedListOutlined),
     permission: 'list.read',
     inMenu: true,
@@ -157,7 +158,7 @@ export const templateRoutes: TemplateRoute[] = [
   {
     key: 'remind-list',
     path: '/get_remined_list',
-    title: '提醒列表',
+    title: '日志管理',
     icon: createElement(BellOutlined),
     permission: 'list.read',
     inMenu: true,
@@ -171,13 +172,13 @@ export const templateRoutes: TemplateRoute[] = [
   {
     key: 'book-account-list',
     path: '/book_account_list',
-    title: '订舱账号列表',
+    title: '系统设置',
     icon: createElement(TeamOutlined),
     permission: 'list.read',
     inMenu: true,
     menuVisibility: 'always',
     menuMode: 'grouped',
-    menuGroup: '账号列表',
+    menuGroup: '系统设置',
     component: () =>
       lazyPage(() =>
         import('../pages/templates/book-account-list/book-account-list-page').then((m) => ({

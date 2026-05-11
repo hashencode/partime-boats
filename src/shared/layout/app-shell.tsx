@@ -47,6 +47,25 @@ export const shouldShowDevMenuGroup = (menuRoutes: RouteContract[], isDev: boole
 export const shouldShowMswSwitch = (isDev: boolean, isMswToggleAvailable: boolean) =>
   isDev && isMswToggleAvailable
 
+export const moveMenuGroupToEnd = <
+  TItem extends {
+    key: string
+  },
+>(
+  items: TItem[],
+  groupKey: string
+) => {
+  const targetIndex = items.findIndex((item) => item.key === groupKey)
+  if (targetIndex === -1 || targetIndex === items.length - 1) {
+    return items
+  }
+
+  const nextItems = [...items]
+  const [targetItem] = nextItems.splice(targetIndex, 1)
+  nextItems.push(targetItem)
+  return nextItems
+}
+
 type AppShellProps = {
   routes?: RouteContract[]
   headerExtra?: ReactNode
@@ -126,7 +145,7 @@ export const AppShell = ({ routes = [], headerExtra }: AppShellProps) => {
       })
     }
 
-    return items
+    return moveMenuGroupToEnd(items, 'group-系统设置')
   }, [menuRoutes, navigate, showDevMenuGroup])
 
   const selectedRoute = useMemo(() => {
@@ -345,7 +364,7 @@ export const AppShell = ({ routes = [], headerExtra }: AppShellProps) => {
             </div>
           )}
 
-          <div className="min-w-[800px] flex flex-col gap-4 [&_.ant-card_.ant-card-body]:p-6 [&_.ant-card_.ant-card-head]:min-h-[50px] [&_.ant-card_.ant-card-head]:px-6 [&_.ant-card]:rounded-lg [&_.ant-card]:shadow-none [&_.ant-result]:mx-auto [&_.ant-result]:max-w-[920px] [&_.ant-result]:px-0 [&_.ant-result]:pt-8 [&_.ant-result]:pb-3 [&_.ant-statistic-content]:text-[28px] [&_.ant-table-wrapper_.ant-table]:rounded-lg">
+          <div className="flex flex-col gap-4 [&_.ant-card_.ant-card-body]:p-6 [&_.ant-card_.ant-card-head]:min-h-[50px] [&_.ant-card_.ant-card-head]:px-6 [&_.ant-card]:rounded-lg [&_.ant-card]:shadow-none [&_.ant-result]:mx-auto [&_.ant-result]:max-w-[920px] [&_.ant-result]:px-0 [&_.ant-result]:pt-8 [&_.ant-result]:pb-3 [&_.ant-statistic-content]:text-[28px] [&_.ant-table-wrapper_.ant-table]:rounded-lg">
             <Outlet />
           </div>
         </Content>

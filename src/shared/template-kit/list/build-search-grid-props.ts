@@ -1,23 +1,29 @@
+import type { ColProps } from 'antd'
+
 type SearchGridProps = {
-  formItem: { xs: number; sm: number; md: number; xl: number }
-  labelItem: { xs: number; sm: number; md: number; xl: number }
-  inputItem: { xs: number; sm: number; md: number; xl: number }
+  formItem: ColProps
+  labelItem: ColProps
+  inputItem: ColProps
   actions: {
     xs: { span: number }
     sm: { span: number; offset: number }
     md: { span: number; offset: number }
     xl: { span: number; offset: number }
+    xxl: { flex: string }
   }
 }
 
+const XXL_COLUMN_WIDTH = '20%'
+
 export const buildSearchGridProps = (visibleFieldCount: number): SearchGridProps => ({
-  formItem: { xs: 24, sm: 12, md: 8, xl: 6 },
-  labelItem: { xs: 9, sm: 7, md: 10, xl: 8 },
-  inputItem: { xs: 15, sm: 17, md: 14, xl: 16 },
+  formItem: { xs: 8, sm: 8, md: 8, xl: 6, xxl: { flex: XXL_COLUMN_WIDTH } },
+  labelItem: { xs: 8, sm: 8, md: 8, xl: 8, xxl: 8 },
+  inputItem: { xs: 16, sm: 16, md: 16, xl: 16, xxl: 16 },
   actions: {
-    xs: { span: 24 },
-    sm: { span: 12, offset: (1 - (visibleFieldCount % 2)) * 12 },
+    xs: { span: 8, offset: (2 - (visibleFieldCount % 3)) * 8 },
+    sm: { span: 8, offset: (2 - (visibleFieldCount % 3)) * 8 },
     md: { span: 8, offset: (2 - (visibleFieldCount % 3)) * 8 },
     xl: { span: 6, offset: (3 - (visibleFieldCount % 4)) * 6 },
+    xxl: { flex: XXL_COLUMN_WIDTH },
   },
 })

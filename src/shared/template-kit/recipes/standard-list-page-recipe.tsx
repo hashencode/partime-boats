@@ -177,7 +177,15 @@ export const StandardListPageRecipe = <
         {spec.pageTitle}
       </Typography.Title>
 
-      <Card variant="borderless">
+      {spec.renderBeforeFilter ?? null}
+      <Card
+        variant="borderless"
+        styles={{
+          body: {
+            paddingRight: 8,
+          },
+        }}
+      >
         <TemplateListFilterForm<TFilterValues>
           form={filterForm}
           fields={spec.filterFields}

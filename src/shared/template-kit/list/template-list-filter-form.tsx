@@ -20,8 +20,8 @@ import type {
 } from 'antd'
 
 export const DEFAULT_TEMPLATE_LIST_FILTER_ROW_GUTTER: RowProps['gutter'] = [
-  { xs: 8, sm: 12, md: 16, lg: 16, xl: 16, xxl: 16 },
-  { xs: 8, sm: 10, md: 12, lg: 12, xl: 12, xxl: 12 },
+  { xs: 12, sm: 12, md: 12, lg: 16, xl: 16, xxl: 16 },
+  { xs: 10, sm: 10, md: 10, lg: 10, xl: 10, xxl: 10 },
 ]
 
 type FilterFieldName<TValues> = Extract<keyof TValues, string>
@@ -332,7 +332,13 @@ export const TemplateListFilterForm = <TValues extends Record<string, unknown>>(
             wrapperCol={wrapperCol}
           />
         ))}
-        <Col {...actionsColProps}>
+        <Col
+          {...actionsColProps}
+          style={{
+            ...(actionsColProps.style ?? {}),
+            marginInlineStart: 'auto',
+          }}
+        >
           <Form.Item className="!mb-0 !mr-0">
             <div className="flex justify-end gap-2">
               <Button htmlType="button" onClick={onReset}>
