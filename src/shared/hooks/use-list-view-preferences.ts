@@ -43,7 +43,7 @@ type UseListViewPreferencesOptions = {
 export const useListViewPreferences = ({
   tableId,
   defaultColumnKeys,
-  defaultDensity = 'small',
+  defaultDensity = 'middle',
 }: UseListViewPreferencesOptions) => {
   const [tableSize, setTableSizeState] = useState<TableSize>(() => {
     const storedDensity = readJson<unknown>(TABLE_DENSITY_STORAGE_KEY)

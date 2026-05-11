@@ -50,7 +50,7 @@ export const ListToolbarActions = ({
   columnSettingMinWidth = 220,
 }: ListToolbarActionsProps) => {
   return (
-    <>
+    <div className="inline-flex items-center gap-2">
       <Tooltip title="刷新">
         <Button icon={<ReloadOutlined />} aria-label="刷新" onClick={onReload} />
       </Tooltip>
@@ -90,6 +90,6 @@ export const ListToolbarActions = ({
           <Button icon={<SettingOutlined />} aria-label="列设置" />
         </Tooltip>
       </Popover>
-    </>
+    </div>
   )
 }
