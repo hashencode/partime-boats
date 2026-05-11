@@ -19,6 +19,11 @@ import type {
   SelectProps,
 } from 'antd'
 
+export const DEFAULT_TEMPLATE_LIST_FILTER_ROW_GUTTER: RowProps['gutter'] = [
+  { xs: 8, sm: 12, md: 16, lg: 16, xl: 16, xxl: 16 },
+  { xs: 8, sm: 10, md: 12, lg: 12, xl: 12, xxl: 12 },
+]
+
 type FilterFieldName<TValues> = Extract<keyof TValues, string>
 
 type TemplateListFilterOption = {
@@ -259,7 +264,7 @@ export const TemplateListFilterForm = <TValues extends Record<string, unknown>>(
   onReset,
   onValuesChange,
   formProps,
-  rowGutter = [16, 12],
+  rowGutter = DEFAULT_TEMPLATE_LIST_FILTER_ROW_GUTTER,
   fieldColProps,
   actionsColProps,
   labelCol,

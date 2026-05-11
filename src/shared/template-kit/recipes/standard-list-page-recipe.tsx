@@ -1,14 +1,11 @@
 import {
   Button,
   Card,
-  Checkbox,
   Form,
-  Space,
   Typography,
 } from 'antd'
-import type { MenuProps } from 'antd'
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
-import { ListToolbarActions } from '../../components/list-toolbar-actions'
+import { buildListToolbarColumnSettingOptions, ListToolbarActions } from '../../components/list-toolbar-actions'
 import { useListViewPreferences } from '../../hooks/use-list-view-preferences'
 import { useStandardPagination } from '../../hooks/use-standard-pagination'
 import { useCrudFormNavigation } from '../hooks'
@@ -22,11 +19,6 @@ import { useTemplateListFilters } from '../list/use-template-list-filters'
 
 void React
 
-const DENSITY_ITEMS: MenuProps['items'] = [
-  { key: 'large', label: '宽松' },
-  { key: 'middle', label: '默认' },
-  { key: 'small', label: '紧凑' },
-]
 
 export const StandardListPageRecipe = <
   TFilterValues extends Record<string, unknown>,
@@ -193,10 +185,6 @@ export const StandardListPageRecipe = <
           labelCol={searchColProps.labelItem}
           wrapperCol={searchColProps.inputItem}
           actionsColProps={searchColProps.actions}
-          rowGutter={[
-            { xs: 8, sm: 12, md: 16, lg: 16, xl: 16, xxl: 16 },
-            { xs: 8, sm: 10, md: 12, lg: 12, xl: 12, xxl: 12 },
-          ]}
           onSubmit={(values) => {
             onSubmitFilters(values)
             resetPage()
@@ -220,27 +208,14 @@ export const StandardListPageRecipe = <
             {spec.toolbarExtra}
             <ListToolbarActions
               tableSize={tableSize}
-              densityItems={spec.densityItems ?? DENSITY_ITEMS}
+              densityItems={spec.densityItems}
               onTableSizeChange={setTableSize}
               onReload={() => {
                 void load({ showSuccess: true })
               }}
-              columnSettingContent={
-                <Checkbox.Group
-                  value={selectedColumnKeys}
-                  onChange={(values) => setSelectedColumnKeys(values as string[])}
-                >
-                  <Space orientation="vertical">
-                    {columns
-                      .filter((column) => typeof column.key === 'string')
-                      .map((column) => (
-                        <Checkbox key={String(column.key)} value={String(column.key)}>
-                          {String(column.title)}
-                        </Checkbox>
-                      ))}
-                  </Space>
-                </Checkbox.Group>
-              }
+              columnSettingOptions={buildListToolbarColumnSettingOptions(columns)}
+              selectedColumnKeys={selectedColumnKeys}
+              onSelectedColumnKeysChange={setSelectedColumnKeys}
             />
           </div>
         }

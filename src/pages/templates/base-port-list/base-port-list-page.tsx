@@ -1,8 +1,8 @@
-import { Button, Card, Checkbox, Form, Input, InputNumber, Popconfirm, Select, Space, Table, Typography, message } from 'antd'
+import { Button, Card, Form, Input, InputNumber, Popconfirm, Select, Table, Typography, message } from 'antd'
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { hasPermission } from '../../../infrastructure/auth/permissions'
 import { useAuth } from '../../../infrastructure/auth/use-auth'
-import { ListToolbarActions } from '../../../shared/components/list-toolbar-actions'
+import { buildListToolbarColumnSettingOptions, ListToolbarActions } from '../../../shared/components/list-toolbar-actions'
 import { QueryStateBlock } from '../../../shared/components/query-state-block'
 import { useListViewPreferences } from '../../../shared/hooks/use-list-view-preferences'
 import { useStandardPagination } from '../../../shared/hooks/use-standard-pagination'
@@ -394,31 +394,13 @@ export const BasePortListPage = () => {
             ) : null}
             <ListToolbarActions
               tableSize={tableSize}
-              densityItems={[
-                { key: 'large', label: '宽松' },
-                { key: 'middle', label: '默认' },
-                { key: 'small', label: '紧凑' },
-              ]}
               onTableSizeChange={setTableSize}
               onReload={() => {
                 void loadPageData()
               }}
-              columnSettingContent={
-                <Checkbox.Group
-                  value={selectedColumnKeys}
-                  onChange={(values) => setSelectedColumnKeys(values as string[])}
-                >
-                  <Space orientation="vertical">
-                    {columns
-                      .filter((column) => typeof column.key === 'string')
-                      .map((column) => (
-                        <Checkbox key={String(column.key)} value={String(column.key)}>
-                          {String(column.title)}
-                        </Checkbox>
-                      ))}
-                  </Space>
-                </Checkbox.Group>
-              }
+              columnSettingOptions={buildListToolbarColumnSettingOptions(columns)}
+              selectedColumnKeys={selectedColumnKeys}
+              onSelectedColumnKeysChange={setSelectedColumnKeys}
             />
           </div>
         }

@@ -92,6 +92,7 @@
 6. 验收统一：以“新页面承载旧逻辑”为通过标准，不以像素完全一致为目标。
 7. 操作列宽度禁止运行时动态推算，必须在开发阶段按按钮文案和数量一次性计算后写成固定值。
 8. 列表右侧工具能力（刷新 / 密度 / 列设置）若旧页存在，新页应优先同构保留。
+9. 列设置渲染统一：列设置面板统一由 `ListToolbarActions` 内部渲染，页面仅传 `columnSettingOptions + selectedColumnKeys + onSelectedColumnKeysChange`，禁止页面内重复手写 `Checkbox.Group`。
 
 ### 6.2 不要再踩的红线
 1. 不要先写页面再补权限，权限必须同步设计。
@@ -138,6 +139,7 @@
 
 5. 工具栏能力迁移不完整。
 - 修复：把刷新 / 密度 / 列设置纳入列表迁移验收清单。
+- 修复：列设置面板必须走 `ListToolbarActions` 标准接口，优先复用 `buildListToolbarColumnSettingOptions(columns)`，禁止回退到页面内手写 `Checkbox.Group`。
 
 ## 8. 验收清单
 - [ ] 列表首屏加载行为与旧页一致

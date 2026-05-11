@@ -17,5 +17,6 @@
 - 2026-05-07: 初始化加载与条件加载要拆分 effect，并稳定依赖引用，避免重复请求与渲染抖动。 #promote
 - 2026-05-07: 枚举值域应单一来源，筛选项/表格展示/提交语义共用同一映射常量，防止多处漂移。
 - 2026-05-07: 列表工具栏与操作列采用统一规范（刷新/密度/列设置复用，操作列右侧固定、右对齐、宽度开发期固定）。
+- 2026-05-11: 列表页的列设置面板不应在页面内手写 `Checkbox.Group`；统一由 `ListToolbarActions` 渲染，页面仅传 `columnSettingOptions + selectedColumnKeys + onSelectedColumnKeysChange`。 #promote
 - 2026-05-07: 测试最小基线固定为 happy path + 至少一个失败/边界分支（参数错误、无权限、写操作失败）。 #promote
 - 2026-05-09: 标准列表页中，`request/transformResponse` 等请求链路回调必须保持稳定引用；否则勾选行、打开弹窗等纯 UI 状态变化也可能触发首屏 `load` effect 重跑，表现为“勾选即刷新”。 #promote

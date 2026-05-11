@@ -3,7 +3,7 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it } from '@rstest/core'
 import { Button, Form } from 'antd'
 import type { TemplateListFilterField } from './template-list-filter-form'
-import { TemplateListFilterForm } from './template-list-filter-form'
+import { DEFAULT_TEMPLATE_LIST_FILTER_ROW_GUTTER, TemplateListFilterForm } from './template-list-filter-form'
 
 void React
 
@@ -46,6 +46,45 @@ const baseLayoutProps = {
 }
 
 describe('TemplateListFilterForm', () => {
+  it('uses the shared responsive row gutter defaults', () => {
+    expect(DEFAULT_TEMPLATE_LIST_FILTER_ROW_GUTTER).toEqual([
+      { xs: 8, sm: 12, md: 16, lg: 16, xl: 16, xxl: 16 },
+      { xs: 8, sm: 10, md: 12, lg: 12, xl: 12, xxl: 12 },
+    ])
+  })
+
+  it('renders normally when custom rowGutter overrides the defaults', () => {
+    const fields: TemplateListFilterField<DemoValues>[] = [
+      {
+        type: 'input',
+        name: 'name',
+        label: '名称',
+      },
+    ]
+
+    const Demo = () => {
+      const [form] = Form.useForm<DemoValues>()
+
+      return (
+        <TemplateListFilterForm<DemoValues>
+          form={form}
+          fields={fields}
+          onSubmit={() => undefined}
+          onReset={() => undefined}
+          rowGutter={[4, 6]}
+          {...baseLayoutProps}
+        />
+      )
+    }
+
+    render(
+      <Demo />
+    )
+
+    expect(screen.getByRole('button', { name: /查\s*询/ })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /重\s*置/ })).toBeTruthy()
+  })
+
   it('renders conditional field only when visibleWhen is satisfied', async () => {
     const Demo = () => {
       const [form] = Form.useForm<DemoValues>()

@@ -51,7 +51,7 @@
 
 必须固化的模块：
 - `filter`：统一筛选区；筛选变化不自动请求，只在点击“查询”后触发
-- `content`：统一标题、卡片、工具栏、表格、分页
+- `content`：统一标题、卡片、工具栏、表格、分页；工具栏中的列设置面板由底座统一渲染，业务页只传结构化列配置
 - `feedback`：统一 `loading / empty / error / partial`
 - `permission`：页面级 permission 与按钮级动作分层
 
