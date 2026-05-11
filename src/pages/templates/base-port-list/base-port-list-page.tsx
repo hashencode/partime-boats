@@ -1,4 +1,4 @@
-import { Button, Card, Form, Input, InputNumber, Popconfirm, Select, Space, Table, Typography, message } from 'antd'
+import { Button, Card, Form, Input, InputNumber, Popconfirm, Select, Space, Table, Typography, message, type TablePaginationConfig } from 'antd'
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { hasPermission } from '../../../infrastructure/auth/permissions'
 import { useAuth } from '../../../infrastructure/auth/use-auth'

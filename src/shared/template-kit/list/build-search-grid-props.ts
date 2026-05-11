@@ -5,7 +5,7 @@ type SearchGridProps = {
   labelItem: ColProps
   inputItem: ColProps
   actions: {
-    xs: { span: number }
+    xs: { span: number; offset: number }
     sm: { span: number; offset: number }
     md: { span: number; offset: number }
     xl: { span: number; offset: number }
