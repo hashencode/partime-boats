@@ -4,6 +4,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from '@rstest/co
 import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
 import { AuthContext } from '../../../infrastructure/auth/auth-context'
+import { ThemeProvider } from '../../../shared/contexts/theme-context'
 import { RemindListPage } from './remind-list-page'
 
 void React
@@ -101,7 +102,9 @@ const renderPage = (role: 'admin' | 'editor' | 'viewer' = 'admin') =>
         logout: () => undefined,
       }}
     >
-      <RemindListPage />
+      <ThemeProvider>
+        <RemindListPage />
+      </ThemeProvider>
     </AuthContext.Provider>
   )
 

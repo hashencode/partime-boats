@@ -18,6 +18,8 @@ export type ListToolbarColumnSettingOption = {
   disabled?: boolean
 }
 
+const DEFAULT_COLUMN_SETTING_MAX_HEIGHT = 400
+
 export const buildListToolbarColumnSettingOptions = <TItem,>(
   columns: ColumnsType<TItem>
 ): ListToolbarColumnSettingOption[] =>
@@ -76,7 +78,13 @@ export const ListToolbarActions = ({
             onChange={(values) => onSelectedColumnKeysChange(values as string[])}
             className="flex flex-col gap-2"
           >
-            <div className="flex flex-col gap-2" style={{ minWidth: columnSettingMinWidth }}>
+            <div
+              className="flex flex-col gap-2 overflow-y-auto"
+              style={{
+                minWidth: columnSettingMinWidth,
+                maxHeight: DEFAULT_COLUMN_SETTING_MAX_HEIGHT,
+              }}
+            >
               {columnSettingOptions.map((option) => (
                 <Checkbox key={option.key} value={option.key} disabled={option.disabled}>
                   {option.label}

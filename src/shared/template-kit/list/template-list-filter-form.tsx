@@ -24,6 +24,8 @@ export const DEFAULT_TEMPLATE_LIST_FILTER_ROW_GUTTER: RowProps['gutter'] = [
   { xs: 10, sm: 10, md: 10, lg: 10, xl: 10, xxl: 10 },
 ]
 
+const COMPACT_INPUT_WIDTH = '220px'
+
 type FilterFieldName<TValues> = Extract<keyof TValues, string>
 
 export type TemplateListFilterOption = {
@@ -124,70 +126,28 @@ type TemplateListFilterFormProps<TValues extends Record<string, unknown>> = {
   actionsColProps: ColProps
   labelCol?: ColProps
   wrapperCol?: ColProps
+  compactLayout?: boolean
   submitText?: string
   resetText?: string
 }
 
-const TemplateListFilterFieldNode = <TValues extends Record<string, unknown>>({
-  field,
-  form,
-  values,
-  defaultColProps,
-  labelCol,
-  wrapperCol,
-}: {
-  field: TemplateListFilterField<TValues>
-  form: FormInstance<TValues>
-  values: Partial<TValues>
-  defaultColProps: ColProps
-  labelCol?: ColProps
-  wrapperCol?: ColProps
-}) => {
-  const visible = field.visibleWhen ? field.visibleWhen(values) : true
-
-  const colProps = field.colProps ?? defaultColProps
-  if (!visible) {
-    return null
+const buildFieldContainer = (compactLayout: boolean, colProps: ColProps, content: React.ReactNode) => {
+  if (compactLayout) {
+    return <div className="shrink-0">{content}</div>
   }
 
-  if (field.type === 'custom') {
-    return <Col {...colProps}>{field.render({ values, form })}</Col>
+  return <Col {...colProps}>{content}</Col>
+}
+
+const buildFormItemLayout = (compactLayout: boolean, labelCol?: ColProps, wrapperCol?: ColProps) => {
+  if (!compactLayout) {
+    return { labelCol, wrapperCol }
   }
 
-  const disabled = field.disabledWhen ? field.disabledWhen(values) : false
-
-  if (field.type === 'select') {
-    return (
-      <TemplateListSelectFilterFieldNode
-        field={field}
-        values={values}
-        disabled={disabled}
-        colProps={colProps}
-        labelCol={labelCol}
-        wrapperCol={wrapperCol}
-      />
-    )
+  return {
+    labelCol: { flex: 'none' },
+    wrapperCol: { flex: COMPACT_INPUT_WIDTH },
   }
-
-  return (
-    <Col {...colProps}>
-      <Form.Item<TValues>
-        label={field.label}
-        name={field.name as never}
-        className="!mb-0 !mr-0"
-        labelCol={labelCol}
-        wrapperCol={wrapperCol}
-        labelAlign="right"
-        {...field.formItemProps}
-      >
-        {field.type === 'input' ? (
-          <Input allowClear className="!w-full" disabled={disabled} {...field.inputProps} />
-        ) : (
-          <DatePicker className="!w-full" disabled={disabled} {...field.datePickerProps} />
-        )}
-      </Form.Item>
-    </Col>
-  )
 }
 
 const TemplateListSelectFilterFieldNode = <
@@ -199,6 +159,7 @@ const TemplateListSelectFilterFieldNode = <
   colProps,
   labelCol,
   wrapperCol,
+  compactLayout,
 }: {
   field: TemplateListSelectField<TValues>
   values: Partial<TValues>
@@ -206,6 +167,7 @@ const TemplateListSelectFilterFieldNode = <
   colProps: ColProps
   labelCol?: ColProps
   wrapperCol?: ColProps
+  compactLayout: boolean
 }) => {
   const [dynamicOptions, setDynamicOptions] = useState<TemplateListFilterOption[]>([])
   const optionsLoader = field.optionsLoader
@@ -263,28 +225,94 @@ const TemplateListSelectFilterFieldNode = <
 
   const options = field.optionsLoader ? dynamicOptions : (field.options ?? [])
   const popupMatchSelectWidth = resolveSelectPopupMatchWidthByOptions(options, field.selectProps?.popupMatchSelectWidth)
+  const layout = buildFormItemLayout(compactLayout, labelCol, wrapperCol)
 
-  return (
-    <Col {...colProps}>
-      <Form.Item<TValues>
-        label={field.label}
-        name={field.name as never}
-        className="!mb-0 !mr-0"
+  return buildFieldContainer(
+    compactLayout,
+    colProps,
+    <Form.Item<TValues>
+      label={field.label}
+      name={field.name as never}
+      className="!mb-0 !mr-0"
+      labelAlign={compactLayout ? 'left' : 'right'}
+      {...layout}
+      {...field.formItemProps}
+    >
+      <Select
+        allowClear
+        className="!w-full"
+        disabled={disabled}
+        options={options}
+        popupMatchSelectWidth={popupMatchSelectWidth}
+        {...field.selectProps}
+      />
+    </Form.Item>
+  )
+}
+
+const TemplateListFilterFieldNode = <TValues extends Record<string, unknown>>({
+  field,
+  form,
+  values,
+  defaultColProps,
+  labelCol,
+  wrapperCol,
+  compactLayout,
+}: {
+  field: TemplateListFilterField<TValues>
+  form: FormInstance<TValues>
+  values: Partial<TValues>
+  defaultColProps: ColProps
+  labelCol?: ColProps
+  wrapperCol?: ColProps
+  compactLayout: boolean
+}) => {
+  const visible = field.visibleWhen ? field.visibleWhen(values) : true
+
+  const colProps = field.colProps ?? defaultColProps
+  if (!visible) {
+    return null
+  }
+
+  if (field.type === 'custom') {
+    return buildFieldContainer(compactLayout, colProps, field.render({ values, form }))
+  }
+
+  const disabled = field.disabledWhen ? field.disabledWhen(values) : false
+
+  if (field.type === 'select') {
+    return (
+      <TemplateListSelectFilterFieldNode
+        field={field}
+        values={values}
+        disabled={disabled}
+        colProps={colProps}
         labelCol={labelCol}
         wrapperCol={wrapperCol}
-        labelAlign="right"
-        {...field.formItemProps}
-      >
-        <Select
-          allowClear
-          className="!w-full"
-          disabled={disabled}
-          options={options}
-          popupMatchSelectWidth={popupMatchSelectWidth}
-          {...field.selectProps}
-        />
-      </Form.Item>
-    </Col>
+        compactLayout={compactLayout}
+      />
+    )
+  }
+
+  const layout = buildFormItemLayout(compactLayout, labelCol, wrapperCol)
+
+  return buildFieldContainer(
+    compactLayout,
+    colProps,
+    <Form.Item<TValues>
+      label={field.label}
+      name={field.name as never}
+      className="!mb-0 !mr-0"
+      labelAlign={compactLayout ? 'left' : 'right'}
+      {...layout}
+      {...field.formItemProps}
+    >
+      {field.type === 'input' ? (
+        <Input allowClear className="!w-full" disabled={disabled} {...field.inputProps} />
+      ) : (
+        <DatePicker className="!w-full" disabled={disabled} {...field.datePickerProps} />
+      )}
+    </Form.Item>
   )
 }
 
@@ -300,6 +328,7 @@ export const TemplateListFilterForm = <TValues extends Record<string, unknown>>(
   actionsColProps,
   labelCol,
   wrapperCol,
+  compactLayout = false,
   submitText = '查询',
   resetText = '重置',
 }: TemplateListFilterFormProps<TValues>) => {
@@ -308,6 +337,19 @@ export const TemplateListFilterForm = <TValues extends Record<string, unknown>>(
       (currentValues) => currentValues as Partial<TValues>,
       form
     ) as Partial<TValues> | undefined) ?? {}
+
+  const actionNode = (
+    <Form.Item className="!mb-0 !mr-0">
+      <div className="flex justify-end gap-2">
+        <Button htmlType="button" onClick={onReset}>
+          {resetText}
+        </Button>
+        <Button type="primary" htmlType="submit">
+          {submitText}
+        </Button>
+      </div>
+    </Form.Item>
+  )
 
   return (
     <Form<TValues>
@@ -320,37 +362,49 @@ export const TemplateListFilterForm = <TValues extends Record<string, unknown>>(
         onValuesChange?.(allValues as TValues)
       }}
     >
-      <Row className="w-full" gutter={rowGutter}>
-        {fields.map((field, index) => (
-          <TemplateListFilterFieldNode
-            key={field.key ?? `template-list-filter-field-${index}`}
-            field={field}
-            form={form}
-            values={values}
-            defaultColProps={fieldColProps}
-            labelCol={labelCol}
-            wrapperCol={wrapperCol}
-          />
-        ))}
-        <Col
-          {...actionsColProps}
-          style={{
-            ...(actionsColProps.style ?? {}),
-            marginInlineStart: 'auto',
-          }}
-        >
-          <Form.Item className="!mb-0 !mr-0">
-            <div className="flex justify-end gap-2">
-              <Button htmlType="button" onClick={onReset}>
-                {resetText}
-              </Button>
-              <Button type="primary" htmlType="submit">
-                {submitText}
-              </Button>
-            </div>
-          </Form.Item>
-        </Col>
-      </Row>
+      {compactLayout ? (
+        <div className="flex w-full flex-wrap items-end gap-x-4 gap-y-[10px]">
+          {fields.map((field, index) => (
+            <TemplateListFilterFieldNode
+              key={field.key ?? `template-list-filter-field-${index}`}
+              field={field}
+              form={form}
+              values={values}
+              defaultColProps={fieldColProps}
+              labelCol={labelCol}
+              wrapperCol={wrapperCol}
+              compactLayout
+            />
+          ))}
+          <div className="flex shrink-0 items-end">
+            {actionNode}
+          </div>
+        </div>
+      ) : (
+        <Row className="w-full" gutter={rowGutter}>
+          {fields.map((field, index) => (
+            <TemplateListFilterFieldNode
+              key={field.key ?? `template-list-filter-field-${index}`}
+              field={field}
+              form={form}
+              values={values}
+              defaultColProps={fieldColProps}
+              labelCol={labelCol}
+              wrapperCol={wrapperCol}
+              compactLayout={false}
+            />
+          ))}
+          <Col
+            {...actionsColProps}
+            style={{
+              ...(actionsColProps.style ?? {}),
+              marginInlineStart: 'auto',
+            }}
+          >
+            {actionNode}
+          </Col>
+        </Row>
+      )}
     </Form>
   )
 }

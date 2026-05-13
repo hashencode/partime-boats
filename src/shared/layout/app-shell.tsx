@@ -3,6 +3,7 @@ import {
   DesktopOutlined,
   LogoutOutlined,
   MoonOutlined,
+  SearchOutlined,
   SnippetsOutlined,
   SmileOutlined,
   SunOutlined,
@@ -75,7 +76,7 @@ export const AppShell = ({ routes = [], headerExtra }: AppShellProps) => {
   const navigate = useNavigate()
   const location = useLocation()
   const { role, displayName, logout } = useAuth()
-  const { mode, resolvedTheme, setMode } = useTheme()
+  const { mode, resolvedTheme, searchCompactLayout, setMode, setSearchCompactLayout } = useTheme()
   const { token } = theme.useToken()
   const isDevelopmentEnv = import.meta.env.PUBLIC_MODE === 'development'
 
@@ -254,6 +255,12 @@ export const AppShell = ({ routes = [], headerExtra }: AppShellProps) => {
     },
     { type: 'divider' },
     {
+      key: 'search-compact-layout',
+      icon: <SearchOutlined />,
+      label: renderThemeItemLabel('搜索紧凑布局', searchCompactLayout),
+    },
+    { type: 'divider' },
+    {
       key: 'logout',
       icon: <LogoutOutlined />,
       label: '退出登录',
@@ -275,6 +282,13 @@ export const AppShell = ({ routes = [], headerExtra }: AppShellProps) => {
       const nextMode = key.replace('theme-', '') as 'light' | 'dark' | 'system'
       setMode(nextMode)
       void message.success(`已切换到${nextMode === 'system' ? '跟随系统' : nextMode === 'dark' ? '深色模式' : '浅色模式'}`)
+      return
+    }
+
+    if (key === 'search-compact-layout') {
+      const nextEnabled = !searchCompactLayout
+      setSearchCompactLayout(nextEnabled)
+      void message.success(nextEnabled ? '已开启搜索紧凑布局' : '已关闭搜索紧凑布局')
     }
   }
 

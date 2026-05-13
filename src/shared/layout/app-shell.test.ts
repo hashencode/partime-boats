@@ -5,6 +5,7 @@ import {
   shouldShowDevMenuGroup,
   shouldShowMswSwitch,
 } from './app-shell'
+import { SEARCH_COMPACT_LAYOUT_STORAGE_KEY, THEME_STORAGE_KEY } from '../contexts/theme-context'
 
 describe('app-shell menu visibility helpers', () => {
   it('should hide dev-only routes outside development mode', () => {
@@ -94,5 +95,10 @@ describe('app-shell menu visibility helpers', () => {
         'group-系统设置'
       ).map((item) => item.key)
     ).toEqual(['order-list', 'group-查询管理', 'group-系统设置'])
+  })
+
+  it('should use stable storage keys for theme and search compact layout preferences', () => {
+    expect(THEME_STORAGE_KEY).toBe('admin-theme-mode')
+    expect(SEARCH_COMPACT_LAYOUT_STORAGE_KEY).toBe('admin-search-compact-layout')
   })
 })

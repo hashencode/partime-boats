@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterAll, afterEach, beforeAll, describe, expect, it } from '@rstest/core'
 import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
+import { ThemeProvider } from '../../../shared/contexts/theme-context'
 import { MskQueryListPage } from './msk-query-list-page'
 
 void React
@@ -87,7 +88,7 @@ afterAll(() => {
 
 describe('MskQueryListPage', () => {
   it('should render list rows when request succeeds', async () => {
-    render(<MskQueryListPage />)
+    render(<ThemeProvider><MskQueryListPage /></ThemeProvider>)
 
     await waitFor(() => {
       expect(screen.getByText('NINGBO')).toBeTruthy()
@@ -98,7 +99,7 @@ describe('MskQueryListPage', () => {
   it('should show error state when list request fails', async () => {
     server.use(http.get('*/check/show', () => HttpResponse.json({ message: 'server err' }, { status: 500 })))
 
-    render(<MskQueryListPage />)
+    render(<ThemeProvider><MskQueryListPage /></ThemeProvider>)
 
     await waitFor(() => {
       expect(screen.getByText('MSK列表加载失败')).toBeTruthy()
@@ -121,7 +122,7 @@ describe('MskQueryListPage', () => {
       })
     )
 
-    render(<MskQueryListPage />)
+    render(<ThemeProvider><MskQueryListPage /></ThemeProvider>)
 
     await waitFor(() => {
       expect(requestCount).toBeGreaterThan(0)
@@ -143,13 +144,15 @@ describe('MskQueryListPage', () => {
   })
 
   it('should toggle all visible rows when nothing is checked', async () => {
-    render(<MskQueryListPage />)
+    render(<ThemeProvider><MskQueryListPage /></ThemeProvider>)
 
     await waitFor(() => {
       expect(screen.getByText('NINGBO')).toBeTruthy()
     })
 
     fireEvent.click(screen.getByRole('button', { name: '开启所有' }))
+    const confirmText = await screen.findByText('当前没有勾选任何列表项，将会开启当前筛选结果中的所有项，是否确认？')
+    expect(confirmText.closest('.ant-popover')?.getAttribute('style')).toContain('max-width: 280px')
     fireEvent.click(await screen.findByRole('button', { name: '是' }))
 
     await waitFor(() => {
@@ -168,7 +171,7 @@ describe('MskQueryListPage', () => {
       )
     )
 
-    render(<MskQueryListPage />)
+    render(<ThemeProvider><MskQueryListPage /></ThemeProvider>)
 
     await waitFor(() => {
       expect(screen.getByText('NINGBO')).toBeTruthy()

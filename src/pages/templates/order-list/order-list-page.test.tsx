@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterAll, afterEach, beforeAll, describe, expect, it } from '@rstest/core'
 import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
+import { ThemeProvider } from '../../../shared/contexts/theme-context'
 import { OrderListPage } from './order-list-page'
 
 void React
@@ -69,7 +70,7 @@ afterAll(() => {
 
 describe('OrderListPage', () => {
   it('should render list data when request succeeds', async () => {
-    render(<OrderListPage />)
+    render(<ThemeProvider><OrderListPage /></ThemeProvider>)
 
     await waitFor(() => {
       expect(screen.getAllByText('订单列表').length).toBeGreaterThan(0)
@@ -89,7 +90,7 @@ describe('OrderListPage', () => {
       })
     )
 
-    render(<OrderListPage />)
+    render(<ThemeProvider><OrderListPage /></ThemeProvider>)
 
     await waitFor(() => {
       expect(requestCount).toBe(1)
@@ -115,7 +116,7 @@ describe('OrderListPage', () => {
       )
     )
 
-    render(<OrderListPage />)
+    render(<ThemeProvider><OrderListPage /></ThemeProvider>)
 
     await waitFor(() => {
       expect(screen.getByText('订单列表加载失败')).toBeTruthy()

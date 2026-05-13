@@ -5,6 +5,7 @@ import type { ColumnsType } from 'antd/es/table'
 import { StandardListPageRecipe } from './standard-list-page-recipe'
 import type { StandardListPageSpec } from '../specs/standard-list-page-spec'
 import { VIRTUAL_SCROLL_PAGE_SIZE_THRESHOLD } from '../../hooks/use-standard-pagination'
+import { SEARCH_COMPACT_LAYOUT_STORAGE_KEY, ThemeProvider } from '../../contexts/theme-context'
 
 void React
 
@@ -60,6 +61,8 @@ type VirtualScrollSnapshot = {
 }
 
 describe('StandardListPageRecipe', () => {
+  const renderWithTheme = (node: React.ReactNode) => render(<ThemeProvider>{node}</ThemeProvider>)
+
   it('does not auto request on filter value change and only queries on submit', async () => {
     const requestCalls: RequestFilters[] = []
     const spec: StandardListPageSpec<FilterValues, RequestFilters, Response, { id: number; name: string }, Error> = {
@@ -107,7 +110,7 @@ describe('StandardListPageRecipe', () => {
       buildTableNode: ({ dataSource }) => <div data-testid="table-node">{dataSource[0]?.name ?? 'empty'}</div>,
     }
 
-    render(<StandardListPageRecipe spec={spec} />)
+    renderWithTheme(<StandardListPageRecipe spec={spec} />)
 
     await waitFor(() => {
       expect(requestCalls).toHaveLength(1)
@@ -184,7 +187,7 @@ describe('StandardListPageRecipe', () => {
       ),
     }
 
-    render(<StandardListPageRecipe spec={spec} />)
+    renderWithTheme(<StandardListPageRecipe spec={spec} />)
 
     await waitFor(() => {
       expect(requestCalls).toHaveLength(1)
@@ -256,7 +259,7 @@ describe('StandardListPageRecipe', () => {
       },
     }
 
-    render(<StandardListPageRecipe spec={spec} />)
+    renderWithTheme(<StandardListPageRecipe spec={spec} />)
 
     await waitFor(() => {
       expect(latestVirtualScroll).not.toBeNull()
@@ -281,6 +284,52 @@ describe('StandardListPageRecipe', () => {
         },
       })
     })
+  })
+
+  it('should pass compact search layout preference to filter form', async () => {
+    window.localStorage.setItem(SEARCH_COMPACT_LAYOUT_STORAGE_KEY, 'true')
+
+    const spec: StandardListPageSpec<FilterValues, RequestFilters, Response, { id: number; name: string }, Error> = {
+      pageTitle: '测试列表',
+      cardTitle: '测试数据',
+      tableId: 'recipe-test-list-compact-layout',
+      formRoute: '/test/form',
+      initialFilters: {},
+      toFilters: (values) => ({
+        name: values.name?.trim() || undefined,
+      }),
+      request: async () => ({
+        data: [{ id: 1, name: 'demo' }],
+        current: 1,
+        size: 10,
+        total: 1,
+      }),
+      selectItems: (response) => response?.data ?? [],
+      filterFields: [
+        {
+          type: 'input',
+          name: 'name',
+          label: '名称',
+        },
+      ],
+      buildColumns: () =>
+        [
+          {
+            key: 'name',
+            title: '名称',
+            dataIndex: 'name',
+          },
+        ] satisfies ColumnsType<{ id: number; name: string }>,
+      buildTableNode: ({ dataSource }) => <div>{dataSource[0]?.name ?? 'empty'}</div>,
+    }
+
+    const { container } = renderWithTheme(<StandardListPageRecipe spec={spec} />)
+
+    await waitFor(() => {
+      expect(container.querySelector('.flex.w-full.flex-wrap.items-end')).toBeTruthy()
+    })
+
+    window.localStorage.removeItem(SEARCH_COMPACT_LAYOUT_STORAGE_KEY)
   })
 
   it('does not render the filter card when there are no filter fields', async () => {
@@ -310,7 +359,7 @@ describe('StandardListPageRecipe', () => {
       buildTableNode: ({ dataSource }) => <div>{dataSource[0]?.name ?? 'empty'}</div>,
     }
 
-    const { container } = render(<StandardListPageRecipe spec={spec} />)
+    const { container } = renderWithTheme(<StandardListPageRecipe spec={spec} />)
 
     await waitFor(() => {
       expect(screen.getByText('demo')).toBeTruthy()
@@ -371,7 +420,7 @@ describe('StandardListPageRecipe', () => {
       ),
     }
 
-    render(<StandardListPageRecipe spec={spec} />)
+    renderWithTheme(<StandardListPageRecipe spec={spec} />)
 
     await waitFor(() => {
       expect(requestCalls).toHaveLength(1)

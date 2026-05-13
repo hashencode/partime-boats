@@ -122,6 +122,38 @@ describe('TemplateListFilterForm', () => {
     expect(screen.getByRole('button', { name: /重\s*置/ })).toBeTruthy()
   })
 
+  it('should render compact search layout with auto label width and inline actions', () => {
+    const fields: TemplateListFilterField<DemoValues>[] = [
+      {
+        type: 'input',
+        name: 'name',
+        label: '名称',
+      },
+    ]
+
+    const Demo = () => {
+      const [form] = Form.useForm<DemoValues>()
+
+      return (
+        <TemplateListFilterForm<DemoValues>
+          form={form}
+          fields={fields}
+          onSubmit={() => undefined}
+          onReset={() => undefined}
+          compactLayout
+          {...baseLayoutProps}
+        />
+      )
+    }
+
+    const { container } = render(<Demo />)
+
+    expect(container.querySelector('.flex.w-full.flex-wrap.items-end')).toBeTruthy()
+    expect(container.querySelector('.flex.shrink-0.items-end')).toBeTruthy()
+    expect(container.querySelector('.ant-form-item-label')?.getAttribute('style')).toContain('flex: 0 0 auto')
+    expect(container.querySelector('.ant-form-item-control')?.getAttribute('style')).toContain('flex: 0 0 220px')
+  })
+
   it('renders conditional field only when visibleWhen is satisfied', async () => {
     const Demo = () => {
       const [form] = Form.useForm<DemoValues>()

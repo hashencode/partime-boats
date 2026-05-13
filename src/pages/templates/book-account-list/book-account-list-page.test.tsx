@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterAll, afterEach, beforeAll, describe, expect, it } from '@rstest/core'
 import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
+import { ThemeProvider } from '../../../shared/contexts/theme-context'
 import { BookAccountListPage } from './book-account-list-page'
 
 void React
@@ -65,7 +66,7 @@ afterAll(() => {
 
 describe('BookAccountListPage', () => {
   it('should render list data when request succeeds', async () => {
-    render(<BookAccountListPage />)
+    render(<ThemeProvider><BookAccountListPage /></ThemeProvider>)
 
     await waitFor(() => {
       expect(screen.getAllByText('订舱账号列表').length).toBeGreaterThan(0)
@@ -87,7 +88,7 @@ describe('BookAccountListPage', () => {
       })
     )
 
-    render(<BookAccountListPage />)
+    render(<ThemeProvider><BookAccountListPage /></ThemeProvider>)
 
     await waitFor(() => {
       expect(requestCount).toBe(1)
@@ -113,7 +114,7 @@ describe('BookAccountListPage', () => {
       )
     )
 
-    render(<BookAccountListPage />)
+    render(<ThemeProvider><BookAccountListPage /></ThemeProvider>)
 
     await waitFor(() => {
       expect(screen.getByText('订舱账号列表加载失败')).toBeTruthy()
@@ -131,7 +132,7 @@ describe('BookAccountListPage', () => {
       )
     )
 
-    render(<BookAccountListPage />)
+    render(<ThemeProvider><BookAccountListPage /></ThemeProvider>)
 
     await waitFor(() => {
       expect(screen.getByText('可以重置筛选后重新查询。')).toBeTruthy()

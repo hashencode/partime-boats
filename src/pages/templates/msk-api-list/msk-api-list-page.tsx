@@ -98,6 +98,7 @@ const TABLE_FILTER = ['id', 'tips', 'origincity_name', 'destinationcity_name', '
 
 // 操作列固定宽度：2 个链接按钮（订舱/修改）按 56*2=112，间距 13，余量 16，总计 141，取 150。
 const ACTION_COLUMN_WIDTH = 150
+const TOGGLE_CONFIRM_OVERLAY_STYLE = { maxWidth: 280 }
 
 const timeStamp = (value?: string) => {
   if (!value) return 0
@@ -223,6 +224,7 @@ export const MskApiListPage = () => {
             title={buildToggleConfirmTitle(selectedCount, '开启')}
             okText="是"
             cancelText="否"
+            overlayStyle={TOGGLE_CONFIRM_OVERLAY_STYLE}
             onConfirm={() => handleToggleAll(0)}
           >
             <Button>开启所有</Button>
@@ -231,6 +233,7 @@ export const MskApiListPage = () => {
             title={buildToggleConfirmTitle(selectedCount, '关闭')}
             okText="是"
             cancelText="否"
+            overlayStyle={TOGGLE_CONFIRM_OVERLAY_STYLE}
             onConfirm={() => handleToggleAll(-1)}
           >
             <Button>关闭所有</Button>

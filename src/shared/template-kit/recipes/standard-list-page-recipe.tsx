@@ -16,6 +16,7 @@ import { TemplateListContent } from '../list/template-list-content'
 import { TemplateListFilterForm } from '../list/template-list-filter-form'
 import { useTemplateListController } from '../list/use-template-list-controller'
 import { useTemplateListFilters } from '../list/use-template-list-filters'
+import { useTheme } from '../../contexts/theme-context'
 
 void React
 
@@ -43,6 +44,7 @@ export const StandardListPageRecipe = <
 }) => {
   const [filterForm] = Form.useForm<TFilterValues>()
   const { openFormPage } = useCrudFormNavigation(spec.formRoute)
+  const { searchCompactLayout } = useTheme()
   const [total, setTotal] = useState(0)
   const paginationMode = spec.paginationMode ?? 'remote'
   const { current, pageSize, pagination, resetPage } = useStandardPagination({
@@ -233,6 +235,7 @@ export const StandardListPageRecipe = <
             labelCol={searchColProps.labelItem}
             wrapperCol={searchColProps.inputItem}
             actionsColProps={searchColProps.actions}
+            compactLayout={searchCompactLayout}
             onSubmit={(values) => {
               onSubmitFilters(values)
               resetPage()

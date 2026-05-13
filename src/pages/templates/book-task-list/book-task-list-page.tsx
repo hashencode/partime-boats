@@ -83,6 +83,7 @@ type BookTaskFormValues = {
 const PAGE_TITLE = '任务列表'
 const CARD_TITLE = '任务列表'
 const TABLE_ID = 'book-task-list'
+const AUTO_REFRESH_INTERVAL_MS = 15_000
 
 const BOX_TYPE_OPTIONS = ['20 Dry Standard', '40 Dry High', '40 Reefer High', '45 Dry High'].map((value) => ({
   label: value,
@@ -122,6 +123,7 @@ const createFilterOptions = (items: string[]) => items.map((item) => ({ label: i
 // 操作列固定宽度：当前仅展示 1 个“修改”按钮，2 个汉字按 14px/字计算为 28，
 // 额外余量按 16，总计 44；考虑按钮点击热区与表格留白，向上固化为 60。
 const ACTION_COLUMN_WIDTH = 60
+const BATCH_OPEN_CONFIRM_OVERLAY_STYLE = { maxWidth: 280 }
 
 const renderBreakAllText = (value?: string | number | null) => {
   const text = value === null || value === undefined || value === '' ? '-' : String(value)
@@ -448,6 +450,16 @@ export const BookTaskListPage = () => {
     batchQueueTask.reset()
   }, [batchQueueTask.progress.status, batchQueueTask.reset])
 
+  useEffect(() => {
+    const timerId = window.setInterval(() => {
+      void reloadRef.current()
+    }, AUTO_REFRESH_INTERVAL_MS)
+
+    return () => {
+      window.clearInterval(timerId)
+    }
+  }, [])
+
   const batchOpenProgressPercent =
     batchQueueTask.progress.total > 0
       ? Math.min(100, Math.round((batchQueueTask.progress.processed / batchQueueTask.progress.total) * 100))
@@ -481,6 +493,7 @@ export const BookTaskListPage = () => {
             title={buildBatchOpenConfirmTitle(selectedRowKeys.length)}
             okText="是"
             cancelText="否"
+            overlayStyle={BATCH_OPEN_CONFIRM_OVERLAY_STYLE}
             onConfirm={() => handleBatchOpen()}
           >
             <Button loading={batchQueueTask.progress.status === 'running'} disabled={!canWrite}>

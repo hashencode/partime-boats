@@ -1,9 +1,10 @@
 import React from 'react'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterAll, afterEach, beforeAll, describe, expect, it } from '@rstest/core'
 import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
 import { AuthContext } from '../../../infrastructure/auth/auth-context'
+import { ThemeProvider } from '../../../shared/contexts/theme-context'
 import { BookTaskListPage } from './book-task-list-page'
 
 void React
@@ -29,6 +30,12 @@ Object.defineProperty(window, 'getComputedStyle', {
   writable: true,
   value: (element: Element) => originalGetComputedStyle(element),
 })
+
+const originalSetInterval = window.setInterval.bind(window)
+const originalClearInterval = window.clearInterval.bind(window)
+let intervalCallback: (() => void) | null = null
+let clearedIntervalId: number | null = null
+let nextTimerId = 1
 
 if (!window.ResizeObserver) {
   class ResizeObserverMock {
@@ -115,6 +122,11 @@ afterEach(() => {
   latestPerPage = null
   requestParamsHistory = []
   batchOpenPayloads = []
+  intervalCallback = null
+  clearedIntervalId = null
+  nextTimerId = 1
+  window.setInterval = originalSetInterval
+  window.clearInterval = originalClearInterval
   server.resetHandlers()
 })
 
@@ -135,7 +147,9 @@ const renderPage = (role: 'admin' | 'editor' | 'viewer' = 'admin') =>
         logout: () => undefined,
       }}
     >
-      <BookTaskListPage />
+      <ThemeProvider>
+        <BookTaskListPage />
+      </ThemeProvider>
     </AuthContext.Provider>
   )
 
@@ -213,6 +227,8 @@ describe('BookTaskListPage', () => {
     })
 
     fireEvent.click(screen.getByRole('button', { name: '批量打开' }))
+    const confirmText = await screen.findByText('未勾选任何列表项，将会开启当前筛选结果中的所有项，是否确认？')
+    expect(confirmText.closest('.ant-popover')?.getAttribute('style')).toContain('max-width: 280px')
     fireEvent.click(await screen.findByRole('button', { name: '是' }))
 
     await waitFor(() => {
@@ -224,4 +240,71 @@ describe('BookTaskListPage', () => {
     expect(batchOpenPayloads[0]?.split(',').map((item) => item.trim()).filter(Boolean)).toHaveLength(100)
     expect(batchOpenPayloads[1]?.split(',').map((item) => item.trim()).filter(Boolean)).toHaveLength(1)
   }, 10000)
+
+  it('should auto refresh every 15 seconds without changing submitted filters or pagination', async () => {
+    window.setInterval = ((handler: TimerHandler, timeout?: number) => {
+      if (timeout === 15000) {
+        intervalCallback = () => {
+          if (typeof handler === 'function') {
+            handler()
+          }
+        }
+        return nextTimerId++
+      }
+
+      return originalSetInterval(handler, timeout)
+    }) as typeof window.setInterval
+
+    window.clearInterval = ((timerId?: number) => {
+      clearedIntervalId = timerId ?? null
+    }) as typeof window.clearInterval
+
+    const view = renderPage()
+
+    await waitFor(() => {
+      expect(screen.getByText('tester')).toBeTruthy()
+    })
+
+    fireEvent.change(screen.getByLabelText('对应taskID'), { target: { value: '101' } })
+    fireEvent.click(screen.getByRole('button', { name: /查\s*询/ }))
+
+    await waitFor(() => {
+      expect(requestParamsHistory.at(-1)).toEqual({
+        page: '1',
+        perPage: '10',
+        orderId: '101',
+      })
+    })
+
+    const pageTwoItem = view.container.querySelector('.ant-pagination-item-2') as HTMLElement | null
+    expect(pageTwoItem).toBeTruthy()
+    fireEvent.click(pageTwoItem!)
+
+    await waitFor(() => {
+      expect(requestParamsHistory.at(-1)).toEqual({
+        page: '2',
+        perPage: '10',
+        orderId: '101',
+      })
+    })
+
+    fireEvent.change(screen.getByLabelText('对应taskID'), { target: { value: '999' } })
+
+    expect(intervalCallback).toBeTruthy()
+    await act(async () => {
+      intervalCallback?.()
+    })
+
+    await waitFor(() => {
+      expect(requestParamsHistory.at(-1)).toEqual({
+        page: '2',
+        perPage: '10',
+        orderId: '101',
+      })
+    })
+
+    view.unmount()
+
+    expect(clearedIntervalId).toBe(1)
+  })
 })

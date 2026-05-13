@@ -1,3 +1,4 @@
+import React from 'react'
 import {
   createContext,
   useCallback,
@@ -8,7 +9,10 @@ import {
   type PropsWithChildren,
 } from 'react'
 
+void React
+
 export const THEME_STORAGE_KEY = 'admin-theme-mode'
+export const SEARCH_COMPACT_LAYOUT_STORAGE_KEY = 'admin-search-compact-layout'
 
 export type ThemeMode = 'light' | 'dark' | 'system'
 type ResolvedTheme = 'light' | 'dark'
@@ -16,7 +20,9 @@ type ResolvedTheme = 'light' | 'dark'
 type ThemeContextValue = {
   mode: ThemeMode
   resolvedTheme: ResolvedTheme
+  searchCompactLayout: boolean
   setMode: (mode: ThemeMode) => void
+  setSearchCompactLayout: (enabled: boolean) => void
   toggleTheme: () => void
 }
 
@@ -49,9 +55,22 @@ const getStoredMode = (): ThemeMode => {
   }
 }
 
+const getStoredSearchCompactLayout = (): boolean => {
+  if (typeof window === 'undefined') {
+    return false
+  }
+
+  try {
+    return window.localStorage.getItem(SEARCH_COMPACT_LAYOUT_STORAGE_KEY) === 'true'
+  } catch {
+    return false
+  }
+}
+
 export const ThemeProvider = ({ children }: PropsWithChildren) => {
   const [mode, setMode] = useState<ThemeMode>(getStoredMode)
   const [systemTheme, setSystemTheme] = useState<ResolvedTheme>(getSystemTheme)
+  const [searchCompactLayout, setSearchCompactLayout] = useState<boolean>(getStoredSearchCompactLayout)
 
   const resolvedTheme = mode === 'system' ? systemTheme : mode
 
@@ -83,6 +102,14 @@ export const ThemeProvider = ({ children }: PropsWithChildren) => {
     }
   }, [mode])
 
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(SEARCH_COMPACT_LAYOUT_STORAGE_KEY, String(searchCompactLayout))
+    } catch {
+      // Ignore storage failures and keep runtime UI preference state available.
+    }
+  }, [searchCompactLayout])
+
   const toggleTheme = useCallback(() => {
     setMode((currentMode) => {
       const currentResolved = currentMode === 'system' ? getSystemTheme() : currentMode
@@ -91,8 +118,8 @@ export const ThemeProvider = ({ children }: PropsWithChildren) => {
   }, [])
 
   const value = useMemo(
-    () => ({ mode, resolvedTheme, setMode, toggleTheme }),
-    [mode, resolvedTheme, toggleTheme]
+    () => ({ mode, resolvedTheme, searchCompactLayout, setMode, setSearchCompactLayout, toggleTheme }),
+    [mode, resolvedTheme, searchCompactLayout, toggleTheme]
   )
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>

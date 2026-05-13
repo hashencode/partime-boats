@@ -81,4 +81,29 @@ describe('list-toolbar-actions', () => {
       expect(recordedKeys.length).toBeGreaterThan(0)
     })
   })
+
+  it('limits column setting panel height and enables vertical scrolling', async () => {
+    render(
+      <ListToolbarActions
+        tableSize="small"
+        onTableSizeChange={() => undefined}
+        onReload={() => undefined}
+        columnSettingOptions={Array.from({ length: 20 }, (_, index) => ({
+          key: `column-${index + 1}`,
+          label: `列${index + 1}`,
+        }))}
+        selectedColumnKeys={['column-1']}
+        onSelectedColumnKeysChange={() => undefined}
+      />
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: '列设置' }))
+
+    const checkbox = await screen.findByRole('checkbox', { name: '列1' })
+    const scrollContainer = checkbox.closest('div[class*="overflow-y-auto"]') as HTMLDivElement | null
+
+    expect(scrollContainer).toBeTruthy()
+    expect(scrollContainer?.style.maxHeight).toBe('400px')
+    expect(scrollContainer?.className).toContain('overflow-y-auto')
+  })
 })
