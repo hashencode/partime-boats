@@ -12,6 +12,7 @@ import {
 } from 'antd'
 import dayjs, { type Dayjs } from 'dayjs'
 import React, { useCallback, useMemo, useRef, useState } from 'react'
+import { ListRowActions } from '../../../shared/components/list-row-actions'
 import { normalizeApiError, type ApiError } from '../../../infrastructure/http/api-client'
 import { LIST_REFRESH_CHANNEL, LIST_REFRESH_EVENT } from '../../../shared/constants/list-refresh-channel'
 import {
@@ -29,9 +30,9 @@ import {
 
 void React
 
-// 操作列固定宽度：3 个按钮（查看/编辑/删除）按 4 字按钮口径估算 56*3=168，
-// 2 个间距按 13*2=26，额外余量 16，总计 210（不超过 220 上限）。
-const ACTION_COLUMN_WIDTH = 210
+// 操作列固定宽度：查看 2 字 28px + Divider 13px + 编辑 2 字 28px +
+// Divider 13px + 更多 2 字 28px + 余量 16px = 126px，向上固化为 140px。
+const ACTION_COLUMN_WIDTH = 140
 
 const statusMap: Record<RuleStatus, { text: string; color: string }> = {
   0: { text: '关闭', color: 'default' },
@@ -241,33 +242,41 @@ export const TableQueryPage = () => {
           key: 'action',
           width: ACTION_COLUMN_WIDTH,
           render: (_, record) => (
-            <Space>
-              <Button type="link" className="!p-0" onClick={() => openFormPage('readonly', record.key)}>
-                查看
-              </Button>
-              <Button type="link" className="!p-0" onClick={() => openFormPage('modify', record.key)}>
-                编辑
-              </Button>
-              <Popconfirm
-                title="确认删除这条规则吗？"
-                description="删除后将从当前列表中移除。"
-                okText="确认删除"
-                cancelText="取消"
-                onConfirm={() => {
-                  void handleDeleteRule(record, async () => {
-                    await reload()
-                  })
-                }}
-              >
-                <Button type="link" danger className="!p-0">
-                  删除
-                </Button>
-              </Popconfirm>
-            </Space>
+            <ListRowActions
+              maxVisibleActions={2}
+              actions={[
+                {
+                  key: 'view',
+                  label: '查看',
+                  onClick: () => openFormPage('readonly', record.key),
+                },
+                {
+                  key: 'edit',
+                  label: '编辑',
+                  onClick: () => openFormPage('modify', record.key),
+                },
+                {
+                  key: 'delete',
+                  label: '删除',
+                  danger: true,
+                  confirm: {
+                    title: '确认删除这条规则吗？',
+                    description: '删除后将从当前列表中移除。',
+                    okText: '确认删除',
+                    cancelText: '取消',
+                  },
+                  onClick: () => {
+                    void handleDeleteRule(record, async () => {
+                      await reload()
+                    })
+                  },
+                },
+              ]}
+            />
           ),
         },
       ],
-      buildTableNode: ({ columns, dataSource, loading, tableSize, current, pageSize, tableClassName, pagination }) => {
+      buildTableNode: ({ columns, dataSource, loading, tableSize, current, pageSize, tableClassName, pagination, virtualScroll }) => {
         paginationMetaRef.current = { current, pageSize }
 
         return (
@@ -279,6 +288,8 @@ export const TableQueryPage = () => {
             size={tableSize}
             pagination={pagination}
             loading={loading}
+            virtual={virtualScroll.enabled}
+            scroll={virtualScroll.enabled ? virtualScroll.scroll : undefined}
             rowSelection={{
               onChange: (_, rows) => setSelectedRows(rows),
             }}
@@ -286,7 +297,7 @@ export const TableQueryPage = () => {
         )
       },
       createAction: {
-        label: '新建',
+        label: '新增规则',
         icon: <PlusOutlined />,
       },
       renderAfterContent:

@@ -8,7 +8,6 @@ export const buildStandardListPagination = (
   ...pagination,
   size: 'middle',
   showQuickJumper: true,
-  showSizeChanger: true,
   showTotal: (total) => `共 ${total} 条数据`,
-  position: ['bottomRight'],
+  placement: ['bottomEnd'],
 })

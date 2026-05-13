@@ -49,6 +49,17 @@ export const fetchBasePortList = async (): Promise<BasePortItem[]> => {
   return unwrapLegacyEnvelope(response.data)
 }
 
+export const fetchBasePortDetail = async (resourceKey: string): Promise<BasePortItem> => {
+  const rows = await fetchBasePortList()
+  const matched = rows.find((item) => String(item.id) === resourceKey)
+
+  if (!matched) {
+    throw new Error('未找到对应的基础端口记录。')
+  }
+
+  return matched
+}
+
 export const fetchShippingLineOptions = async (): Promise<string[]> => {
   const response = await apiClient.get<string[] | LegacyEnvelope<string[]>>('/shippingLine')
   return unwrapLegacyEnvelope(response.data)

@@ -33,6 +33,9 @@ if (!window.ResizeObserver) {
   window.ResizeObserver = ResizeObserverMock as unknown as typeof ResizeObserver
 }
 
+let latestToggleIds = ''
+let latestToggleStatus = ''
+
 const server = setupServer(
   http.get('*/check/show', () =>
     HttpResponse.json([
@@ -60,7 +63,12 @@ const server = setupServer(
   http.get('*/endport', () => HttpResponse.json(['GDANSK', 'HAMBURG'])),
   http.get('*/account/num', () => HttpResponse.json('账号数: 12')),
   http.get('*/book/clear', () => HttpResponse.json({ bool_status: true, data: true })),
-  http.get('*/check/auto', () => HttpResponse.json({ bool_status: true, data: true }))
+  http.get('*/check/auto', ({ request }) => {
+    const url = new URL(request.url)
+    latestToggleIds = url.searchParams.get('ids') ?? ''
+    latestToggleStatus = url.searchParams.get('early_date') ?? ''
+    return HttpResponse.json({ bool_status: true, data: true })
+  })
 )
 
 beforeAll(() => {
@@ -68,6 +76,8 @@ beforeAll(() => {
 })
 
 afterEach(() => {
+  latestToggleIds = ''
+  latestToggleStatus = ''
   server.resetHandlers()
 })
 
@@ -129,6 +139,51 @@ describe('MskQueryListPage', () => {
 
     await waitFor(() => {
       expect(requestCount).toBe(initialCount + 1)
+    })
+  })
+
+  it('should toggle all visible rows when nothing is checked', async () => {
+    render(<MskQueryListPage />)
+
+    await waitFor(() => {
+      expect(screen.getByText('NINGBO')).toBeTruthy()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: '开启所有' }))
+    fireEvent.click(await screen.findByRole('button', { name: '是' }))
+
+    await waitFor(() => {
+      expect(latestToggleIds).toBe('1')
+      expect(latestToggleStatus).toBe('0')
+    })
+  })
+
+  it('should toggle checked rows when rows are selected', async () => {
+    server.use(
+      http.get('*/check/show', () =>
+        HttpResponse.json([
+          { id: 1, origincity_name: 'NINGBO', destinationcity_name: 'GDANSK' },
+          { id: 2, origincity_name: 'SHA', destinationcity_name: 'HAMBURG' },
+        ])
+      )
+    )
+
+    render(<MskQueryListPage />)
+
+    await waitFor(() => {
+      expect(screen.getByText('NINGBO')).toBeTruthy()
+      expect(screen.getByText('HAMBURG')).toBeTruthy()
+    })
+
+    const rowCheckboxes = screen.getAllByRole('checkbox')
+    fireEvent.click(rowCheckboxes[1] as Element)
+
+    fireEvent.click(screen.getByRole('button', { name: '关闭所有' }))
+    fireEvent.click(await screen.findByRole('button', { name: '是' }))
+
+    await waitFor(() => {
+      expect(latestToggleIds).toBe('1')
+      expect(latestToggleStatus).toBe('-1')
     })
   })
 })

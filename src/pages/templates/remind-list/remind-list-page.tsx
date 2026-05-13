@@ -5,6 +5,7 @@ import ExportJsonExcel from 'js-export-excel'
 import React, { useCallback, useMemo, useRef, useState } from 'react'
 import { hasPermission } from '../../../infrastructure/auth/permissions'
 import { useAuth } from '../../../infrastructure/auth/use-auth'
+import { ListRowActions } from '../../../shared/components/list-row-actions'
 import { normalizeApiError, type ApiError } from '../../../infrastructure/http/api-client'
 import {
   createPortFilterFields,
@@ -354,28 +355,32 @@ export const RemindListPage = () => {
             render: (_, record) => {
               if (!canWrite) return null
               return (
-                <Popconfirm
-                  title="确认要作废吗？"
-                  okText="是"
-                  cancelText="否"
-                  onConfirm={async () => {
-                    if (record.is_use_label === '是') {
-                      message.error('请勿重复作废')
-                      return
-                    }
-                    await handleInvalidate(String(record.id))
-                  }}
-                >
-                  <Button type="link" className="!px-0">
-                    作废
-                  </Button>
-                </Popconfirm>
+                <ListRowActions
+                  actions={[
+                    {
+                      key: 'invalidate',
+                      label: '作废',
+                      confirm: {
+                        title: '确认要作废吗？',
+                        okText: '是',
+                        cancelText: '否',
+                      },
+                      onClick: async () => {
+                        if (record.is_use_label === '是') {
+                          message.error('请勿重复作废')
+                          return
+                        }
+                        await handleInvalidate(String(record.id))
+                      },
+                    },
+                  ]}
+                />
               )
             },
           },
         ] as ColumnsType<RemindRow>
       },
-      buildTableNode: ({ columns, dataSource, loading, tableClassName, pagination, tableSize }) => {
+      buildTableNode: ({ columns, dataSource, loading, tableClassName, pagination, tableSize, virtualScroll }) => {
         currentRowsRef.current = dataSource
         return (
           <Table<RemindRow>
@@ -399,7 +404,8 @@ export const RemindListPage = () => {
                   }
                 : undefined
             }
-            scroll={{ x: 1600 }}
+            virtual={virtualScroll.enabled}
+            scroll={virtualScroll.enabled ? { x: 1600, y: virtualScroll.scroll.y } : { x: 1600 }}
           />
         )
       },

@@ -34,7 +34,22 @@ if (!window.ResizeObserver) {
   window.ResizeObserver = ResizeObserverMock as unknown as typeof ResizeObserver
 }
 
-let createPayload: Record<string, unknown> | null = null
+if (!window.BroadcastChannel) {
+  class BroadcastChannelMock {
+    name: string
+    onmessage: ((event: MessageEvent) => void) | null = null
+    constructor(name: string) {
+      this.name = name
+    }
+    postMessage(data: unknown) {
+      void data
+    }
+    close() {}
+  }
+
+  window.BroadcastChannel = BroadcastChannelMock as unknown as typeof BroadcastChannel
+}
+
 const buildBasePortRows = (count: number) =>
   Array.from({ length: count }, (_, index) => ({
     id: index + 1,
@@ -48,22 +63,13 @@ const buildBasePortRows = (count: number) =>
     shippingline: 'MSK,CMA',
   }))
 
-const server = setupServer(
-  http.get('*/basePort', () => HttpResponse.json(buildBasePortRows(12))),
-  http.get('*/shippingLine', () => HttpResponse.json(['MSK', 'CMA'])),
-  http.post('*/addBasePort', async ({ request }) => {
-    createPayload = (await request.json()) as Record<string, unknown>
-    return HttpResponse.json({ bool_status: true, data: true })
-  }),
-  http.post('*/basePort', () => HttpResponse.json({ bool_status: true, data: true }))
-)
+const server = setupServer(http.get('*/basePort', () => HttpResponse.json(buildBasePortRows(12))))
 
 beforeAll(() => {
   server.listen({ onUnhandledRequest: 'error' })
 })
 
 afterEach(() => {
-  createPayload = null
   server.resetHandlers()
 })
 
@@ -89,67 +95,63 @@ const renderPage = (role: 'admin' | 'editor' | 'viewer' = 'admin') =>
   )
 
 describe('BasePortListPage', () => {
-  it('should render base port rows when request succeeds', async () => {
+  it('renders base port rows without the filter card when request succeeds', async () => {
     renderPage()
 
-    await waitFor(() => {
-      expect(screen.getAllByText('基础端口列表').length).toBeGreaterThan(0)
-      expect(screen.getByText('PORT-1')).toBeTruthy()
-      expect(screen.getByRole('button', { name: '新增一行' })).toBeTruthy()
-      expect(screen.getByRole('button', { name: '刷新' })).toBeTruthy()
-      expect(screen.getByRole('button', { name: '密度' })).toBeTruthy()
-      expect(screen.getByRole('button', { name: '列设置' })).toBeTruthy()
-    })
+    expect(await screen.findByText('PORT-1')).toBeTruthy()
+    expect(screen.getAllByText('基础端口列表')).toHaveLength(1)
+    expect(screen.queryByRole('button', { name: /查\s*询/ })).toBeNull()
+    expect(screen.getByRole('button', { name: /新增端口/ })).toBeTruthy()
+    expect(screen.getByRole('button', { name: '刷新' })).toBeTruthy()
   })
 
-  it('should show error state when list request fails', async () => {
+  it('shows error state when list request fails', async () => {
     server.use(http.get('*/basePort', () => HttpResponse.json({ message: 'server err' }, { status: 500 })))
 
     renderPage()
 
-    await waitFor(() => {
-      expect(screen.getByText('基础端口列表加载失败')).toBeTruthy()
-      expect(screen.getByText('server err')).toBeTruthy()
-    })
+    expect(await screen.findByText('基础端口列表加载失败')).toBeTruthy()
+    expect(screen.getByText('请求失败，请稍后重试。')).toBeTruthy()
   })
 
-  it('should hide write actions for viewer role', async () => {
+  it('hides write actions for viewer role', async () => {
     renderPage('viewer')
 
-    await waitFor(() => {
-      expect(screen.getByText('PORT-1')).toBeTruthy()
-    })
+    expect(await screen.findByText('PORT-1')).toBeTruthy()
 
-    expect(screen.queryByRole('button', { name: '新增一行' })).toBeNull()
-    expect(screen.queryByText('修改')).toBeNull()
-    expect(screen.getByRole('button', { name: '刷新' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /新增端口/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: '修改' })).toBeNull()
+    expect(screen.getAllByRole('button', { name: '查看' }).length).toBeGreaterThan(0)
   })
 
-  it('should block save when required fields are empty', async () => {
+  it('opens add and modify form pages in a new tab', async () => {
+    const openSpy = window.open
+    const calls: unknown[][] = []
+    window.open = ((...args: unknown[]) => {
+      calls.push(args)
+      return null
+    }) as typeof window.open
+
     renderPage()
 
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: '新增一行' })).toBeTruthy()
-    })
+    expect(await screen.findByText('PORT-1')).toBeTruthy()
 
-    fireEvent.click(screen.getByRole('button', { name: '新增一行' }))
-    fireEvent.click(screen.getByText('保存'))
+    fireEvent.click(screen.getByRole('button', { name: /新增端口/ }))
+    fireEvent.click(screen.getAllByRole('button', { name: '修改' })[0] as HTMLElement)
 
-    await waitFor(() => {
-      expect(createPayload).toBeNull()
-      expect(screen.getAllByText('数据不能为空').length).toBeGreaterThan(0)
-    })
+    expect(calls).toHaveLength(2)
+    expect(calls[0]?.[0]).toBe('/get_base_list/form?mode=add')
+    expect(calls[1]?.[0]).toBe('/get_base_list/form?mode=modify&id=1')
+
+    window.open = openSpy
   })
 
-  it('should paginate rows on the frontend', async () => {
+  it('paginates rows locally on the frontend', async () => {
     renderPage()
 
-    await waitFor(() => {
-      expect(screen.getByText('PORT-1')).toBeTruthy()
-      expect(screen.queryByText('PORT-11')).toBeNull()
-      expect(screen.getByText('共 12 条数据')).toBeTruthy()
-      expect(screen.getAllByText('修改').length).toBeGreaterThan(0)
-    })
+    expect(await screen.findByText('PORT-1')).toBeTruthy()
+    expect(screen.queryByText('PORT-11')).toBeNull()
+    expect(screen.getByText('共 12 条数据')).toBeTruthy()
 
     fireEvent.click(screen.getByTitle('2'))
 

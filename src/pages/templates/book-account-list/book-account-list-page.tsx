@@ -1,4 +1,4 @@
-import { Table, type TablePaginationConfig } from 'antd'
+import { Table } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import dayjs from 'dayjs'
 import React, { useMemo } from 'react'
@@ -78,11 +78,6 @@ export const BookAccountListPage = () => {
       tableId: TABLE_ID,
       formRoute: '/book_account_list/form',
       initialFilters: {},
-      pagination: {
-        defaultCurrent: 1,
-        defaultPageSize: 10,
-        pageSizeOptions: [100, 200, 500],
-      },
       toFilters,
       buildRequestFilters: ({ filters, current, pageSize }) => ({
         ...filters,
@@ -146,16 +141,7 @@ export const BookAccountListPage = () => {
             sorter: (a, b) => dayjs(a.update_time).valueOf() - dayjs(b.update_time).valueOf(),
           },
         ] satisfies ColumnsType<BookAccountRow>,
-      buildTableNode: ({ columns, current, dataSource, loading, pageSize, tableClassName, pagination, tableSize }) => {
-        const mergedPagination: TablePaginationConfig = {
-          ...pagination,
-          current,
-          pageSize,
-          total: pagination.total,
-          showSizeChanger: true,
-          pageSizeOptions: [100, 200, 500],
-        }
-
+      buildTableNode: ({ columns, dataSource, loading, tableClassName, pagination, tableSize, virtualScroll }) => {
         return (
           <Table<BookAccountRow>
             rowKey="key"
@@ -163,9 +149,10 @@ export const BookAccountListPage = () => {
             columns={columns}
             dataSource={dataSource}
             loading={loading}
-            pagination={mergedPagination}
+            pagination={pagination}
             size={tableSize}
-            scroll={{ x: 700 }}
+            virtual={virtualScroll.enabled}
+            scroll={virtualScroll.enabled ? { x: 700, y: virtualScroll.scroll.y } : { x: 700 }}
           />
         )
       },

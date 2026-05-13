@@ -1,10 +1,11 @@
-import { Button, Col, DatePicker, Form, Input, InputNumber, Modal, Popconfirm, Row, Select, Space, Table, Tag, Tooltip, Typography, message, theme } from 'antd'
+import { Button, Col, DatePicker, Form, Input, InputNumber, Modal, Popconfirm, Progress, Row, Select, Space, Table, Tag, Tooltip, Typography, message, theme } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import dayjs, { type Dayjs } from 'dayjs'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { hasPermission } from '../../../infrastructure/auth/permissions'
 import { normalizeApiError, type ApiError } from '../../../infrastructure/http/api-client'
 import { useAuth } from '../../../infrastructure/auth/use-auth'
+import { ListRowActions } from '../../../shared/components/list-row-actions'
 import {
   getCachedListMetadata,
   createPortFilterFields,
@@ -30,6 +31,7 @@ import {
   type BookTaskQueryFilters,
   type BookTaskSavePayload,
 } from './api'
+import { useBatchQueueTask } from '../../../shared/hooks/use-batch-queue-task'
 
 void React
 
@@ -217,6 +219,13 @@ const buildScopedIds = async (filters: BookTaskQueryFilters, rows: EditableBookT
   return undefined
 }
 
+const buildBatchOpenConfirmTitle = (selectedCount: number) => {
+  if (selectedCount === 0) {
+    return '未勾选任何列表项，将会开启当前筛选结果中的所有项，是否确认？'
+  }
+  return '确认要开启选中的列表项吗？'
+}
+
 const BookTaskFormFields = ({
   startPortOptions,
   endPortOptions,
@@ -275,6 +284,7 @@ export const BookTaskListPage = () => {
   const latestFiltersRef = useRef<BookTaskQueryFilters>({})
   const currentRowsRef = useRef<EditableBookTask[]>([])
   const reloadRef = useRef<() => Promise<void>>(async () => {})
+  const batchQueueTask = useBatchQueueTask()
 
   useEffect(() => {
     void Promise.all([
@@ -383,6 +393,66 @@ export const BookTaskListPage = () => {
     [batchForm, selectedRowKeys]
   )
 
+  const handleBatchOpen = useCallback(async () => {
+    const selectedIds = [...selectedRowKeys]
+
+    if (selectedIds.length > 0) {
+      await batchQueueTask.start({
+        pageSize: selectedIds.length,
+        loadPage: async () => ({
+          ids: selectedIds,
+          total: selectedIds.length,
+        }),
+        processPage: async (ids) => {
+          await batchUpdateBookTask({ ids: ids.join(', '), is_order: 1 })
+        },
+      })
+      return
+    }
+
+    if (currentRowsRef.current.length === 0) {
+      message.warning('当前筛选结果中没有可操作的数据')
+      return
+    }
+
+    const queueFilters = { ...latestFiltersRef.current }
+
+    await batchQueueTask.start({
+      pageSize: 100,
+      loadPage: async (page, pageSize) => {
+        const response = await fetchBookTaskList({
+          ...queueFilters,
+          page,
+          per_page: pageSize,
+        })
+
+        return {
+          ids: response.data.map((item) => item.id),
+          total: response.total,
+        }
+      },
+      processPage: async (ids) => {
+        await batchUpdateBookTask({ ids: ids.join(', '), is_order: 1 })
+      },
+    })
+  }, [batchQueueTask, selectedRowKeys])
+
+  useEffect(() => {
+    if (batchQueueTask.progress.status !== 'success') {
+      return
+    }
+
+    void reloadRef.current()
+    setSelectedRowKeys([])
+    message.success('批量打开成功')
+    batchQueueTask.reset()
+  }, [batchQueueTask.progress.status, batchQueueTask.reset])
+
+  const batchOpenProgressPercent =
+    batchQueueTask.progress.total > 0
+      ? Math.min(100, Math.round((batchQueueTask.progress.processed / batchQueueTask.progress.total) * 100))
+      : 0
+
   const spec = useMemo<
     StandardListPageSpec<BookTaskFilterValues, BookTaskQueryFilters, BookTaskListResponse, EditableBookTask, ApiError>
   >(
@@ -392,11 +462,12 @@ export const BookTaskListPage = () => {
       tableId: TABLE_ID,
       formRoute: '/get_book_task_list/form',
       initialFilters: {},
-      pagination: {
-        defaultPageSize: 10,
-        pageSizeOptions: [10, 100, 500, 1000],
-      },
       toFilters: toQueryFilters,
+      buildRequestFilters: ({ filters, current, pageSize }) => ({
+        ...filters,
+        page: current,
+        per_page: pageSize,
+      }),
       request: async (filters) => {
         latestFiltersRef.current = filters
         return fetchBookTaskList(filters)
@@ -406,6 +477,16 @@ export const BookTaskListPage = () => {
       filterFields,
       toolbarExtra: (
         <Space wrap>
+          <Popconfirm
+            title={buildBatchOpenConfirmTitle(selectedRowKeys.length)}
+            okText="是"
+            cancelText="否"
+            onConfirm={() => handleBatchOpen()}
+          >
+            <Button loading={batchQueueTask.progress.status === 'running'} disabled={!canWrite}>
+              批量打开
+            </Button>
+          </Popconfirm>
           <Popconfirm
             title="确认关闭初始化吗？"
             okText="是"
@@ -556,22 +637,24 @@ export const BookTaskListPage = () => {
             render: (_, record) => {
               if (!canWrite) return null
               return (
-                <Button
-                  type="link"
-                  className="!px-0"
-                  onClick={() => {
-                    editForm.setFieldsValue(toFormValues(record))
-                    setEditingItem(record)
-                  }}
-                >
-                  修改
-                </Button>
+                <ListRowActions
+                  actions={[
+                    {
+                      key: 'edit',
+                      label: '修改',
+                      onClick: () => {
+                        editForm.setFieldsValue(toFormValues(record))
+                        setEditingItem(record)
+                      },
+                    },
+                  ]}
+                />
               )
             },
           },
         ] as ColumnsType<EditableBookTask>
       },
-      buildTableNode: ({ columns, dataSource, loading, tableSize, tableClassName, pagination }) => {
+      buildTableNode: ({ columns, dataSource, loading, tableSize, tableClassName, pagination, virtualScroll }) => {
         currentRowsRef.current = dataSource
 
         return (
@@ -588,7 +671,8 @@ export const BookTaskListPage = () => {
               onChange: (keys) => setSelectedRowKeys(keys as number[]),
               columnWidth: 50,
             }}
-            scroll={{ x: 3600 }}
+            virtual={virtualScroll.enabled}
+            scroll={virtualScroll.enabled ? { x: 3600, y: virtualScroll.scroll.y } : { x: 3600 }}
           />
         )
       },
@@ -618,24 +702,25 @@ export const BookTaskListPage = () => {
                 已选择 <span className="font-medium">{selectedRowKeys.length}</span> 项
               </Typography.Text>
               <Space>
-                <Button onClick={() => setBatchVisible(true)}>批量修改</Button>
-                <Button
-                  type="primary"
-                  onClick={async () => {
-                    await batchUpdateBookTask({ ids: selectedRowKeys.join(', '), is_order: 1 })
-                    message.success('修改成功')
-                    setSelectedRowKeys([])
-                    await reloadRef.current()
-                  }}
-                >
-                  批量打开
+                <Button onClick={() => setBatchVisible(true)}>
+                  批量修改
                 </Button>
               </Space>
             </div>
           </div>
         ) : null,
     }),
-    [canWrite, editForm, filterFields, handleToggleOrderStatus, selectedRowKeys, token.colorBgElevated, token.colorBorderSecondary]
+    [
+      batchQueueTask.progress.status,
+      canWrite,
+      editForm,
+      filterFields,
+      handleBatchOpen,
+      handleToggleOrderStatus,
+      selectedRowKeys,
+      token.colorBgElevated,
+      token.colorBorderSecondary,
+    ]
   )
 
   return (
@@ -693,6 +778,36 @@ export const BookTaskListPage = () => {
             </Button>
           </div>
         </Form>
+      </Modal>
+      <Modal
+        title="批量打开进度"
+        open={batchQueueTask.progress.status === 'running' || batchQueueTask.progress.status === 'paused'}
+        footer={null}
+        closable={false}
+        mask={{ closable: false }}
+        destroyOnHidden={false}
+      >
+        <div className="flex w-full flex-col gap-4">
+          <Progress percent={batchOpenProgressPercent} status={batchQueueTask.progress.status === 'paused' ? 'exception' : 'active'} />
+          <Typography.Text>
+            当前正在处理第 {batchQueueTask.progress.currentStart} 到 {batchQueueTask.progress.currentEnd} 条的开启任务队列
+          </Typography.Text>
+          {batchQueueTask.progress.errorMessage ? (
+            <Typography.Text type="danger">{batchQueueTask.progress.errorMessage}</Typography.Text>
+          ) : null}
+          {batchQueueTask.progress.status === 'paused' ? (
+            <div className="flex justify-end">
+              <Button
+                type="primary"
+                onClick={() => {
+                  void batchQueueTask.retry()
+                }}
+              >
+                重试
+              </Button>
+            </div>
+          ) : null}
+        </div>
       </Modal>
     </>
   )

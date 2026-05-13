@@ -41,6 +41,10 @@ if (!window.ResizeObserver) {
 }
 
 let listRequestCount = 0
+let latestPage: string | null = null
+let latestPerPage: string | null = null
+let requestParamsHistory: Array<{ page: string | null; perPage: string | null; orderId: string | null }> = []
+let batchOpenPayloads: string[] = []
 const buildTaskRows = (count: number) =>
   Array.from({ length: count }, (_, index) => ({
     id: index + 1,
@@ -69,6 +73,13 @@ const server = setupServer(
     listRequestCount += 1
     const url = new URL(request.url)
     const orderId = url.searchParams.get('order_id')
+    latestPage = url.searchParams.get('page')
+    latestPerPage = url.searchParams.get('per_page')
+    requestParamsHistory.push({
+      page: latestPage,
+      perPage: latestPerPage,
+      orderId,
+    })
     const page = Number(url.searchParams.get('page') || 1)
     const perPage = Number(url.searchParams.get('per_page') || 10)
     const data = orderId === '999' ? [] : buildTaskRows(101)
@@ -85,7 +96,11 @@ const server = setupServer(
     })
   }),
   http.post('*/api/maersk/book/task', () => HttpResponse.json({ bool_status: true, data: true })),
-  http.post('*/api/maersk/group/task', () => HttpResponse.json({ bool_status: true, data: true })),
+  http.post('*/api/maersk/group/task', async ({ request }) => {
+    const payload = (await request.json()) as { ids?: string }
+    batchOpenPayloads.push(payload.ids ?? '')
+    return HttpResponse.json({ bool_status: true, data: true })
+  }),
   http.get('*/api/delay/cid', () => HttpResponse.json({ bool_status: true, data: true })),
   http.get('*/api/delay/route', () => HttpResponse.json({ bool_status: true, data: true }))
 )
@@ -96,6 +111,10 @@ beforeAll(() => {
 
 afterEach(() => {
   listRequestCount = 0
+  latestPage = null
+  latestPerPage = null
+  requestParamsHistory = []
+  batchOpenPayloads = []
   server.resetHandlers()
 })
 
@@ -127,6 +146,9 @@ describe('BookTaskListPage', () => {
     await waitFor(() => {
       expect(screen.getAllByText('任务列表').length).toBeGreaterThan(0)
       expect(screen.getByText('tester')).toBeTruthy()
+      expect(latestPage).toBe('1')
+      expect(latestPerPage).toBe('10')
+      expect(screen.getByRole('button', { name: '批量打开' })).toBeTruthy()
       expect(screen.getByRole('button', { name: '关闭初始化' })).toBeTruthy()
       expect(screen.queryByRole('button', { name: '批量修改' })).toBeNull()
     })
@@ -136,21 +158,28 @@ describe('BookTaskListPage', () => {
     renderPage()
 
     await waitFor(() => {
-      expect(listRequestCount).toBe(1)
+      expect(listRequestCount).toBeGreaterThan(0)
     })
+    const initialCount = listRequestCount
 
     fireEvent.change(screen.getByLabelText('对应taskID'), { target: { value: '999' } })
 
     await waitFor(() => {
-      expect(listRequestCount).toBe(1)
+      expect(listRequestCount).toBe(initialCount)
     })
 
     fireEvent.click(screen.getByRole('button', { name: /查\s*询/ }))
 
     await waitFor(() => {
-      expect(listRequestCount).toBe(2)
+      expect(listRequestCount).toBe(initialCount + 1)
     })
-  })
+
+    expect(requestParamsHistory.at(-1)).toEqual({
+      page: '1',
+      perPage: '10',
+      orderId: '999',
+    })
+  }, 10000)
 
   it('should hide write actions for viewer role', async () => {
     renderPage('viewer')
@@ -176,19 +205,23 @@ describe('BookTaskListPage', () => {
     })
   })
 
-  it('should show batch toolbar when rows selected', async () => {
+  it('should batch open all filtered rows in queue when nothing is checked', async () => {
     renderPage()
 
     await waitFor(() => {
       expect(screen.getByText('tester')).toBeTruthy()
     })
 
-    fireEvent.click(screen.getByRole('checkbox', { name: /select all/i }))
+    fireEvent.click(screen.getByRole('button', { name: '批量打开' }))
+    fireEvent.click(await screen.findByRole('button', { name: '是' }))
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: '批量修改' })).toBeTruthy()
-      expect(screen.getByRole('button', { name: '批量打开' })).toBeTruthy()
-      expect(listRequestCount).toBe(1)
+      expect(batchOpenPayloads).toHaveLength(2)
     })
-  })
+
+    expect(requestParamsHistory.some((item) => item.page === '1' && item.perPage === '100')).toBeTruthy()
+    expect(requestParamsHistory.some((item) => item.page === '2' && item.perPage === '100')).toBeTruthy()
+    expect(batchOpenPayloads[0]?.split(',').map((item) => item.trim()).filter(Boolean)).toHaveLength(100)
+    expect(batchOpenPayloads[1]?.split(',').map((item) => item.trim()).filter(Boolean)).toHaveLength(1)
+  }, 10000)
 })

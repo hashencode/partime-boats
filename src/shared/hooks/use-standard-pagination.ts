@@ -19,14 +19,30 @@ type StandardPaginationResult = {
 }
 
 const DEFAULT_PAGE_SIZE = 10
-const DEFAULT_MAX_PAGE_SIZE = 100
+const DEFAULT_MAX_PAGE_SIZE = 99999
 const DEFAULT_PAGE_SIZE_OPTIONS = [10, 20, 50, 100]
+export const ALL_DATA_PAGE_SIZE = 99999
+export const VIRTUAL_SCROLL_PAGE_SIZE_THRESHOLD = 100
 
-const toPositiveInteger = (value: number, fallback: number) => {
-  return Number.isFinite(value) && value > 0 ? Math.floor(value) : fallback
+const buildPageSizeOptionLabel = (value: number) => {
+  return value === ALL_DATA_PAGE_SIZE ? '所有数据' : `${value} 条/页`
 }
 
-const clampPageSize = (nextPageSize: number, maxPageSize: number, defaultPageSize: number) => {
+export const buildStandardPageSizeSelectProps = (pageSizeOptions: number[]) => ({
+  showSearch: false,
+  optionLabelProp: 'label',
+  options: pageSizeOptions.map((value) => ({
+    label: buildPageSizeOptionLabel(value),
+    value,
+  })),
+})
+
+const toPositiveInteger = (value: number | string, fallback: number) => {
+  const normalizedValue = Number(value)
+  return Number.isFinite(normalizedValue) && normalizedValue > 0 ? Math.floor(normalizedValue) : fallback
+}
+
+const clampPageSize = (nextPageSize: number | string, maxPageSize: number, defaultPageSize: number) => {
   return Math.min(toPositiveInteger(nextPageSize, defaultPageSize), maxPageSize)
 }
 
@@ -52,8 +68,14 @@ export const useStandardPagination = ({
         .filter((value) => value <= maxPageSize)
     )
     merged.add(safeDefaultPageSize)
+    merged.add(ALL_DATA_PAGE_SIZE)
     return [...merged].sort((a, b) => a - b)
   }, [maxPageSize, pageSizeOptions, safeDefaultPageSize])
+
+  const sizeChangerProps = useMemo(
+    () => buildStandardPageSizeSelectProps(safePageSizeOptions),
+    [safePageSizeOptions]
+  )
 
   const [requestedPage, setRequestedPage] = useState(1)
   const [pageSize, setPageSize] = useState(safeDefaultPageSize)
@@ -77,7 +99,7 @@ export const useStandardPagination = ({
       total,
       size: 'middle',
       showQuickJumper: true,
-      showSizeChanger: true,
+      showSizeChanger: sizeChangerProps,
       pageSizeOptions: safePageSizeOptions,
       onChange: (nextPage, nextPageSize) => {
         const normalizedPageSize = clampPageSize(
@@ -90,7 +112,7 @@ export const useStandardPagination = ({
         setRequestedPage(normalizedPageSize === pageSize ? nextPage : 1)
       },
     }),
-    [current, maxPageSize, pageSize, safeDefaultPageSize, safePageSizeOptions, total]
+    [current, maxPageSize, pageSize, safeDefaultPageSize, safePageSizeOptions, sizeChangerProps, total]
   )
 
   return {

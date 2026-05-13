@@ -142,6 +142,19 @@ export const templateRoutes: TemplateRoute[] = [
       ),
   },
   {
+    key: 'base-port-form',
+    path: '/get_base_list/form',
+    title: '基础端口表单',
+    icon: createElement(FormOutlined),
+    permission: 'form.read',
+    inMenu: false,
+    breadcrumb: ['基础端口列表', '基础端口表单'],
+    component: () =>
+      lazyPage(() =>
+        import('../pages/templates/base-port-list/base-port-form-page').then((m) => ({ default: m.BasePortFormPage }))
+      ),
+  },
+  {
     key: 'book-task-list',
     path: '/get_book_task_list',
     title: '订舱管理',

@@ -7,7 +7,7 @@ import {
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { buildListToolbarColumnSettingOptions, ListToolbarActions } from '../../components/list-toolbar-actions'
 import { useListViewPreferences } from '../../hooks/use-list-view-preferences'
-import { useStandardPagination } from '../../hooks/use-standard-pagination'
+import { VIRTUAL_SCROLL_PAGE_SIZE_THRESHOLD, useStandardPagination } from '../../hooks/use-standard-pagination'
 import { useCrudFormNavigation } from '../hooks'
 import type { StandardListPageSpec } from '../specs/standard-list-page-spec'
 import { buildSearchGridProps } from '../list/build-search-grid-props'
@@ -19,6 +19,16 @@ import { useTemplateListFilters } from '../list/use-template-list-filters'
 
 void React
 
+const VIRTUAL_TABLE_HEIGHT = 700
+const DEFAULT_VIRTUAL_TABLE_WIDTH = 1200
+
+const resolveVirtualScrollX = (columns: Array<{ width?: string | number }>) => {
+  const numericWidthSum = columns.reduce((sum, column) => {
+    return typeof column.width === 'number' ? sum + column.width : sum
+  }, 0)
+
+  return Math.max(numericWidthSum, DEFAULT_VIRTUAL_TABLE_WIDTH)
+}
 
 export const StandardListPageRecipe = <
   TFilterValues extends Record<string, unknown>,
@@ -34,6 +44,7 @@ export const StandardListPageRecipe = <
   const [filterForm] = Form.useForm<TFilterValues>()
   const { openFormPage } = useCrudFormNavigation(spec.formRoute)
   const [total, setTotal] = useState(0)
+  const paginationMode = spec.paginationMode ?? 'remote'
   const { current, pageSize, pagination, resetPage } = useStandardPagination({
     total,
     ...spec.pagination,
@@ -53,24 +64,33 @@ export const StandardListPageRecipe = <
   })
 
   const requestFilters = useMemo(
-    () =>
-      spec.buildRequestFilters?.({
+    () => {
+      if (paginationMode === 'local') {
+        return filters
+      }
+
+      return spec.buildRequestFilters?.({
         filters,
         current,
         pageSize,
-      }) ?? filters,
-    [current, filters, pageSize, spec]
+      }) ?? filters
+    },
+    [current, filters, pageSize, paginationMode, spec]
   )
   const transformResponse = spec.transformResponse
+  const selectItems = spec.selectItems
 
   const handleTransformResponse = useCallback(
     (nextResponse: TResponse) => {
       const applied = transformResponse?.(nextResponse) ?? nextResponse
-      const responseTotal = (applied as { total?: number } | null)?.total
+      const responseTotal =
+        paginationMode === 'local'
+          ? selectItems(applied).length
+          : (applied as { total?: number } | null)?.total
       setTotal(typeof responseTotal === 'number' ? responseTotal : 0)
       return applied
     },
-    [transformResponse]
+    [paginationMode, selectItems, transformResponse]
   )
 
   const {
@@ -85,7 +105,7 @@ export const StandardListPageRecipe = <
   } = useTemplateListController<TRequestFilters, TResponse, TItem, TError>({
     filters: requestFilters,
     request: spec.request,
-    selectItems: spec.selectItems,
+    selectItems,
     isPartial: spec.isPartial,
     mapError: spec.mapError,
     onError: (requestError, appliedFilters) => {
@@ -146,16 +166,34 @@ export const StandardListPageRecipe = <
     [columns, selectedColumnKeys]
   )
 
+  const virtualScroll = useMemo(
+    () => ({
+      enabled: pageSize >= VIRTUAL_SCROLL_PAGE_SIZE_THRESHOLD,
+      scroll: {
+        x: resolveVirtualScrollX(visibleColumns),
+        y: VIRTUAL_TABLE_HEIGHT,
+      },
+    }),
+    [pageSize, visibleColumns]
+  )
+
   const handleResetAll = () => {
     onResetFilters()
     resetPage()
   }
 
-  const responseTotal = (response as { total?: number } | null)?.total ?? 0
+  const resolvedCardTitle = spec.cardTitle && spec.cardTitle !== spec.pageTitle ? spec.cardTitle : undefined
+
+  const responseItems = selectItems(response)
+  const dataSource =
+    paginationMode === 'local'
+      ? responseItems.slice((current - 1) * pageSize, current * pageSize)
+      : responseItems
+  const responseTotal = paginationMode === 'local' ? responseItems.length : (response as { total?: number } | null)?.total ?? 0
 
   const tableNode = spec.buildTableNode({
     columns: visibleColumns,
-    dataSource: spec.selectItems(response),
+    dataSource,
     loading,
     tableSize,
     selectedColumnKeys,
@@ -169,6 +207,7 @@ export const StandardListPageRecipe = <
     onPageChange: (nextCurrent, nextPageSize) => {
       tablePagination.onChange?.(nextCurrent, nextPageSize)
     },
+    virtualScroll,
   })
 
   return (
@@ -178,34 +217,36 @@ export const StandardListPageRecipe = <
       </Typography.Title>
 
       {spec.renderBeforeFilter ?? null}
-      <Card
-        variant="borderless"
-        styles={{
-          body: {
-            paddingRight: 8,
-          },
-        }}
-      >
-        <TemplateListFilterForm<TFilterValues>
-          form={filterForm}
-          fields={spec.filterFields}
-          fieldColProps={searchColProps.formItem}
-          labelCol={searchColProps.labelItem}
-          wrapperCol={searchColProps.inputItem}
-          actionsColProps={searchColProps.actions}
-          onSubmit={(values) => {
-            onSubmitFilters(values)
-            resetPage()
+      {spec.filterFields.length > 0 ? (
+        <Card
+          variant="borderless"
+          styles={{
+            body: {
+              paddingRight: 8,
+            },
           }}
-          onValuesChange={onValuesChangeFilters}
-          onReset={handleResetAll}
-        />
-      </Card>
+        >
+          <TemplateListFilterForm<TFilterValues>
+            form={filterForm}
+            fields={spec.filterFields}
+            fieldColProps={searchColProps.formItem}
+            labelCol={searchColProps.labelItem}
+            wrapperCol={searchColProps.inputItem}
+            actionsColProps={searchColProps.actions}
+            onSubmit={(values) => {
+              onSubmitFilters(values)
+              resetPage()
+            }}
+            onValuesChange={onValuesChangeFilters}
+            onReset={handleResetAll}
+          />
+        </Card>
+      ) : null}
 
       {spec.renderBetweenFilterAndContent ?? null}
       <Card
         variant="borderless"
-        title={spec.cardTitle}
+        title={resolvedCardTitle}
         extra={
           <div className="flex flex-wrap items-center justify-end gap-2">
             {spec.createAction ? (

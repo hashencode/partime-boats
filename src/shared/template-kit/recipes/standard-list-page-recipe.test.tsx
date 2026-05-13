@@ -4,6 +4,7 @@ import { describe, expect, it } from '@rstest/core'
 import type { ColumnsType } from 'antd/es/table'
 import { StandardListPageRecipe } from './standard-list-page-recipe'
 import type { StandardListPageSpec } from '../specs/standard-list-page-spec'
+import { VIRTUAL_SCROLL_PAGE_SIZE_THRESHOLD } from '../../hooks/use-standard-pagination'
 
 void React
 
@@ -48,6 +49,14 @@ type Response = {
   current: number
   size: number
   total: number
+}
+
+type VirtualScrollSnapshot = {
+  enabled: boolean
+  scroll: {
+    x: number
+    y: number
+  }
 }
 
 describe('StandardListPageRecipe', () => {
@@ -200,5 +209,184 @@ describe('StandardListPageRecipe', () => {
       current: 1,
       size: 20,
     })
+  })
+
+  it('should enable virtual scroll with fixed height when page size reaches threshold', async () => {
+    let latestVirtualScroll: VirtualScrollSnapshot | null = null
+    const spec: StandardListPageSpec<FilterValues, RequestFilters, Response, { id: number; name: string }, Error> = {
+      pageTitle: '测试列表',
+      cardTitle: '测试数据',
+      tableId: 'recipe-test-list-virtual-scroll',
+      formRoute: '/test/form',
+      initialFilters: {},
+      toFilters: (values) => ({
+        name: values.name?.trim() || undefined,
+      }),
+      buildRequestFilters: ({ filters, current, pageSize }) => ({
+        ...filters,
+        current,
+        size: pageSize,
+      }),
+      request: async (filters) => ({
+        data: [{ id: 1, name: 'demo' }],
+        current: filters.current ?? 1,
+        size: filters.size ?? 10,
+        total: 200,
+      }),
+      selectItems: (response) => response?.data ?? [],
+      filterFields: [],
+      buildColumns: () =>
+        [
+          {
+            key: 'name',
+            title: '名称',
+            dataIndex: 'name',
+            width: 180,
+          },
+        ] satisfies ColumnsType<{ id: number; name: string }>,
+      buildTableNode: ({ onPageChange, virtualScroll }) => {
+        latestVirtualScroll = virtualScroll
+        return (
+          <div>
+            <button type="button" onClick={() => onPageChange(2, VIRTUAL_SCROLL_PAGE_SIZE_THRESHOLD)}>
+              enable-virtual-scroll
+            </button>
+          </div>
+        )
+      },
+    }
+
+    render(<StandardListPageRecipe spec={spec} />)
+
+    await waitFor(() => {
+      expect(latestVirtualScroll).not.toBeNull()
+    })
+
+    expect(latestVirtualScroll).toEqual({
+      enabled: false,
+      scroll: {
+        x: 1200,
+        y: 700,
+      },
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'enable-virtual-scroll' }))
+
+    await waitFor(() => {
+      expect(latestVirtualScroll).toEqual({
+        enabled: true,
+        scroll: {
+          x: 1200,
+          y: 700,
+        },
+      })
+    })
+  })
+
+  it('does not render the filter card when there are no filter fields', async () => {
+    const spec: StandardListPageSpec<FilterValues, RequestFilters, Response, { id: number; name: string }, Error> = {
+      pageTitle: '测试列表',
+      cardTitle: '测试列表',
+      tableId: 'recipe-test-list-without-filters',
+      formRoute: '/test/form',
+      initialFilters: {},
+      toFilters: () => ({}),
+      request: async () => ({
+        data: [{ id: 1, name: 'demo' }],
+        current: 1,
+        size: 10,
+        total: 1,
+      }),
+      selectItems: (response) => response?.data ?? [],
+      filterFields: [],
+      buildColumns: () =>
+        [
+          {
+            key: 'name',
+            title: '名称',
+            dataIndex: 'name',
+          },
+        ] satisfies ColumnsType<{ id: number; name: string }>,
+      buildTableNode: ({ dataSource }) => <div>{dataSource[0]?.name ?? 'empty'}</div>,
+    }
+
+    const { container } = render(<StandardListPageRecipe spec={spec} />)
+
+    await waitFor(() => {
+      expect(screen.getByText('demo')).toBeTruthy()
+    })
+
+    expect(screen.queryByRole('button', { name: /查\s*询/ })).toBeNull()
+    expect(container.querySelector('.ant-card')).toBeTruthy()
+    expect(container.querySelectorAll('.ant-card').length).toBe(1)
+    expect(screen.getAllByText('测试列表')).toHaveLength(1)
+  })
+
+  it('supports local pagination mode without sending page parameters to request', async () => {
+    const requestCalls: RequestFilters[] = []
+    const spec: StandardListPageSpec<FilterValues, RequestFilters, Response, { id: number; name: string }, Error> = {
+      paginationMode: 'local',
+      pageTitle: '测试列表',
+      cardTitle: '测试数据',
+      tableId: 'recipe-test-list-local-pagination',
+      formRoute: '/test/form',
+      initialFilters: {},
+      toFilters: (values) => ({
+        name: values.name?.trim() || undefined,
+      }),
+      buildRequestFilters: ({ filters, current, pageSize }) => ({
+        ...filters,
+        current,
+        size: pageSize,
+      }),
+      request: async (filters) => {
+        requestCalls.push(filters)
+        return {
+          data: Array.from({ length: 12 }, (_, index) => ({
+            id: index + 1,
+            name: `item-${index + 1}`,
+          })),
+          current: 1,
+          size: 12,
+          total: 12,
+        }
+      },
+      selectItems: (response) => response?.data ?? [],
+      filterFields: [],
+      buildColumns: () =>
+        [
+          {
+            key: 'name',
+            title: '名称',
+            dataIndex: 'name',
+          },
+        ] satisfies ColumnsType<{ id: number; name: string }>,
+      buildTableNode: ({ dataSource, onPageChange }) => (
+        <div>
+          <div data-testid="local-page-items">{dataSource.map((item) => item.name).join(',')}</div>
+          <button type="button" onClick={() => onPageChange(2, 10)}>
+            goto-local-page-2
+          </button>
+        </div>
+      ),
+    }
+
+    render(<StandardListPageRecipe spec={spec} />)
+
+    await waitFor(() => {
+      expect(requestCalls).toHaveLength(1)
+    })
+
+    expect(requestCalls[0]).toEqual({})
+    expect(screen.getByTestId('local-page-items').textContent).toContain('item-1')
+    expect(screen.getByTestId('local-page-items').textContent).not.toContain('item-11')
+
+    fireEvent.click(screen.getByRole('button', { name: 'goto-local-page-2' }))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('local-page-items').textContent).toContain('item-11')
+    })
+    expect(screen.getByTestId('local-page-items').textContent?.split(',')).toEqual(['item-11', 'item-12'])
+    expect(requestCalls).toHaveLength(1)
   })
 })

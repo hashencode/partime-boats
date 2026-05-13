@@ -74,7 +74,7 @@ describe('TableQueryPage', () => {
     })
   })
 
-  it('opens add form page when clicking 新建', async () => {
+  it('opens add form page when clicking 新增规则', async () => {
     const openSpy = (window.open = ((...args: unknown[]) => {
       void args
       return null
@@ -92,7 +92,7 @@ describe('TableQueryPage', () => {
       expect(screen.getByText('TradeCode 0')).toBeTruthy()
     })
 
-    fireEvent.click(screen.getByRole('button', { name: /新建/ }))
+    fireEvent.click(screen.getByRole('button', { name: /新增规则/ }))
 
     expect(mockCalls.length).toBe(1)
     expect(mockCalls[0]?.[0]).toBe('/template/list/table/form?mode=add')

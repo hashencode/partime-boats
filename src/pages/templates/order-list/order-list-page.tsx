@@ -385,7 +385,7 @@ export const OrderListPage = () => {
         { title: '返回值1', key: 'is_instant_confirmation', dataIndex: 'is_instant_confirmation', width: 120 },
         { title: '免用箱', key: 'free_day', dataIndex: 'free_day', width: 100 },
       ],
-      buildTableNode: ({ columns, dataSource, loading, tableSize, tableClassName, pagination }) => {
+      buildTableNode: ({ columns, dataSource, loading, tableSize, tableClassName, pagination, virtualScroll }) => {
         currentRowsRef.current = dataSource
         return (
           <Table
@@ -395,7 +395,8 @@ export const OrderListPage = () => {
             dataSource={dataSource}
             size={tableSize}
             loading={loading}
-            scroll={{ x: 2500 }}
+            virtual={virtualScroll.enabled}
+            scroll={virtualScroll.enabled ? { x: 2500, y: virtualScroll.scroll.y } : { x: 2500 }}
             pagination={pagination}
           />
         )

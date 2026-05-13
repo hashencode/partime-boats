@@ -1,7 +1,7 @@
-import { Alert, Button, DatePicker, Divider, Form, Input, InputNumber, Modal, Popconfirm, Select, Space, Table, Tag, Typography, message, theme } from 'antd'
+import { Alert, Button, DatePicker, Form, Input, InputNumber, Modal, Popconfirm, Select, Space, Table, Tag, Typography, message, theme } from 'antd'
 import dayjs, { type Dayjs } from 'dayjs'
-import ExportJsonExcel from 'js-export-excel'
 import React, { useCallback, useMemo, useRef, useState } from 'react'
+import { ListRowActions } from '../../../shared/components/list-row-actions'
 import { normalizeApiError, type ApiError } from '../../../infrastructure/http/api-client'
 import {
   createPortFilterFields,
@@ -116,6 +116,13 @@ const timeStamp = (value?: string) => {
   return Number.isNaN(parsed) ? 0 : parsed
 }
 
+const buildToggleConfirmTitle = (selectedCount: number, actionLabel: '开启' | '关闭') => {
+  if (selectedCount === 0) {
+    return `当前没有勾选任何列表项，将会${actionLabel}当前筛选结果中的所有项，是否确认？`
+  }
+  return `确认要${actionLabel}选中的列表项吗？`
+}
+
 export const MskQueryListPage = () => {
   const { token } = theme.useToken()
   const [selectedCount, setSelectedCount] = useState(0)
@@ -127,6 +134,27 @@ export const MskQueryListPage = () => {
   const currentRowsRef = useRef<RowView[]>([])
   const selectedRowsRef = useRef<RowView[]>([])
   const reloadRef = useRef<() => Promise<void>>(async () => {})
+
+  const handleToggleAll = useCallback(
+    async (nextStatus: 0 | -1) => {
+      const targetIds =
+        selectedRowsRef.current.length > 0
+          ? selectedRowsRef.current.map((item) => item.id)
+          : currentRowsRef.current.map((item) => item.id)
+
+      if (targetIds.length === 0) {
+        message.warning('当前筛选结果中没有可操作的数据')
+        return
+      }
+
+      await toggleAllByEarlyDate(nextStatus, targetIds.join(','))
+      message.success(`${nextStatus === 0 ? '开启' : '关闭'}成功`)
+      selectedRowsRef.current = []
+      setSelectedCount(0)
+      await reloadRef.current()
+    },
+    []
+  )
 
   const filterFields = useMemo<TemplateListFilterField<SearchValues>[]>(
     () => [
@@ -197,7 +225,26 @@ export const MskQueryListPage = () => {
       selectItems: (response) => response?.data ?? [],
       mapError: normalizeApiError,
       filterFields,
-      toolbarExtra: null,
+      toolbarExtra: (
+        <Space wrap>
+          <Popconfirm
+            title={buildToggleConfirmTitle(selectedCount, '开启')}
+            okText="是"
+            cancelText="否"
+            onConfirm={() => handleToggleAll(0)}
+          >
+            <Button>开启所有</Button>
+          </Popconfirm>
+          <Popconfirm
+            title={buildToggleConfirmTitle(selectedCount, '关闭')}
+            okText="是"
+            cancelText="否"
+            onConfirm={() => handleToggleAll(-1)}
+          >
+            <Button>关闭所有</Button>
+          </Popconfirm>
+        </Space>
+      ),
       renderBeforeFilter: (
         <Alert
           className="min-w-0"
@@ -210,7 +257,7 @@ export const MskQueryListPage = () => {
                 className={'ml-2'}
                 type="primary"
                 ghost
-                onClick={() => {
+                onClick={async () => {
                   const tableData = currentRowsRef.current.map((item) => ({
                     id: item.id,
                     origincity_name: item.origincity_name,
@@ -227,6 +274,7 @@ export const MskQueryListPage = () => {
                     tips: item.tips,
                   }))
 
+                  const { default: ExportJsonExcel } = await import('js-export-excel')
                   const exporter = new ExportJsonExcel({
                     fileName: '查询列表',
                     datas: [
@@ -323,34 +371,34 @@ export const MskQueryListPage = () => {
             width: ACTION_COLUMN_WIDTH,
             fixed: 'right',
             render: (_, record) => (
-              <Space size={8}>
-                {record.booking_url ? (
-                  <>
-                    <Typography.Link href={record.booking_url} target="_blank" rel="noreferrer">
-                      订舱
-                    </Typography.Link>
-                    <Divider type="vertical" />
-                  </>
-                ) : null}
-                <Button
-                  type="link"
-                  className="!p-0"
-                  onClick={() => {
-                    setEditingItem(record)
-                    editForm.setFieldsValue({
-                      ...record,
-                      early_date: record.early_date ? dayjs(record.early_date) : undefined,
-                    } as unknown as RowView)
-                  }}
-                >
-                  修改
-                </Button>
-              </Space>
+              <ListRowActions
+                actions={[
+                  {
+                    key: 'booking',
+                    label: '订舱',
+                    visible: Boolean(record.booking_url),
+                    href: record.booking_url,
+                    target: '_blank',
+                    rel: 'noreferrer',
+                  },
+                  {
+                    key: 'edit',
+                    label: '修改',
+                    onClick: () => {
+                      setEditingItem(record)
+                      editForm.setFieldsValue({
+                        ...record,
+                        early_date: record.early_date ? dayjs(record.early_date) : undefined,
+                      } as unknown as RowView)
+                    },
+                  },
+                ]}
+              />
             ),
           },
         ]
       },
-      buildTableNode: ({ columns, dataSource, loading, tableSize, tableClassName, pagination }) => {
+      buildTableNode: ({ columns, dataSource, loading, tableSize, tableClassName, pagination, virtualScroll }) => {
         currentRowsRef.current = dataSource
         return (
           <Table<RowView>
@@ -367,9 +415,10 @@ export const MskQueryListPage = () => {
                 selectedRowsRef.current = rows
                 setSelectedCount(rows.length)
               },
-              columnWidth: 50,
-            }}
-            scroll={{ x: 2050 }}
+                  columnWidth: 50,
+                }}
+            virtual={virtualScroll.enabled}
+            scroll={virtualScroll.enabled ? { x: 2050, y: virtualScroll.scroll.y } : { x: 2050 }}
           />
         )
       },
@@ -387,38 +436,6 @@ export const MskQueryListPage = () => {
                 已选择 <span className="font-medium">{selectedCount}</span> 项
               </Typography.Text>
               <Space>
-                <Popconfirm
-                  title="确认要开启所有吗？"
-                  okText="是"
-                  cancelText="否"
-                  onConfirm={() =>
-                    toggleAllByEarlyDate(
-                      0,
-                      selectedRowsRef.current.map((item) => item.id).join(',')
-                    ).then(async () => {
-                      message.success('开启成功')
-                      await reloadRef.current()
-                    })
-                  }
-                >
-                  <Button>开启所有</Button>
-                </Popconfirm>
-                <Popconfirm
-                  title="确认要关闭所有吗？"
-                  okText="是"
-                  cancelText="否"
-                  onConfirm={() =>
-                    toggleAllByEarlyDate(
-                      -1,
-                      selectedRowsRef.current.map((item) => item.id).join(',')
-                    ).then(async () => {
-                      message.success('关闭成功')
-                      await reloadRef.current()
-                    })
-                  }
-                >
-                  <Button>关闭所有</Button>
-                </Popconfirm>
                 <Button type="primary" onClick={() => setBatchVisible(true)}>
                   批量修改
                 </Button>
@@ -444,6 +461,7 @@ export const MskQueryListPage = () => {
       accountNumText,
       editForm,
       filterFields,
+      handleToggleAll,
       requestList,
       selectedCount,
       token.colorBgElevated,
