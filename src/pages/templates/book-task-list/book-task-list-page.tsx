@@ -81,7 +81,6 @@ type BookTaskFormValues = {
 }
 
 const PAGE_TITLE = '任务列表'
-const CARD_TITLE = '任务列表'
 const TABLE_ID = 'book-task-list'
 const AUTO_REFRESH_INTERVAL_MS = 15_000
 
@@ -283,6 +282,7 @@ export const BookTaskListPage = () => {
   const [startPortOptions, setStartPortOptions] = useState<string[]>([])
   const [endPortOptions, setEndPortOptions] = useState<string[]>([])
   const [saving, setSaving] = useState(false)
+  const [lastRefreshTime, setLastRefreshTime] = useState<string>('')
   const latestFiltersRef = useRef<BookTaskQueryFilters>({})
   const currentRowsRef = useRef<EditableBookTask[]>([])
   const reloadRef = useRef<() => Promise<void>>(async () => {})
@@ -470,7 +470,7 @@ export const BookTaskListPage = () => {
   >(
     () => ({
       pageTitle: PAGE_TITLE,
-      cardTitle: CARD_TITLE,
+      cardTitle: `最近刷新时间：${lastRefreshTime || '--:--:--'}`,
       tableId: TABLE_ID,
       formRoute: '/get_book_task_list/form',
       initialFilters: {},
@@ -482,7 +482,9 @@ export const BookTaskListPage = () => {
       }),
       request: async (filters) => {
         latestFiltersRef.current = filters
-        return fetchBookTaskList(filters)
+        const response = await fetchBookTaskList(filters)
+        setLastRefreshTime(dayjs().format('HH:mm:ss'))
+        return response
       },
       selectItems: (response) => (response?.data ?? []).map(toEditableRow),
       mapError: normalizeApiError,
@@ -731,6 +733,7 @@ export const BookTaskListPage = () => {
       handleBatchOpen,
       handleToggleOrderStatus,
       selectedRowKeys,
+      lastRefreshTime,
       token.colorBgElevated,
       token.colorBorderSecondary,
     ]

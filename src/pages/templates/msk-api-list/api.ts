@@ -47,6 +47,17 @@ export type ShippingLineMap = Record<string, string>
 
 export type AccountNumPayload = string | string[]
 
+const normalizeAccountNumText = (value: string): string => {
+  return value.replace('同丰', ', ').replace('同丰', '')
+}
+
+const normalizeAccountNumPayload = (payload: AccountNumPayload): AccountNumPayload => {
+  if (Array.isArray(payload)) {
+    return payload.map(normalizeAccountNumText)
+  }
+  return normalizeAccountNumText(payload)
+}
+
 export type BatchUpdatePayload = {
   ids: string
   origincity_name?: string
@@ -91,7 +102,7 @@ export const fetchEndPortOptions = async (location = 1): Promise<string[]> => {
 
 export const fetchAccountNum = async (): Promise<AccountNumPayload> => {
   const response = await apiClient.get<AccountNumPayload | LegacyEnvelope<AccountNumPayload>>('/account/num')
-  return unwrapLegacyEnvelope(response.data)
+  return normalizeAccountNumPayload(unwrapLegacyEnvelope(response.data))
 }
 
 export const updateMskApiItem = async (payload: UpdateSinglePayload): Promise<void> => {

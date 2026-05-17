@@ -372,7 +372,21 @@ export const OrderListPage = () => {
           },
         },
         { title: '下单时间', key: 'booktime', dataIndex: 'booktime', width: 160, sorter: (a, b) => toTimestamp(a.booktime) - toTimestamp(b.booktime) },
-        { title: '截止提交时间', key: 'endtime', dataIndex: 'endtime', width: 160, sorter: (a, b) => toTimestamp(a.endtime) - toTimestamp(b.endtime) },
+        {
+          title: '截止提交时间',
+          key: 'endtime',
+          dataIndex: 'endtime',
+          width: 160,
+          sorter: (a, b) => toTimestamp(a.endtime) - toTimestamp(b.endtime),
+          render: (value?: string) => {
+            if (!value) return '-'
+            const endTs = dayjs(value).valueOf()
+            if (Number.isNaN(endTs)) return value
+            const remainingMs = endTs - Date.now()
+            const isWarning = remainingMs > 0 && remainingMs <= 3 * 60 * 1000
+            return <span className={isWarning ? 'font-semibold text-red-500' : 'text-black'}>{value}</span>
+          },
+        },
         { title: '提交时间', key: 'update_time', dataIndex: 'update_time', width: 160, sorter: (a, b) => toTimestamp(a.update_time) - toTimestamp(b.update_time) },
         {
           title: '状态',
