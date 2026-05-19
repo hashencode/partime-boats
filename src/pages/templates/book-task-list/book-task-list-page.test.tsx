@@ -76,7 +76,7 @@ const buildTaskRows = (count: number) =>
 const server = setupServer(
   http.get('*/api/startport', () => HttpResponse.json(['上海'])),
   http.get('*/api/endport', () => HttpResponse.json(['纽约'])),
-  http.get('*/api/maersk/book/task', async ({ request }) => {
+  http.get('http://124.70.141.127:9111/maersk/book/task', async ({ request }) => {
     listRequestCount += 1
     const url = new URL(request.url)
     const orderId = url.searchParams.get('order_id')
@@ -102,7 +102,7 @@ const server = setupServer(
       },
     })
   }),
-  http.post('*/api/maersk/book/task', () => HttpResponse.json({ bool_status: true, data: true })),
+  http.post('http://124.70.141.127:9111/maersk/book/task', () => HttpResponse.json({ bool_status: true, data: true })),
   http.post('*/api/maersk/group/task', async ({ request }) => {
     const payload = (await request.json()) as { ids?: string }
     batchOpenPayloads.push(payload.ids ?? '')
@@ -208,7 +208,9 @@ describe('BookTaskListPage', () => {
 
   it('should show error state when list request fails', async () => {
     server.use(
-      http.get('*/api/maersk/book/task', () => HttpResponse.json({ message: 'server err' }, { status: 500 }))
+      http.get('http://124.70.141.127:9111/maersk/book/task', () =>
+        HttpResponse.json({ message: 'server err' }, { status: 500 })
+      )
     )
 
     renderPage()

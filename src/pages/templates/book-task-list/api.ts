@@ -5,6 +5,8 @@ const PROXY_REQUEST_CONFIG = {
   baseURL: '/',
 } as const
 
+const BOOK_TASK_API_URL = 'http://124.70.141.127:9111/maersk/book/task'
+
 type LegacyEnvelope<T> = {
   bool_status?: boolean
   msg?: string
@@ -182,7 +184,7 @@ const parseBookTaskListResponse = (
 
 export const fetchBookTaskList = async (filters: BookTaskQueryFilters): Promise<BookTaskListResponse> => {
   const firstPageResponse = await apiClient.get<LegacyNestedListEnvelope<BookTaskItem> | LegacyListResponse<BookTaskItem>>(
-    '/api/maersk/book/task',
+    BOOK_TASK_API_URL,
     {
       ...PROXY_REQUEST_CONFIG,
       params: filters,
@@ -200,7 +202,7 @@ export const fetchAllBookTaskIds = async (filters: BookTaskQueryFilters): Promis
   }
 
   const firstPageResponse = await apiClient.get<LegacyNestedListEnvelope<BookTaskItem> | LegacyListResponse<BookTaskItem>>(
-    '/api/maersk/book/task',
+    BOOK_TASK_API_URL,
     {
       ...PROXY_REQUEST_CONFIG,
       params: requestFilters,
@@ -213,7 +215,7 @@ export const fetchAllBookTaskIds = async (filters: BookTaskQueryFilters): Promis
 
   for (let page = 2; page <= totalPages; page += 1) {
     const nextResponse = await apiClient.get<LegacyNestedListEnvelope<BookTaskItem> | LegacyListResponse<BookTaskItem>>(
-      '/api/maersk/book/task',
+      BOOK_TASK_API_URL,
       {
         ...PROXY_REQUEST_CONFIG,
         params: {
@@ -246,7 +248,7 @@ export const fetchEndPortOptions = async (location = 0): Promise<string[]> => {
 
 export const updateBookTask = async (id: number, payload: BookTaskSavePayload): Promise<void> => {
   await apiClient.post(
-    '/api/maersk/book/task',
+    BOOK_TASK_API_URL,
     {
       ...payload,
       id,
