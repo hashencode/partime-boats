@@ -158,13 +158,14 @@ describe('BookTaskListPage', () => {
     renderPage()
 
     await waitFor(() => {
-      expect(screen.getAllByText('任务列表').length).toBeGreaterThan(0)
+      expect(screen.getByRole('heading', { name: '订舱管理' })).toBeTruthy()
       expect(screen.getByText('tester')).toBeTruthy()
       expect(latestPage).toBe('1')
       expect(latestPerPage).toBe('10')
       expect(screen.getByRole('button', { name: '批量打开' })).toBeTruthy()
       expect(screen.getByRole('button', { name: '关闭初始化' })).toBeTruthy()
       expect(screen.queryByRole('button', { name: '批量修改' })).toBeNull()
+      expect(screen.queryByText(/最近刷新时间/)).toBeNull()
     })
   })
 

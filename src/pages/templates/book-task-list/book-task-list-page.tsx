@@ -80,7 +80,7 @@ type BookTaskFormValues = {
   is_add_data?: number
 }
 
-const PAGE_TITLE = '任务列表'
+const PAGE_TITLE = '订舱管理'
 const TABLE_ID = 'book-task-list'
 const AUTO_REFRESH_INTERVAL_MS = 15_000
 
@@ -282,7 +282,6 @@ export const BookTaskListPage = () => {
   const [startPortOptions, setStartPortOptions] = useState<string[]>([])
   const [endPortOptions, setEndPortOptions] = useState<string[]>([])
   const [saving, setSaving] = useState(false)
-  const [lastRefreshTime, setLastRefreshTime] = useState<string>('')
   const latestFiltersRef = useRef<BookTaskQueryFilters>({})
   const currentRowsRef = useRef<EditableBookTask[]>([])
   const reloadRef = useRef<() => Promise<void>>(async () => {})
@@ -470,7 +469,6 @@ export const BookTaskListPage = () => {
   >(
     () => ({
       pageTitle: PAGE_TITLE,
-      cardTitle: `最近刷新时间：${lastRefreshTime || '--:--:--'}`,
       tableId: TABLE_ID,
       formRoute: '/get_book_task_list/form',
       initialFilters: {},
@@ -482,9 +480,7 @@ export const BookTaskListPage = () => {
       }),
       request: async (filters) => {
         latestFiltersRef.current = filters
-        const response = await fetchBookTaskList(filters)
-        setLastRefreshTime(dayjs().format('HH:mm:ss'))
-        return response
+        return fetchBookTaskList(filters)
       },
       selectItems: (response) => (response?.data ?? []).map(toEditableRow),
       mapError: normalizeApiError,
@@ -537,51 +533,45 @@ export const BookTaskListPage = () => {
       buildColumns: ({ reload }) => {
         reloadRef.current = reload
         return [
-          { key: 'id', title: 'ID', dataIndex: 'id', width: 80, sorter: (a, b) => a.id - b.id },
+          { key: 'id', title: 'ID', dataIndex: 'id', sorter: (a, b) => a.id - b.id },
           {
             key: 'order_id',
             title: '对应taskID',
             dataIndex: 'order_id',
-            width: 120,
             render: (value) => renderEllipsisText(value),
           },
-          { key: 'account_name', title: '账户名', dataIndex: 'account_name', width: 150 },
-          { key: 'quantity', title: '数量', dataIndex: 'quantity', width: 80 },
-          { key: 'box_type', title: '箱型', dataIndex: 'box_type', width: 140 },
+          { key: 'account_name', title: '账户名', dataIndex: 'account_name' },
+          { key: 'quantity', title: '数量', dataIndex: 'quantity' },
+          { key: 'box_type', title: '箱型', dataIndex: 'box_type' },
           {
             key: 'origincity_name',
             title: '起始港',
             dataIndex: 'origincity_name',
-            width: 160,
             render: (value) => renderBreakAllText(value),
           },
           {
             key: 'destinationcity_name',
             title: '目的港',
             dataIndex: 'destinationcity_name',
-            width: 160,
             render: (value) => renderBreakAllText(value),
           },
           {
             key: 'destination_service_mode',
             title: '目的港类型',
             dataIndex: 'destination_service_mode',
-            width: 120,
           },
-          { key: 'order_date', title: '搜索开航日', dataIndex: 'order_date', width: 130 },
+          { key: 'order_date', title: '搜索开航日', dataIndex: 'order_date' },
           {
             key: 'is_USA',
             title: '美线',
             dataIndex: 'is_USA',
-            width: 90,
             render: (value) => numberLabel(YES_NO_OPTIONS, value),
           },
-          { key: 'route_select', title: '路由', dataIndex: 'route_select', width: 120 },
+          { key: 'route_select', title: '路由', dataIndex: 'route_select' },
           {
             key: 'is_order',
             title: '是否开启',
             dataIndex: 'is_order',
-            width: 100,
             render: (value, record) => {
               const label = numberLabel(OPEN_CLOSE_OPTIONS, value)
               return (
@@ -600,49 +590,45 @@ export const BookTaskListPage = () => {
               )
             },
           },
-          { key: 'limit_price', title: '限价', dataIndex: 'limit_price', width: 100 },
+          { key: 'limit_price', title: '限价', dataIndex: 'limit_price' },
           {
             key: 'is_plan',
             title: '直接下单',
             dataIndex: 'is_plan',
-            width: 100,
             render: (value) => numberLabel(YES_NO_OPTIONS, value),
           },
           {
             key: 'is_roll',
             title: 'is_roll',
             dataIndex: 'is_roll',
-            width: 100,
             render: (value) => numberLabel(YES_NO_OPTIONS, value),
           },
-          { key: 'cid', title: 'CID', dataIndex: 'cid', width: 120 },
+          { key: 'cid', title: 'CID', dataIndex: 'cid' },
           {
             key: 'is_cid',
             title: '是否开启CID',
             dataIndex: 'is_cid',
-            width: 130,
             render: (value) => numberLabel(CID_INIT_OPTIONS, value),
           },
-          { key: 'fake_account', title: 'CID账号', dataIndex: 'fake_account', width: 120 },
-          { key: 'update_cid_time', title: 'CID更新时间', dataIndex: 'update_cid_time', width: 160 },
+          { key: 'fake_account', title: 'CID账号', dataIndex: 'fake_account' },
+          { key: 'update_cid_time', title: 'CID更新时间', dataIndex: 'update_cid_time' },
           {
             key: 'cid_type',
             title: 'cid类型',
             dataIndex: 'cid_type',
-            width: 120,
             render: (value) => numberLabel(CID_TYPE_OPTIONS, value),
           },
-          { key: 'cid_loop_times', title: 'cid循环次数', dataIndex: 'cid_loop_times', width: 120 },
-          { key: 'get_cid_times', title: 'cid请求次数', dataIndex: 'get_cid_times', width: 120 },
-          { key: 'cid_concurrent', title: 'cid并发次数', dataIndex: 'cid_concurrent', width: 120 },
-          { key: 'cid_sleep', title: 'cid间隔时间', dataIndex: 'cid_sleep', width: 120 },
-          { key: 'nac_loop_times', title: 'nac循环次数', dataIndex: 'nac_loop_times', width: 120 },
-          { key: 'nac_times', title: 'nac请求次数', dataIndex: 'nac_times', width: 120 },
-          { key: 'nac_concurrent', title: 'nac并发次数', dataIndex: 'nac_concurrent', width: 120 },
-          { key: 'nac_sleep', title: 'nac间隔时间', dataIndex: 'nac_sleep', width: 120 },
-          { key: 'limit_day', title: '限制天数', dataIndex: 'limit_day', width: 110 },
-          { key: 'cid_group', title: 'CID分组', dataIndex: 'cid_group', width: 110 },
-          { key: 'group_id', title: '分组', dataIndex: 'group_id', width: 100 },
+          { key: 'cid_loop_times', title: 'cid循环次数', dataIndex: 'cid_loop_times' },
+          { key: 'get_cid_times', title: 'cid请求次数', dataIndex: 'get_cid_times' },
+          { key: 'cid_concurrent', title: 'cid并发次数', dataIndex: 'cid_concurrent' },
+          { key: 'cid_sleep', title: 'cid间隔时间', dataIndex: 'cid_sleep' },
+          { key: 'nac_loop_times', title: 'nac循环次数', dataIndex: 'nac_loop_times' },
+          { key: 'nac_times', title: 'nac请求次数', dataIndex: 'nac_times' },
+          { key: 'nac_concurrent', title: 'nac并发次数', dataIndex: 'nac_concurrent' },
+          { key: 'nac_sleep', title: 'nac间隔时间', dataIndex: 'nac_sleep' },
+          { key: 'limit_day', title: '限制天数', dataIndex: 'limit_day' },
+          { key: 'cid_group', title: 'CID分组', dataIndex: 'cid_group' },
+          { key: 'group_id', title: '分组', dataIndex: 'group_id' },
           {
             key: 'operation',
             title: '操作',
@@ -687,7 +673,7 @@ export const BookTaskListPage = () => {
               columnWidth: 50,
             }}
             virtual={virtualScroll.enabled}
-            scroll={virtualScroll.enabled ? { x: 3600, y: virtualScroll.scroll.y } : { x: 3600 }}
+            scroll={virtualScroll.enabled ? { x: 'max-content', y: virtualScroll.scroll.y } : { x: 'max-content' }}
           />
         )
       },
@@ -733,7 +719,6 @@ export const BookTaskListPage = () => {
       handleBatchOpen,
       handleToggleOrderStatus,
       selectedRowKeys,
-      lastRefreshTime,
       token.colorBgElevated,
       token.colorBorderSecondary,
     ]

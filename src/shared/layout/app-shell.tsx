@@ -10,7 +10,7 @@ import {
 } from '@ant-design/icons'
 import { Avatar, Breadcrumb, Dropdown, Layout, Menu, Switch, message, theme, Typography } from 'antd'
 import type { MenuProps } from 'antd'
-import { useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../infrastructure/auth/use-auth'
 import { hasPermission } from '../../infrastructure/auth/permissions'
@@ -39,6 +39,7 @@ type RouteContract = {
 
 const isStandaloneMenuItem = (route: RouteContract) => route.menuMode === 'standalone'
 const getMenuGroup = (route: RouteContract) => route.menuGroup ?? route.breadcrumb?.[0] ?? 'General'
+const APP_SHELL_TITLE = 'Admin Quick Start'
 export const isMenuVisibleInCurrentEnv = (route: RouteContract, isDev: boolean) =>
   route.menuVisibility !== 'dev-only' || isDev
 
@@ -47,6 +48,26 @@ export const shouldShowDevMenuGroup = (menuRoutes: RouteContract[], isDev: boole
 
 export const shouldShowMswSwitch = (isDev: boolean, isMswToggleAvailable: boolean) =>
   isDev && isMswToggleAvailable
+
+export const resolveRouteByPath = (routes: RouteContract[], pathname: string) => {
+  const exactMatch = routes.find((route) => route.path === pathname)
+  if (exactMatch) {
+    return exactMatch
+  }
+
+  const prefixMatches = routes
+    .filter((route) => route.path !== '*' && route.path !== '/' && pathname.startsWith(`${route.path}/`))
+    .sort((a, b) => b.path.length - a.path.length)
+  return prefixMatches[0]
+}
+
+export const resolveDocumentTitle = (routes: RouteContract[], pathname: string) => {
+  if (pathname === '/') {
+    return '欢迎'
+  }
+
+  return resolveRouteByPath(routes, pathname)?.title ?? APP_SHELL_TITLE
+}
 
 export const moveMenuGroupToEnd = <
   TItem extends {
@@ -149,22 +170,20 @@ export const AppShell = ({ routes = [], headerExtra }: AppShellProps) => {
     return moveMenuGroupToEnd(items, 'group-系统设置')
   }, [menuRoutes, navigate, showDevMenuGroup])
 
-  const selectedRoute = useMemo(() => {
-    const exactMatch = menuRoutes.find((route) => route.path === location.pathname)
-    if (exactMatch) return exactMatch
-
-    const prefixMatches = menuRoutes
-      .filter((route) => route.path !== '/' && location.pathname.startsWith(`${route.path}/`))
-      .sort((a, b) => b.path.length - a.path.length)
-    return prefixMatches[0]
-  }, [menuRoutes, location.pathname])
+  const selectedRoute = useMemo(() => resolveRouteByPath(menuRoutes, location.pathname), [menuRoutes, location.pathname])
 
   const fullDisplayName = useMemo(() => normalizeDisplayName(displayName), [displayName])
   const avatarText = useMemo(() => getDisplayNameAvatarText(fullDisplayName), [fullDisplayName])
 
+  const currentRoute = useMemo(() => resolveRouteByPath(routes, location.pathname), [routes, location.pathname])
   const selectedKey = location.pathname === '/' ? 'home' : selectedRoute?.key ?? 'home'
-  const breadcrumbItems = routes.find((route) => route.path === location.pathname)?.breadcrumb ?? []
+  const breadcrumbItems = currentRoute?.breadcrumb ?? []
   const shouldShowBreadcrumb = breadcrumbItems.length > 0
+  const documentTitle = useMemo(() => resolveDocumentTitle(routes, location.pathname), [routes, location.pathname])
+
+  useEffect(() => {
+    document.title = documentTitle
+  }, [documentTitle])
 
   const topNavItems: MenuProps['items'] = useMemo(
     () => [

@@ -2,6 +2,8 @@ import { describe, expect, it } from '@rstest/core'
 import {
   isMenuVisibleInCurrentEnv,
   moveMenuGroupToEnd,
+  resolveDocumentTitle,
+  resolveRouteByPath,
   shouldShowDevMenuGroup,
   shouldShowMswSwitch,
 } from './app-shell'
@@ -100,5 +102,46 @@ describe('app-shell menu visibility helpers', () => {
   it('should use stable storage keys for theme and search compact layout preferences', () => {
     expect(THEME_STORAGE_KEY).toBe('admin-theme-mode')
     expect(SEARCH_COMPACT_LAYOUT_STORAGE_KEY).toBe('admin-search-compact-layout')
+  })
+
+  it('should resolve the current route by exact path or the longest matching prefix', () => {
+    const routes = [
+      {
+        key: 'book-task-list',
+        path: '/get_book_task_list',
+        title: '订舱管理',
+        icon: null,
+        permission: 'list.read' as const,
+        inMenu: true,
+      },
+      {
+        key: 'base-port-form',
+        path: '/get_base_list/form',
+        title: '基础端口表单',
+        icon: null,
+        permission: 'form.read' as const,
+        inMenu: false,
+      },
+    ]
+
+    expect(resolveRouteByPath(routes, '/get_book_task_list')?.title).toBe('订舱管理')
+    expect(resolveRouteByPath(routes, '/get_base_list/form/edit')?.title).toBe('基础端口表单')
+  })
+
+  it('should prefer the current route title for the browser tab title', () => {
+    const routes = [
+      {
+        key: 'book-task-list',
+        path: '/get_book_task_list',
+        title: '订舱管理',
+        icon: null,
+        permission: 'list.read' as const,
+        inMenu: true,
+      },
+    ]
+
+    expect(resolveDocumentTitle(routes, '/get_book_task_list')).toBe('订舱管理')
+    expect(resolveDocumentTitle(routes, '/')).toBe('欢迎')
+    expect(resolveDocumentTitle(routes, '/unknown')).toBe('Admin Quick Start')
   })
 })
