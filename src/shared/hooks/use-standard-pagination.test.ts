@@ -1,6 +1,6 @@
 import { act, renderHook } from '@testing-library/react'
 import { describe, expect, it } from '@rstest/core'
-import { ALL_DATA_PAGE_SIZE, useStandardPagination, VIRTUAL_SCROLL_PAGE_SIZE_THRESHOLD } from './use-standard-pagination'
+import { ALL_DATA_PAGE_SIZE, useStandardPagination } from './use-standard-pagination'
 
 describe('useStandardPagination', () => {
   it('includes the all-data option and disables size changer search', () => {
@@ -38,15 +38,5 @@ describe('useStandardPagination', () => {
 
     expect(result.current.current).toBe(1)
     expect(result.current.pageSize).toBe(ALL_DATA_PAGE_SIZE)
-  })
-
-  it('keeps the default virtual-scroll threshold option in page size choices', () => {
-    const { result } = renderHook(() =>
-      useStandardPagination({
-        total: 200,
-      })
-    )
-
-    expect(result.current.pagination.pageSizeOptions).toContain(VIRTUAL_SCROLL_PAGE_SIZE_THRESHOLD)
   })
 })

@@ -5,9 +5,10 @@ import {
   Typography,
 } from 'antd'
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import { clearStoredTableOrder, hasStoredTableOrder } from '../../components/draggable-table'
 import { buildListToolbarColumnSettingOptions, ListToolbarActions } from '../../components/list-toolbar-actions'
 import { useListViewPreferences } from '../../hooks/use-list-view-preferences'
-import { VIRTUAL_SCROLL_PAGE_SIZE_THRESHOLD, useStandardPagination } from '../../hooks/use-standard-pagination'
+import { useStandardPagination } from '../../hooks/use-standard-pagination'
 import { useCrudFormNavigation } from '../hooks'
 import type { StandardListPageSpec } from '../specs/standard-list-page-spec'
 import { buildSearchGridProps } from '../list/build-search-grid-props'
@@ -16,6 +17,7 @@ import { TemplateListContent } from '../list/template-list-content'
 import { TemplateListFilterForm } from '../list/template-list-filter-form'
 import { useTemplateListController } from '../list/use-template-list-controller'
 import { useTemplateListFilters } from '../list/use-template-list-filters'
+import { useRouteTitle } from '../../contexts/route-title-context'
 import { useTheme } from '../../contexts/theme-context'
 
 void React
@@ -39,13 +41,18 @@ export const StandardListPageRecipe = <
   TError = unknown,
 >({
   spec,
+  cardTitleOverride,
 }: {
   spec: StandardListPageSpec<TFilterValues, TRequestFilters, TResponse, TItem, TError>
+  cardTitleOverride?: React.ReactNode
 }) => {
   const [filterForm] = Form.useForm<TFilterValues>()
+  const { title: routeTitle } = useRouteTitle()
   const { openFormPage } = useCrudFormNavigation(spec.formRoute)
   const { searchCompactLayout } = useTheme()
   const [total, setTotal] = useState(0)
+  const [sortResetVersion, setSortResetVersion] = useState(0)
+  const [hasCustomSortOrder, setHasCustomSortOrder] = useState(() => hasStoredTableOrder(spec.tableId))
   const paginationMode = spec.paginationMode ?? 'remote'
   const { current, pageSize, pagination, resetPage } = useStandardPagination({
     total,
@@ -65,20 +72,25 @@ export const StandardListPageRecipe = <
     autoApplyOnValuesChange: false,
   })
 
-  const requestFilters = useMemo(
+  const buildRequestFilters = spec.buildRequestFilters
+  const nextRequestFilters = useMemo(
     () => {
-      if (paginationMode === 'local') {
-        return filters
-      }
-
-      return spec.buildRequestFilters?.({
-        filters,
-        current,
-        pageSize,
-      }) ?? filters
+      return paginationMode === 'local'
+        ? filters
+        : buildRequestFilters?.({
+            filters,
+            current,
+            pageSize,
+          }) ?? filters
     },
-    [current, filters, pageSize, paginationMode, spec]
+    [buildRequestFilters, current, filters, pageSize, paginationMode]
   )
+  const requestFiltersKey = useMemo(() => JSON.stringify(nextRequestFilters), [nextRequestFilters])
+  // Reuse the previous filters object when the serialized query params are unchanged,
+  // so selection-only re-renders do not retrigger the initial list load effect.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const requestFilters = useMemo(() => nextRequestFilters, [requestFiltersKey])
+  const buildColumns = spec.buildColumns
   const transformResponse = spec.transformResponse
   const selectItems = spec.selectItems
 
@@ -117,11 +129,11 @@ export const StandardListPageRecipe = <
     refreshChannel: spec.refreshChannel,
   })
 
-  const watchedFilterValues =
-    (Form.useWatch(
-      (values) => values as Partial<TFilterValues>,
-      filterForm
-    ) as Partial<TFilterValues> | undefined) ?? {}
+  const watchedFilterValues = Form.useWatch(
+    (values) => values as Partial<TFilterValues>,
+    filterForm
+  ) as Partial<TFilterValues> | undefined
+  const safeWatchedFilterValues = useMemo(() => watchedFilterValues ?? {}, [watchedFilterValues])
 
   const visibleFieldCount = useMemo(
     () =>
@@ -130,9 +142,9 @@ export const StandardListPageRecipe = <
           return true
         }
 
-        return field.visibleWhen(watchedFilterValues)
+        return field.visibleWhen(safeWatchedFilterValues)
       }).length,
-    [spec.filterFields, watchedFilterValues]
+    [safeWatchedFilterValues, spec.filterFields]
   )
 
   const searchColProps = useMemo(() => buildSearchGridProps(visibleFieldCount), [visibleFieldCount])
@@ -143,13 +155,13 @@ export const StandardListPageRecipe = <
 
   const columns = useMemo(
     () =>
-      spec.buildColumns({
+      buildColumns({
         openFormPage,
         reload: async () => {
           await load()
         },
       }),
-    [load, openFormPage, spec]
+    [buildColumns, load, openFormPage]
   )
 
   const defaultColumnKeys = useMemo(
@@ -170,13 +182,13 @@ export const StandardListPageRecipe = <
 
   const virtualScroll = useMemo(
     () => ({
-      enabled: pageSize >= VIRTUAL_SCROLL_PAGE_SIZE_THRESHOLD,
+      enabled: false,
       scroll: {
         x: resolveVirtualScrollX(visibleColumns),
         y: VIRTUAL_TABLE_HEIGHT,
       },
     }),
-    [pageSize, visibleColumns]
+    [visibleColumns]
   )
 
   const handleResetAll = () => {
@@ -184,7 +196,22 @@ export const StandardListPageRecipe = <
     resetPage()
   }
 
-  const resolvedCardTitle = spec.cardTitle && spec.cardTitle !== spec.pageTitle ? spec.cardTitle : undefined
+  const handleClearSort = () => {
+    clearStoredTableOrder(spec.tableId)
+    setHasCustomSortOrder(false)
+    setSortResetVersion((version) => version + 1)
+  }
+
+  const resolvedPageTitle = routeTitle ?? spec.pageTitle
+  const resolvedCardTitleSource = cardTitleOverride ?? spec.cardTitle
+  const resolvedCardTitle =
+    typeof resolvedCardTitleSource === 'string'
+      ? resolvedCardTitleSource &&
+          resolvedCardTitleSource !== spec.pageTitle &&
+          resolvedCardTitleSource !== resolvedPageTitle
+        ? resolvedCardTitleSource
+        : undefined
+      : resolvedCardTitleSource
 
   const responseItems = selectItems(response)
   const dataSource =
@@ -209,13 +236,18 @@ export const StandardListPageRecipe = <
     onPageChange: (nextCurrent, nextPageSize) => {
       tablePagination.onChange?.(nextCurrent, nextPageSize)
     },
+    dragSort: {
+      persistenceKey: spec.tableId,
+      resetVersion: sortResetVersion,
+      onPersistenceChange: setHasCustomSortOrder,
+    },
     virtualScroll,
   })
 
   return (
     <div className="space-y-4 pb-20">
       <Typography.Title level={4} className="!mb-1">
-        {spec.pageTitle}
+        {resolvedPageTitle}
       </Typography.Title>
 
       {spec.renderBeforeFilter ?? null}
@@ -262,6 +294,8 @@ export const StandardListPageRecipe = <
               tableSize={tableSize}
               densityItems={spec.densityItems}
               onTableSizeChange={setTableSize}
+              onClearSort={handleClearSort}
+              clearSortDisabled={!hasCustomSortOrder}
               onReload={() => {
                 void load({ showSuccess: true })
               }}

@@ -190,4 +190,22 @@ describe('MskApiListPage', () => {
       expect(latestToggleStatus).toBe('-1')
     })
   })
+
+  it('should move batch action into the card header when rows are selected', async () => {
+    render(<ThemeProvider><MskApiListPage /></ThemeProvider>)
+
+    await waitFor(() => {
+      expect(screen.getByText('MSK API列表')).toBeTruthy()
+    })
+
+    const rowCheckboxes = screen.getAllByRole('checkbox')
+    fireEvent.click(rowCheckboxes[1] as Element)
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '批量修改' })).toBeTruthy()
+      expect(screen.getByText('已选 1 项')).toBeTruthy()
+    })
+
+    expect(screen.queryByText('已选择')).toBeNull()
+  })
 })

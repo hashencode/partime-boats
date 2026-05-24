@@ -4,7 +4,7 @@ import { describe, expect, it } from '@rstest/core'
 import type { ColumnsType } from 'antd/es/table'
 import { StandardListPageRecipe } from './standard-list-page-recipe'
 import type { StandardListPageSpec } from '../specs/standard-list-page-spec'
-import { VIRTUAL_SCROLL_PAGE_SIZE_THRESHOLD } from '../../hooks/use-standard-pagination'
+import { RouteTitleProvider } from '../../contexts/route-title-context'
 import { SEARCH_COMPACT_LAYOUT_STORAGE_KEY, ThemeProvider } from '../../contexts/theme-context'
 
 void React
@@ -61,7 +61,12 @@ type VirtualScrollSnapshot = {
 }
 
 describe('StandardListPageRecipe', () => {
-  const renderWithTheme = (node: React.ReactNode) => render(<ThemeProvider>{node}</ThemeProvider>)
+  const renderWithTheme = (node: React.ReactNode, routeTitle: string | null = null) =>
+    render(
+      <ThemeProvider>
+        <RouteTitleProvider value={{ title: routeTitle }}>{node}</RouteTitleProvider>
+      </ThemeProvider>
+    )
 
   it('does not auto request on filter value change and only queries on submit', async () => {
     const requestCalls: RequestFilters[] = []
@@ -214,7 +219,7 @@ describe('StandardListPageRecipe', () => {
     })
   })
 
-  it('should enable virtual scroll with fixed height when page size reaches threshold', async () => {
+  it('should keep virtual scroll disabled when page size changes', async () => {
     let latestVirtualScroll: VirtualScrollSnapshot | null = null
     const spec: StandardListPageSpec<FilterValues, RequestFilters, Response, { id: number; name: string }, Error> = {
       pageTitle: '测试列表',
@@ -251,8 +256,8 @@ describe('StandardListPageRecipe', () => {
         latestVirtualScroll = virtualScroll
         return (
           <div>
-            <button type="button" onClick={() => onPageChange(2, VIRTUAL_SCROLL_PAGE_SIZE_THRESHOLD)}>
-              enable-virtual-scroll
+            <button type="button" onClick={() => onPageChange(2, 100)}>
+              change-page-size
             </button>
           </div>
         )
@@ -273,11 +278,11 @@ describe('StandardListPageRecipe', () => {
       },
     })
 
-    fireEvent.click(screen.getByRole('button', { name: 'enable-virtual-scroll' }))
+    fireEvent.click(screen.getByRole('button', { name: 'change-page-size' }))
 
     await waitFor(() => {
       expect(latestVirtualScroll).toEqual({
-        enabled: true,
+        enabled: false,
         scroll: {
           x: 1200,
           y: 700,
@@ -371,6 +376,42 @@ describe('StandardListPageRecipe', () => {
     expect(screen.getAllByText('测试列表')).toHaveLength(1)
   })
 
+  it('should prefer the shared route title and hide the duplicated card title', async () => {
+    const spec: StandardListPageSpec<FilterValues, RequestFilters, Response, { id: number; name: string }, Error> = {
+      pageTitle: '提醒列表',
+      cardTitle: '提醒列表',
+      tableId: 'recipe-test-route-title',
+      formRoute: '/test/form',
+      initialFilters: {},
+      toFilters: () => ({}),
+      request: async () => ({
+        data: [{ id: 1, name: 'demo' }],
+        current: 1,
+        size: 10,
+        total: 1,
+      }),
+      selectItems: (response) => response?.data ?? [],
+      filterFields: [],
+      buildColumns: () =>
+        [
+          {
+            key: 'name',
+            title: '名称',
+            dataIndex: 'name',
+          },
+        ] satisfies ColumnsType<{ id: number; name: string }>,
+      buildTableNode: ({ dataSource }) => <div>{dataSource[0]?.name ?? 'empty'}</div>,
+    }
+
+    renderWithTheme(<StandardListPageRecipe spec={spec} />, '日志管理')
+
+    await waitFor(() => {
+      expect(screen.getByText('日志管理')).toBeTruthy()
+    })
+
+    expect(screen.queryByText('提醒列表')).toBeNull()
+  })
+
   it('supports local pagination mode without sending page parameters to request', async () => {
     const requestCalls: RequestFilters[] = []
     const spec: StandardListPageSpec<FilterValues, RequestFilters, Response, { id: number; name: string }, Error> = {
@@ -437,5 +478,77 @@ describe('StandardListPageRecipe', () => {
     })
     expect(screen.getByTestId('local-page-items').textContent?.split(',')).toEqual(['item-11', 'item-12'])
     expect(requestCalls).toHaveLength(1)
+  })
+
+  it('does not refresh the list when selection state changes and request filters stay the same', async () => {
+    const requestCalls: RequestFilters[] = []
+
+    const SelectionRefreshProbe = () => {
+      const [selectedCount, setSelectedCount] = React.useState(0)
+      const spec = React.useMemo<
+        StandardListPageSpec<FilterValues, RequestFilters, Response, { id: number; name: string }, Error>
+      >(
+        () => ({
+          pageTitle: '测试列表',
+          cardTitle: '测试数据',
+          tableId: 'recipe-test-selection-refresh',
+          formRoute: '/test/form',
+          initialFilters: {},
+          toFilters: () => ({}),
+          buildRequestFilters: ({ filters, current, pageSize }) => ({
+            ...filters,
+            current,
+            size: pageSize,
+          }),
+          request: async (filters) => {
+            requestCalls.push(filters)
+            return {
+              data: [{ id: 1, name: 'demo' }],
+              current: filters.current ?? 1,
+              size: filters.size ?? 10,
+              total: 1,
+            }
+          },
+          selectItems: (response) => response?.data ?? [],
+          filterFields: [],
+          toolbarExtra: <span>已选 {selectedCount} 项</span>,
+          buildColumns: () =>
+            [
+              {
+                key: 'name',
+                title: '名称',
+                dataIndex: 'name',
+              },
+            ] satisfies ColumnsType<{ id: number; name: string }>,
+          buildTableNode: ({ dataSource }) => (
+            <div>
+              <div data-testid="selection-table-node">{dataSource[0]?.name ?? 'empty'}</div>
+              <button type="button" onClick={() => setSelectedCount((count) => count + 1)}>
+                toggle-selection
+              </button>
+            </div>
+          ),
+        }),
+        [selectedCount]
+      )
+
+      return <StandardListPageRecipe spec={spec} />
+    }
+
+    renderWithTheme(<SelectionRefreshProbe />)
+
+    await waitFor(() => {
+      expect(requestCalls).toHaveLength(1)
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'toggle-selection' }))
+
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 30))
+    })
+
+    expect(requestCalls).toHaveLength(1)
+    expect(screen.getByText('已选 1 项')).toBeTruthy()
+    expect(screen.getByTestId('selection-table-node').textContent).toBe('demo')
   })
 })

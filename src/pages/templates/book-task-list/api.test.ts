@@ -1,9 +1,12 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it } from '@rstest/core'
 import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
-import { fetchAllBookTaskIds, fetchBookTaskList } from './api'
+import { apiClient } from '../../../infrastructure/http/api-client'
+import { buildBookTaskSavePayload, fetchAllBookTaskIds, fetchBookTaskList, fetchStartPortOptions } from './api'
 
 let requestPages: number[] = []
+let latestStartPortRequestUrl: string | null = null
+const originalBaseUrl = apiClient.defaults.baseURL
 
 const buildTaskRows = (count: number) =>
   Array.from({ length: count }, (_, index) => ({
@@ -28,19 +31,26 @@ const server = setupServer(
         per_page: perPage,
       },
     })
+  }),
+  http.get('http://124.70.141.127:9111/startport', ({ request }) => {
+    latestStartPortRequestUrl = request.url
+    return HttpResponse.json(['上海'])
   })
 )
 
 beforeAll(() => {
+  apiClient.defaults.baseURL = 'http://124.70.141.127:9111'
   server.listen({ onUnhandledRequest: 'error' })
 })
 
 afterEach(() => {
   requestPages = []
+  latestStartPortRequestUrl = null
   server.resetHandlers()
 })
 
 afterAll(() => {
+  apiClient.defaults.baseURL = originalBaseUrl
   server.close()
 })
 
@@ -62,5 +72,28 @@ describe('book task api', () => {
     expect(ids).toHaveLength(101)
     expect(ids[0]).toBe(1)
     expect(ids.at(-1)).toBe(101)
+  })
+
+  it('should use the configured api host for start port metadata', async () => {
+    const options = await fetchStartPortOptions()
+
+    expect(options).toEqual(['上海'])
+    expect(latestStartPortRequestUrl).toBe('http://124.70.141.127:9111/startport?location=0')
+  })
+
+  it('should convert a custom cid type string into a numeric payload', () => {
+    const payload = buildBookTaskSavePayload({
+      cid_type: '9',
+    })
+
+    expect(payload.cid_type).toBe(9)
+  })
+
+  it('should ignore an invalid cid type value when building the payload', () => {
+    const payload = buildBookTaskSavePayload({
+      cid_type: 'abc',
+    })
+
+    expect(payload.cid_type).toBeUndefined()
   })
 })

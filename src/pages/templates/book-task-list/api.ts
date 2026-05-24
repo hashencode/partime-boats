@@ -1,10 +1,6 @@
 import dayjs from 'dayjs'
 import { apiClient } from '../../../infrastructure/http/api-client'
 
-const PROXY_REQUEST_CONFIG = {
-  baseURL: '/',
-} as const
-
 const BOOK_TASK_API_URL = 'http://124.70.141.127:9111/maersk/book/task'
 
 type LegacyEnvelope<T> = {
@@ -186,7 +182,6 @@ export const fetchBookTaskList = async (filters: BookTaskQueryFilters): Promise<
   const firstPageResponse = await apiClient.get<LegacyNestedListEnvelope<BookTaskItem> | LegacyListResponse<BookTaskItem>>(
     BOOK_TASK_API_URL,
     {
-      ...PROXY_REQUEST_CONFIG,
       params: filters,
     }
   )
@@ -204,7 +199,6 @@ export const fetchAllBookTaskIds = async (filters: BookTaskQueryFilters): Promis
   const firstPageResponse = await apiClient.get<LegacyNestedListEnvelope<BookTaskItem> | LegacyListResponse<BookTaskItem>>(
     BOOK_TASK_API_URL,
     {
-      ...PROXY_REQUEST_CONFIG,
       params: requestFilters,
     }
   )
@@ -217,7 +211,6 @@ export const fetchAllBookTaskIds = async (filters: BookTaskQueryFilters): Promis
     const nextResponse = await apiClient.get<LegacyNestedListEnvelope<BookTaskItem> | LegacyListResponse<BookTaskItem>>(
       BOOK_TASK_API_URL,
       {
-        ...PROXY_REQUEST_CONFIG,
         params: {
           ...requestFilters,
           page,
@@ -235,13 +228,13 @@ export const fetchAllBookTaskIds = async (filters: BookTaskQueryFilters): Promis
 }
 
 export const fetchStartPortOptions = async (location = 0): Promise<string[]> => {
-  const response = await apiClient.get<string[] | LegacyEnvelope<string[]>>(`/api/startport?location=${location}`, PROXY_REQUEST_CONFIG)
+  const response = await apiClient.get<string[] | LegacyEnvelope<string[]>>(`/startport?location=${location}`)
   const payload = unwrapLegacyEnvelope(response.data)
   return assertArrayResponse<string>(payload, '起始港接口')
 }
 
 export const fetchEndPortOptions = async (location = 0): Promise<string[]> => {
-  const response = await apiClient.get<string[] | LegacyEnvelope<string[]>>(`/api/endport?location=${location}`, PROXY_REQUEST_CONFIG)
+  const response = await apiClient.get<string[] | LegacyEnvelope<string[]>>(`/endport?location=${location}`)
   const payload = unwrapLegacyEnvelope(response.data)
   return assertArrayResponse<string>(payload, '目的港接口')
 }
@@ -252,21 +245,20 @@ export const updateBookTask = async (id: number, payload: BookTaskSavePayload): 
     {
       ...payload,
       id,
-    },
-    PROXY_REQUEST_CONFIG
+    }
   )
 }
 
 export const batchUpdateBookTask = async (payload: BookTaskBatchPayload): Promise<void> => {
-  await apiClient.post('/api/maersk/group/task', payload, PROXY_REQUEST_CONFIG)
+  await apiClient.post('/maersk/group/task', payload)
 }
 
 export const closeBookTaskInitialization = async (ids?: string): Promise<void> => {
-  await apiClient.get(ids ? `/api/delay/cid?ids=${ids}` : '/api/delay/cid', PROXY_REQUEST_CONFIG)
+  await apiClient.get(ids ? `/delay/cid?ids=${ids}` : '/delay/cid')
 }
 
 export const clearBookTaskRouter = async (ids?: string): Promise<void> => {
-  await apiClient.get(ids ? `/api/delay/route?ids=${ids}` : '/api/delay/route', PROXY_REQUEST_CONFIG)
+  await apiClient.get(ids ? `/delay/route?ids=${ids}` : '/delay/route')
 }
 
 export const buildBookTaskSavePayload = (values: Record<string, unknown>): BookTaskSavePayload => ({

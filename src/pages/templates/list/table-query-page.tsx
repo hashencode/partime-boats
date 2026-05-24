@@ -3,15 +3,13 @@ import {
   Button,
   Drawer,
   Popconfirm,
-  Space,
-  Table,
   Tag,
   Typography,
   message,
-  theme,
 } from 'antd'
 import dayjs, { type Dayjs } from 'dayjs'
 import React, { useCallback, useMemo, useRef, useState } from 'react'
+import { DraggableTable } from '../../../shared/components/draggable-table'
 import { ListRowActions } from '../../../shared/components/list-row-actions'
 import { normalizeApiError, type ApiError } from '../../../infrastructure/http/api-client'
 import { LIST_REFRESH_CHANNEL, LIST_REFRESH_EVENT } from '../../../shared/constants/list-refresh-channel'
@@ -95,7 +93,6 @@ const toFilters = (values: RuleSearchFormValues): RuleListFilters => ({
 })
 
 export const TableQueryPage = () => {
-  const { token } = theme.useToken()
   const [selectedRows, setSelectedRows] = useState<RuleItem[]>([])
   const [drawerRow, setDrawerRow] = useState<RuleItem | null>(null)
   const [deletedRuleKeys, setDeletedRuleKeys] = useState<string[]>([])
@@ -276,19 +273,21 @@ export const TableQueryPage = () => {
           ),
         },
       ],
-      buildTableNode: ({ columns, dataSource, loading, tableSize, current, pageSize, tableClassName, pagination, virtualScroll }) => {
+      buildTableNode: ({ columns, dataSource, loading, tableSize, current, pageSize, tableClassName, pagination, dragSort, virtualScroll }) => {
         paginationMetaRef.current = { current, pageSize }
 
         return (
-          <Table<RuleItem>
+          <DraggableTable<RuleItem>
             className={tableClassName}
             rowKey="key"
+            sortPersistenceKey={dragSort.persistenceKey}
+            sortResetVersion={dragSort.resetVersion}
+            onSortPersistenceChange={dragSort.onPersistenceChange}
             dataSource={dataSource}
             columns={columns}
             size={tableSize}
             pagination={pagination}
             loading={loading}
-            virtual={virtualScroll.enabled}
             scroll={virtualScroll.enabled ? virtualScroll.scroll : undefined}
             rowSelection={{
               onChange: (_, rows) => setSelectedRows(rows),
@@ -300,44 +299,32 @@ export const TableQueryPage = () => {
         label: '新增规则',
         icon: <PlusOutlined />,
       },
-      renderAfterContent:
-        selectedRows.length > 0 ? (
-          <div
-            className="fixed right-0 bottom-0 left-0 z-[11] px-6 py-3 backdrop-blur-[6px]"
-            style={{
-              borderTop: `1px solid ${token.colorBorderSecondary}`,
-              background: token.colorBgElevated,
-            }}
-          >
-            <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
-              <div>
-                已选择 <span className="font-medium">{selectedRows.length}</span> 项，服务调用总量{' '}
-                <span className="font-medium">{selectedRows.reduce((sum, item) => sum + item.callNo, 0)}</span>
-              </div>
-              <Space>
-                <Popconfirm
-                  title="确认批量删除已选规则吗？"
-                  description="删除后将从当前列表中移除。"
-                  okText="确认删除"
-                  cancelText="取消"
-                  onConfirm={() => message.success('批量删除成功')}
-                >
-                  <Button>批量删除</Button>
-                </Popconfirm>
-                <Button type="primary" onClick={() => message.success('批量审批成功')}>
-                  批量审批
-                </Button>
-              </Space>
-            </div>
-          </div>
-        ) : null,
     }),
-    [applyDeletedRules, filterFields, handleDeleteRule, selectedRows, token.colorBgElevated, token.colorBorderSecondary]
+    [applyDeletedRules, filterFields, handleDeleteRule]
   )
+
+  const cardTitleOverride =
+    selectedRows.length > 0 ? (
+      <div className="flex flex-wrap items-center gap-3">
+        <Typography.Text>
+          已选 {selectedRows.length} 项，服务调用总量 {selectedRows.reduce((sum, item) => sum + item.callNo, 0)}
+        </Typography.Text>
+        <Popconfirm
+          title="确认批量删除已选规则吗？"
+          description="删除后将从当前列表中移除。"
+          okText="确认删除"
+          cancelText="取消"
+          onConfirm={() => message.success('批量删除成功')}
+        >
+          <Button>批量删除</Button>
+        </Popconfirm>
+        <Button onClick={() => message.success('批量审批成功')}>批量审批</Button>
+      </div>
+    ) : undefined
 
   return (
     <>
-      <StandardListPageRecipe spec={spec} />
+      <StandardListPageRecipe spec={spec} cardTitleOverride={cardTitleOverride} />
 
       <Drawer size={560} open={Boolean(drawerRow)} onClose={() => setDrawerRow(null)} title={drawerRow?.name}>
         {drawerRow ? (

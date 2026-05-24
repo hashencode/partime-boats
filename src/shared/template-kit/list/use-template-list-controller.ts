@@ -1,5 +1,5 @@
 import { message } from 'antd'
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
 import { useLatestRequest } from '../hooks/use-latest-request'
 import { useListRefreshChannel } from '../hooks/use-list-refresh-channel'
@@ -53,6 +53,7 @@ export const useTemplateListController = <TFilter, TResponse, TItem, TError = un
   TError
 >): UseTemplateListControllerResult<TResponse, TItem, TError> => {
   const [response, setResponse] = useState<TResponse | null>(null)
+  const transformResponseRef = useRef(transformResponse)
   const {
     loading,
     error,
@@ -64,6 +65,10 @@ export const useTemplateListController = <TFilter, TResponse, TItem, TError = un
       onError?.(requestError, filters)
     },
   })
+
+  useEffect(() => {
+    transformResponseRef.current = transformResponse
+  }, [transformResponse])
 
   const load = useCallback(
     async (options?: {
@@ -77,7 +82,7 @@ export const useTemplateListController = <TFilter, TResponse, TItem, TError = un
 
       const applied =
         options?.transformResponse?.(nextResponse) ??
-        transformResponse?.(nextResponse) ??
+        transformResponseRef.current?.(nextResponse) ??
         nextResponse
       setResponse(applied)
 
@@ -85,7 +90,7 @@ export const useTemplateListController = <TFilter, TResponse, TItem, TError = un
         void message.success('刷新成功')
       }
     },
-    [filters, runRequest, transformResponse]
+    [filters, runRequest]
   )
 
   useListRefreshChannel({

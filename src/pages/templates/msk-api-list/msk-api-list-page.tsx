@@ -1,6 +1,7 @@
-import { Alert, Button, DatePicker, Form, Input, InputNumber, Modal, Popconfirm, Select, Space, Table, Tag, Typography, message, theme } from 'antd'
+import { Alert, Button, DatePicker, Form, Input, InputNumber, Modal, Popconfirm, Select, Space, Tag, Typography, message } from 'antd'
 import dayjs, { type Dayjs } from 'dayjs'
 import React, { useCallback, useMemo, useRef, useState } from 'react'
+import { DraggableTable } from '../../../shared/components/draggable-table'
 import { ListRowActions } from '../../../shared/components/list-row-actions'
 import { normalizeApiError, type ApiError } from '../../../infrastructure/http/api-client'
 import {
@@ -114,7 +115,6 @@ const buildToggleConfirmTitle = (selectedCount: number, actionLabel: '开启' | 
 }
 
 export const MskApiListPage = () => {
-  const { token } = theme.useToken()
   const [selectedCount, setSelectedCount] = useState(0)
   const [accountNumText, setAccountNumText] = useState<string>('')
   const [editingItem, setEditingItem] = useState<RowView | null>(null)
@@ -309,54 +309,48 @@ export const MskApiListPage = () => {
       buildColumns: ({ reload }) => {
         reloadRef.current = reload
         return [
-          { title: 'ID', dataIndex: 'id', key: 'id', width: 80, sorter: (a, b) => a.id - b.id },
-          { title: '账号', dataIndex: 'tips', key: 'tips', width: 120 },
-          { title: '起始港', dataIndex: 'origincity_name', key: 'origincity_name', width: 120 },
+          { title: 'ID', dataIndex: 'id', key: 'id', sorter: (a, b) => a.id - b.id },
+          { title: '账号', dataIndex: 'tips', key: 'tips' },
+          { title: '起始港', dataIndex: 'origincity_name', key: 'origincity_name' },
           {
             title: '目的港',
             dataIndex: 'destinationcity_name',
             key: 'destinationcity_name',
-            width: 160,
           },
-          { title: '航线', dataIndex: 'host', key: 'host', width: 120 },
-          { title: '箱型', dataIndex: 'box_type', key: 'box_type', width: 100 },
+          { title: '航线', dataIndex: 'host', key: 'host' },
+          { title: '箱型', dataIndex: 'box_type', key: 'box_type' },
           {
             title: '延迟时间(秒)',
             dataIndex: 'delay_time_label',
             key: 'delay_time_label',
-            width: 120,
           },
           {
             title: '是否开启',
             dataIndex: 'is_run_label',
             key: 'is_run_label',
-            width: 100,
             render: (value: string) => (
               <Tag color={value === '开启' ? 'success' : 'default'}>{value || '-'}</Tag>
             ),
           },
-          { title: '是否翻页', dataIndex: 'is_roll_label', key: 'is_roll_label', width: 100 },
+          { title: '是否翻页', dataIndex: 'is_roll_label', key: 'is_roll_label' },
           {
             title: '开航时间',
             dataIndex: 'early_date',
             key: 'early_date',
-            width: 120,
             sorter: (a, b) => timeStamp(a.early_date) - timeStamp(b.early_date),
           },
           {
             title: '目的港类型',
             dataIndex: 'destination_service_mode',
             key: 'destination_service_mode',
-            width: 120,
           },
           {
             title: '限价',
             dataIndex: 'limit_price',
             key: 'limit_price',
-            width: 100,
             sorter: (a, b) => Number(a.limit_price ?? 0) - Number(b.limit_price ?? 0),
           },
-          { title: '端口', dataIndex: 'port', key: 'port', width: 100 },
+          { title: '端口', dataIndex: 'port', key: 'port' },
           {
             title: '操作',
             key: 'operation',
@@ -390,12 +384,15 @@ export const MskApiListPage = () => {
           },
         ]
       },
-      buildTableNode: ({ columns, dataSource, loading, tableSize, tableClassName, pagination, virtualScroll }) => {
+      buildTableNode: ({ columns, dataSource, loading, tableSize, tableClassName, pagination, dragSort, virtualScroll }) => {
         currentRowsRef.current = dataSource
         return (
-          <Table<RowView>
+          <DraggableTable<RowView>
             className={tableClassName}
             rowKey="id"
+            sortPersistenceKey={dragSort.persistenceKey}
+            sortResetVersion={dragSort.resetVersion}
+            onSortPersistenceChange={dragSort.onPersistenceChange}
             columns={columns}
             dataSource={dataSource}
             loading={loading}
@@ -407,34 +404,15 @@ export const MskApiListPage = () => {
                 selectedRowsRef.current = rows
                 setSelectedCount(rows.length)
               },
-                  columnWidth: 50,
-                }}
-            virtual={virtualScroll.enabled}
-            scroll={virtualScroll.enabled ? { x: 2160, y: virtualScroll.scroll.y } : { x: 2160 }}
+              columnWidth: 50,
+            }}
+            scroll={virtualScroll.enabled ? { x: 'max-content', y: virtualScroll.scroll.y } : { x: 'max-content' }}
+            onOrderChange={(rows) => {
+              currentRowsRef.current = rows
+            }}
           />
         )
       },
-      renderAfterContent:
-        selectedCount > 0 ? (
-          <div
-            className="fixed right-0 bottom-0 left-0 z-[11] px-6 py-3 backdrop-blur-sm"
-            style={{
-              borderTop: `1px solid ${token.colorBorderSecondary}`,
-              background: token.colorBgElevated,
-            }}
-          >
-            <div className="mx-auto flex w-full max-w-[1600px] items-center justify-between gap-3">
-              <Typography.Text>
-                已选择 <span className="font-medium">{selectedCount}</span> 项
-              </Typography.Text>
-              <Space>
-                <Button type="primary" onClick={() => setBatchVisible(true)}>
-                  批量修改
-                </Button>
-              </Space>
-            </div>
-          </div>
-        ) : null,
       stateCopy: {
         loadingTitle: 'MSK API列表加载中',
         loadingDescription: '正在获取查询数据，请稍候。',
@@ -456,14 +434,20 @@ export const MskApiListPage = () => {
       handleToggleAll,
       requestList,
       selectedCount,
-      token.colorBgElevated,
-      token.colorBorderSecondary,
     ]
   )
 
+  const cardTitleOverride =
+    selectedCount > 0 ? (
+      <div className="flex flex-wrap items-center gap-3">
+        <Typography.Text>已选 {selectedCount} 项</Typography.Text>
+        <Button onClick={() => setBatchVisible(true)}>批量修改</Button>
+      </div>
+    ) : undefined
+
   return (
     <>
-      <StandardListPageRecipe spec={spec} />
+      <StandardListPageRecipe spec={spec} cardTitleOverride={cardTitleOverride} />
 
       <Modal
         title="新增一行"

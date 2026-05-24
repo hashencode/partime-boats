@@ -1,7 +1,8 @@
-import { Button, Dropdown, message, Popconfirm, Table, Tag } from 'antd'
+import { Button, Dropdown, message, Popconfirm, Tag } from 'antd'
 import dayjs, { type Dayjs } from 'dayjs'
 import React, { useCallback, useMemo, useRef, useState } from 'react'
 import ExportJsonExcel from 'js-export-excel'
+import { DraggableTable } from '../../../shared/components/draggable-table'
 import { normalizeApiError, type ApiError } from '../../../infrastructure/http/api-client'
 import {
   createPortFilterFields,
@@ -350,33 +351,31 @@ export const OrderListPage = () => {
             return null
           },
         },
-        { title: '账号', key: 'username', dataIndex: 'username', width: 120 },
-        { title: '开航时间', key: 'earlytime', dataIndex: 'earlytime', width: 140, sorter: (a, b) => toTimestamp(a.earlytime) - toTimestamp(b.earlytime) },
-        { title: '到港时间', key: 'arrive_time', dataIndex: 'arrive_time', width: 140, sorter: (a, b) => toTimestamp(a.arrive_time) - toTimestamp(b.arrive_time) },
-        { title: '起始港', key: 'origin_location', dataIndex: 'origin_location', width: 120 },
-        { title: '目的港', key: 'destination_location', dataIndex: 'destination_location', width: 120 },
-        { title: '箱型', key: 'box_type', dataIndex: 'box_type', width: 140 },
-        { title: '船名', key: 'vessel_name', dataIndex: 'vessel_name', width: 160 },
-        { title: '航程（天）', key: 'voyage_days', dataIndex: 'voyage_days', width: 100, sorter: (a, b) => (a.voyage_days ?? -1) - (b.voyage_days ?? -1) },
-        { title: '提单号', key: 'booking_number', dataIndex: 'booking_number', width: 160 },
-        { title: '价格', key: 'price', dataIndex: 'price', width: 120, sorter: (a, b) => (a.price ?? -1) - (b.price ?? -1) },
-        { title: 'is_roll', key: 'is_roll', dataIndex: 'is_roll', width: 120 },
+        { title: '账号', key: 'username', dataIndex: 'username' },
+        { title: '开航时间', key: 'earlytime', dataIndex: 'earlytime', sorter: (a, b) => toTimestamp(a.earlytime) - toTimestamp(b.earlytime) },
+        { title: '到港时间', key: 'arrive_time', dataIndex: 'arrive_time', sorter: (a, b) => toTimestamp(a.arrive_time) - toTimestamp(b.arrive_time) },
+        { title: '起始港', key: 'origin_location', dataIndex: 'origin_location' },
+        { title: '目的港', key: 'destination_location', dataIndex: 'destination_location' },
+        { title: '箱型', key: 'box_type', dataIndex: 'box_type' },
+        { title: '船名', key: 'vessel_name', dataIndex: 'vessel_name' },
+        { title: '航程（天）', key: 'voyage_days', dataIndex: 'voyage_days', sorter: (a, b) => (a.voyage_days ?? -1) - (b.voyage_days ?? -1) },
+        { title: '提单号', key: 'booking_number', dataIndex: 'booking_number' },
+        { title: '价格', key: 'price', dataIndex: 'price', sorter: (a, b) => (a.price ?? -1) - (b.price ?? -1) },
+        { title: 'is_roll', key: 'is_roll', dataIndex: 'is_roll' },
         {
           title: '返回值2',
           key: 'capacity_hard_stop_indicator',
           dataIndex: 'capacity_hard_stop_indicator',
-          width: 120,
           render: (value) => {
             const isAbnormal = value !== 200 && value !== '200'
             return <span className={isAbnormal ? 'text-orange-500' : ''}>{value ?? '-'}</span>
           },
         },
-        { title: '下单时间', key: 'booktime', dataIndex: 'booktime', width: 160, sorter: (a, b) => toTimestamp(a.booktime) - toTimestamp(b.booktime) },
+        { title: '下单时间', key: 'booktime', dataIndex: 'booktime', sorter: (a, b) => toTimestamp(a.booktime) - toTimestamp(b.booktime) },
         {
           title: '截止提交时间',
           key: 'endtime',
           dataIndex: 'endtime',
-          width: 160,
           sorter: (a, b) => toTimestamp(a.endtime) - toTimestamp(b.endtime),
           render: (value?: string) => {
             if (!value) return '-'
@@ -387,31 +386,35 @@ export const OrderListPage = () => {
             return <span className={isWarning ? 'font-semibold text-red-500' : 'text-black'}>{value}</span>
           },
         },
-        { title: '提交时间', key: 'update_time', dataIndex: 'update_time', width: 160, sorter: (a, b) => toTimestamp(a.update_time) - toTimestamp(b.update_time) },
+        { title: '提交时间', key: 'update_time', dataIndex: 'update_time', sorter: (a, b) => toTimestamp(a.update_time) - toTimestamp(b.update_time) },
         {
           title: '状态',
           key: 'is_book',
           dataIndex: 'is_book',
-          width: 120,
           render: (value: OrderStatus) => <Tag>{statusLabel(value)}</Tag>,
         },
-        { title: 'ID', key: 'id', dataIndex: 'id', width: 80 },
-        { title: '返回值1', key: 'is_instant_confirmation', dataIndex: 'is_instant_confirmation', width: 120 },
-        { title: '免用箱', key: 'free_day', dataIndex: 'free_day', width: 100 },
+        { title: 'ID', key: 'id', dataIndex: 'id' },
+        { title: '返回值1', key: 'is_instant_confirmation', dataIndex: 'is_instant_confirmation' },
+        { title: '免用箱', key: 'free_day', dataIndex: 'free_day' },
       ],
-      buildTableNode: ({ columns, dataSource, loading, tableSize, tableClassName, pagination, virtualScroll }) => {
+      buildTableNode: ({ columns, dataSource, loading, tableSize, tableClassName, pagination, dragSort, virtualScroll }) => {
         currentRowsRef.current = dataSource
         return (
-          <Table
+          <DraggableTable
             className={tableClassName}
             rowKey="id"
+            sortPersistenceKey={dragSort.persistenceKey}
+            sortResetVersion={dragSort.resetVersion}
+            onSortPersistenceChange={dragSort.onPersistenceChange}
             columns={columns}
             dataSource={dataSource}
             size={tableSize}
             loading={loading}
-            virtual={virtualScroll.enabled}
-            scroll={virtualScroll.enabled ? { x: 2500, y: virtualScroll.scroll.y } : { x: 2500 }}
+            scroll={virtualScroll.enabled ? { x: 'max-content', y: virtualScroll.scroll.y } : { x: 'max-content' }}
             pagination={pagination}
+            onOrderChange={(rows) => {
+              currentRowsRef.current = rows
+            }}
           />
         )
       },

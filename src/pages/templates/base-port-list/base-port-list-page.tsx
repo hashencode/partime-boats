@@ -1,6 +1,6 @@
-import { Table } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import React, { useMemo } from 'react'
+import { DraggableTable } from '../../../shared/components/draggable-table'
 import { hasPermission } from '../../../infrastructure/auth/permissions'
 import { ListRowActions } from '../../../shared/components/list-row-actions'
 import { normalizeApiError, type ApiError } from '../../../infrastructure/http/api-client'
@@ -89,19 +89,18 @@ export const BasePortListPage = () => {
       filterFields: [],
       buildColumns: ({ openFormPage }) =>
         [
-          { title: 'ID', dataIndex: 'id', key: 'id', width: 100 },
-          { title: 'cityName', dataIndex: 'cityName', key: 'cityName', width: 140 },
-          { title: 'countryCode', dataIndex: 'countryCode', key: 'countryCode', width: 140 },
-          { title: 'countryGeoId', dataIndex: 'countryGeoId', key: 'countryGeoId', width: 140 },
-          { title: 'countryName', dataIndex: 'countryName', key: 'countryName', width: 160 },
-          { title: 'maerskGeoLocationId', dataIndex: 'maerskGeoLocationId', key: 'maerskGeoLocationId', width: 180 },
-          { title: 'maerskRkstCode', dataIndex: 'maerskRkstCode', key: 'maerskRkstCode', width: 160 },
-          { title: 'UNCode', dataIndex: 'UNCode', key: 'UNCode', width: 120 },
+          { title: 'ID', dataIndex: 'id', key: 'id' },
+          { title: 'cityName', dataIndex: 'cityName', key: 'cityName' },
+          { title: 'countryCode', dataIndex: 'countryCode', key: 'countryCode' },
+          { title: 'countryGeoId', dataIndex: 'countryGeoId', key: 'countryGeoId' },
+          { title: 'countryName', dataIndex: 'countryName', key: 'countryName' },
+          { title: 'maerskGeoLocationId', dataIndex: 'maerskGeoLocationId', key: 'maerskGeoLocationId' },
+          { title: 'maerskRkstCode', dataIndex: 'maerskRkstCode', key: 'maerskRkstCode' },
+          { title: 'UNCode', dataIndex: 'UNCode', key: 'UNCode' },
           {
             title: 'shippingline',
             dataIndex: 'shippingline',
             key: 'shippingline',
-            width: 200,
             render: (value: string) => value || '-',
           },
           {
@@ -128,18 +127,20 @@ export const BasePortListPage = () => {
             ),
           },
         ] satisfies ColumnsType<BasePortRow>,
-      buildTableNode: ({ columns, dataSource, loading, tableClassName, pagination, tableSize, virtualScroll }) => (
-        <Table<BasePortRow>
+      buildTableNode: ({ columns, dataSource, loading, tableClassName, pagination, tableSize, dragSort, virtualScroll }) => (
+        <DraggableTable<BasePortRow>
           className={tableClassName}
           rowKey="key"
+          sortPersistenceKey={dragSort.persistenceKey}
+          sortResetVersion={dragSort.resetVersion}
+          onSortPersistenceChange={dragSort.onPersistenceChange}
           bordered
           columns={columns}
           dataSource={dataSource}
           loading={loading}
           pagination={pagination}
           size={tableSize}
-          virtual={virtualScroll.enabled}
-          scroll={virtualScroll.enabled ? { x: 1460, y: virtualScroll.scroll.y } : { x: 1460 }}
+          scroll={virtualScroll.enabled ? { x: 'max-content', y: virtualScroll.scroll.y } : { x: 'max-content' }}
         />
       ),
       createAction: canWrite

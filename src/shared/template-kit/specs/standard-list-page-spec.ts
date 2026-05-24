@@ -15,7 +15,7 @@ export type StandardListPageSpec<
 > = {
   paginationMode?: 'remote' | 'local'
   pageTitle: string
-  cardTitle?: string
+  cardTitle?: ReactNode
   tableId: string
   formRoute: string
   initialFilters: TRequestFilters
@@ -54,6 +54,11 @@ export type StandardListPageSpec<
     tableClassName: string
     pagination: TablePaginationConfig
     onPageChange: (nextCurrent: number, nextPageSize: number) => void
+    dragSort: {
+      persistenceKey: string
+      resetVersion: number
+      onPersistenceChange: (hasCustomOrder: boolean) => void
+    }
     virtualScroll: {
       enabled: boolean
       scroll: {

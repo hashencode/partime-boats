@@ -1,8 +1,9 @@
-import { Button, Dropdown, Popconfirm, Space, Table, Typography, message, theme } from 'antd'
+import { Button, Dropdown, Popconfirm, Space, Typography, message } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import dayjs, { type Dayjs } from 'dayjs'
 import ExportJsonExcel from 'js-export-excel'
 import React, { useCallback, useMemo, useRef, useState } from 'react'
+import { DraggableTable } from '../../../shared/components/draggable-table'
 import { hasPermission } from '../../../infrastructure/auth/permissions'
 import { useAuth } from '../../../infrastructure/auth/use-auth'
 import { ListRowActions } from '../../../shared/components/list-row-actions'
@@ -130,7 +131,6 @@ const exportExcel = (rows: RemindRow[]) => {
 
 export const RemindListPage = () => {
   const { role } = useAuth()
-  const { token } = theme.useToken()
   const canWrite = hasPermission(role, 'form.write')
   const [selectedRowKeys, setSelectedRowKeys] = useState<number[]>([])
   const [exportAllLoading, setExportAllLoading] = useState(false)
@@ -275,76 +275,64 @@ export const RemindListPage = () => {
             title: '启运港',
             dataIndex: 'portofloading',
             key: 'portofloading',
-            width: 120,
           },
           {
             title: '目的港',
             dataIndex: 'portofdischarge',
             key: 'portofdischarge',
-            width: 120,
           },
           {
             title: '航线',
             dataIndex: 'ship_name',
             key: 'ship_name',
-            width: 120,
           },
           {
             title: '箱型',
             dataIndex: 'boxcode',
             key: 'boxcode',
-            width: 80,
           },
           {
             title: '开航时间',
             dataIndex: 'departuredate',
             key: 'departuredate',
-            width: 100,
             sorter: (left, right) => toTimestamp(left.departuredate) - toTimestamp(right.departuredate),
           },
           {
             title: '基础运价',
             dataIndex: 'oceanfreightamount',
             key: 'oceanfreightamount',
-            width: 100,
             sorter: (left, right) => (toNumber(left.oceanfreightamount) ?? 0) - (toNumber(right.oceanfreightamount) ?? 0),
           },
           {
             title: '总价',
             dataIndex: 'total_amount',
             key: 'total_amount',
-            width: 100,
             sorter: (left, right) => (toNumber(left.total_amount) ?? 0) - (toNumber(right.total_amount) ?? 0),
           },
           {
             title: '来源',
             dataIndex: 'source',
             key: 'source',
-            width: 120,
           },
           {
             title: '查询时间',
             dataIndex: 'insert_datetime',
             key: 'insert_datetime',
-            width: 160,
           },
           {
             title: '是否作废',
             dataIndex: 'is_use_label',
             key: 'is_use_label',
-            width: 100,
           },
           {
             title: '船名航次',
             dataIndex: 'ship_info',
             key: 'ship_info',
-            width: 140,
           },
           {
             title: 'price_id',
             dataIndex: 'price_id',
             key: 'price_id',
-            width: 100,
           },
           {
             title: '操作',
@@ -380,12 +368,15 @@ export const RemindListPage = () => {
           },
         ] as ColumnsType<RemindRow>
       },
-      buildTableNode: ({ columns, dataSource, loading, tableClassName, pagination, tableSize, virtualScroll }) => {
+      buildTableNode: ({ columns, dataSource, loading, tableClassName, pagination, tableSize, dragSort, virtualScroll }) => {
         currentRowsRef.current = dataSource
         return (
-          <Table<RemindRow>
+          <DraggableTable<RemindRow>
             className={tableClassName}
             rowKey="id"
+            sortPersistenceKey={dragSort.persistenceKey}
+            sortResetVersion={dragSort.resetVersion}
+            onSortPersistenceChange={dragSort.onPersistenceChange}
             columns={columns}
             dataSource={dataSource}
             loading={loading}
@@ -404,8 +395,10 @@ export const RemindListPage = () => {
                   }
                 : undefined
             }
-            virtual={virtualScroll.enabled}
-            scroll={virtualScroll.enabled ? { x: 1600, y: virtualScroll.scroll.y } : { x: 1600 }}
+            scroll={virtualScroll.enabled ? { x: 'max-content', y: virtualScroll.scroll.y } : { x: 'max-content' }}
+            onOrderChange={(rows) => {
+              currentRowsRef.current = rows
+            }}
           />
         )
       },
@@ -425,40 +418,30 @@ export const RemindListPage = () => {
     [canWrite, exportAllLoading, filterFields, handleExportAll, handleInvalidate, requestList]
   )
 
-  return (
-    <>
-      <StandardListPageRecipe spec={spec} />
-      {canWrite && selectedRowKeys.length > 0 ? (
-        <div
-          className="fixed right-0 bottom-0 left-0 z-[11] px-6 py-3"
-          style={{
-            borderTop: `1px solid ${token.colorBorderSecondary}`,
-            background: token.colorBgElevated,
+  const cardTitleOverride =
+    canWrite && selectedRowKeys.length > 0 ? (
+      <div className="flex flex-wrap items-center gap-3">
+        <Typography.Text>已选 {selectedRowKeys.length} 项</Typography.Text>
+        <Popconfirm
+          title="确认要批量作废吗？"
+          okText="是"
+          cancelText="否"
+          onConfirm={async () => {
+            if (selectedRowKeysRef.current.length === 0) {
+              message.error('请选择要作废的数据')
+              return
+            }
+            await handleInvalidate(selectedRowKeysRef.current.join(', '))
           }}
         >
-          <div className="mx-auto flex w-full max-w-[1600px] items-center justify-between gap-3">
-            <Typography.Text>
-              已选择 <span className="font-medium">{selectedRowKeys.length}</span> 项
-            </Typography.Text>
-            <Space>
-              <Popconfirm
-                title="确认要批量作废吗？"
-                okText="是"
-                cancelText="否"
-                onConfirm={async () => {
-                  if (selectedRowKeysRef.current.length === 0) {
-                    message.error('请选择要作废的数据')
-                    return
-                  }
-                  await handleInvalidate(selectedRowKeysRef.current.join(', '))
-                }}
-              >
-                <Button type="primary">批量作废</Button>
-              </Popconfirm>
-            </Space>
-          </div>
-        </div>
-      ) : null}
+          <Button>批量作废</Button>
+        </Popconfirm>
+      </div>
+    ) : undefined
+
+  return (
+    <>
+      <StandardListPageRecipe spec={spec} cardTitleOverride={cardTitleOverride} />
     </>
   )
 }

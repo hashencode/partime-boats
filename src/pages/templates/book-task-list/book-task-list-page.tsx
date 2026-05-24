@@ -1,7 +1,9 @@
-import { Button, Col, DatePicker, Form, Input, InputNumber, Modal, Popconfirm, Progress, Row, Select, Space, Table, Tag, Tooltip, Typography, message, theme } from 'antd'
+import { PlusOutlined } from '@ant-design/icons'
+import { Button, Col, DatePicker, Divider, Form, Input, InputNumber, Modal, Popconfirm, Progress, Row, Select, Space, Tag, Tooltip, Typography, message } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import dayjs, { type Dayjs } from 'dayjs'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { DraggableTable } from '../../../shared/components/draggable-table'
 import { hasPermission } from '../../../infrastructure/auth/permissions'
 import { normalizeApiError, type ApiError } from '../../../infrastructure/http/api-client'
 import { useAuth } from '../../../infrastructure/auth/use-auth'
@@ -115,6 +117,8 @@ const CID_TYPE_OPTIONS = [
   { label: '模式下单4', value: 4 },
 ]
 
+const CID_TYPE_PATTERN = /^\d+$/
+
 const DESTINATION_SERVICE_OPTIONS = ['CY', 'SD'].map((value) => ({ label: value, value }))
 
 const createFilterOptions = (items: string[]) => items.map((item) => ({ label: item, value: item }))
@@ -227,6 +231,110 @@ const buildBatchOpenConfirmTitle = (selectedCount: number) => {
   return '确认要开启选中的列表项吗？'
 }
 
+const buildCidTypeOption = (value: number) => {
+  const presetOption = CID_TYPE_OPTIONS.find((item) => item.value === value)
+  return presetOption ?? { label: String(value), value }
+}
+
+export const CidTypeSelect = ({
+  value,
+  onChange,
+}: {
+  value?: number
+  onChange?: (nextValue?: number) => void
+}) => {
+  const [customOptions, setCustomOptions] = useState<number[]>([])
+  const [draftValue, setDraftValue] = useState('')
+  const inputRef = useRef<{ focus?: () => void } | null>(null)
+
+  useEffect(() => {
+    if (typeof value !== 'number') {
+      return
+    }
+
+    setCustomOptions((previous) => {
+      if (CID_TYPE_OPTIONS.some((item) => item.value === value) || previous.includes(value)) {
+        return previous
+      }
+      return [...previous, value]
+    })
+  }, [value])
+
+  const mergedOptions = useMemo(() => {
+    const options = [...CID_TYPE_OPTIONS]
+
+    customOptions.forEach((item) => {
+      if (!options.some((option) => option.value === item)) {
+        options.push(buildCidTypeOption(item))
+      }
+    })
+
+    if (typeof value === 'number' && !options.some((option) => option.value === value)) {
+      options.push(buildCidTypeOption(value))
+    }
+
+    return options
+  }, [customOptions, value])
+
+  const handleAddItem = useCallback(() => {
+    const trimmedValue = draftValue.trim()
+    if (!CID_TYPE_PATTERN.test(trimmedValue)) {
+      message.warning('CID类型仅支持非负整数')
+      return
+    }
+
+    const nextValue = Number(trimmedValue)
+
+    setCustomOptions((previous) => {
+      if (previous.includes(nextValue) || CID_TYPE_OPTIONS.some((item) => item.value === nextValue)) {
+        return previous
+      }
+      return [...previous, nextValue]
+    })
+    onChange?.(nextValue)
+    setDraftValue('')
+    window.setTimeout(() => {
+      inputRef.current?.focus?.()
+    }, 0)
+  }, [draftValue, onChange])
+
+  return (
+    <Select<number>
+      value={value}
+      allowClear
+      showSearch
+      placeholder="请选择或新增CID类型"
+      options={mergedOptions}
+      onChange={(nextValue) => onChange?.(nextValue)}
+      popupRender={(menu) => (
+        <>
+          {menu}
+          <Divider style={{ margin: '8px 0' }} />
+          <Space className="px-2 pb-1">
+            <Input
+              ref={inputRef}
+              value={draftValue}
+              placeholder="请输入CID类型数字"
+              inputMode="numeric"
+              onChange={(event) => setDraftValue(event.target.value)}
+              onKeyDown={(event) => {
+                event.stopPropagation()
+              }}
+              onPressEnter={(event) => {
+                event.preventDefault()
+                handleAddItem()
+              }}
+            />
+            <Button type="text" icon={<PlusOutlined />} onClick={handleAddItem}>
+              添加
+            </Button>
+          </Space>
+        </>
+      )}
+    />
+  )
+}
+
 const BookTaskFormFields = ({
   startPortOptions,
   endPortOptions,
@@ -255,7 +363,7 @@ const BookTaskFormFields = ({
     <Col span={12}><Form.Item label="限制天数" name="limit_day"><Input /></Form.Item></Col>
     <Col span={12}><Form.Item label="CID分组" name="cid_group"><InputNumber className="!w-full" precision={0} /></Form.Item></Col>
     <Col span={12}><Form.Item label="分组" name="group_id"><Input /></Form.Item></Col>
-    <Col span={12}><Form.Item label="cid类型" name="cid_type"><Select options={CID_TYPE_OPTIONS} allowClear showSearch /></Form.Item></Col>
+    <Col span={12}><Form.Item label="cid类型" name="cid_type"><CidTypeSelect /></Form.Item></Col>
     <Col span={12}><Form.Item label="cid循环次数" name="cid_loop_times"><Input /></Form.Item></Col>
     <Col span={12}><Form.Item label="cid请求次数" name="get_cid_times"><Input /></Form.Item></Col>
     <Col span={12}><Form.Item label="cid并发次数" name="cid_concurrent"><Input /></Form.Item></Col>
@@ -272,7 +380,6 @@ const BookTaskFormFields = ({
 
 export const BookTaskListPage = () => {
   const { role } = useAuth()
-  const { token } = theme.useToken()
   const canWrite = hasPermission(role, 'form.write')
   const [editForm] = Form.useForm<BookTaskFormValues>()
   const [batchForm] = Form.useForm<BookTaskFormValues>()
@@ -655,13 +762,16 @@ export const BookTaskListPage = () => {
           },
         ] as ColumnsType<EditableBookTask>
       },
-      buildTableNode: ({ columns, dataSource, loading, tableSize, tableClassName, pagination, virtualScroll }) => {
+      buildTableNode: ({ columns, dataSource, loading, tableSize, tableClassName, pagination, dragSort, virtualScroll }) => {
         currentRowsRef.current = dataSource
 
         return (
-          <Table<EditableBookTask>
+          <DraggableTable<EditableBookTask>
             className={tableClassName}
             rowKey="id"
+            sortPersistenceKey={dragSort.persistenceKey}
+            sortResetVersion={dragSort.resetVersion}
+            onSortPersistenceChange={dragSort.onPersistenceChange}
             columns={columns}
             dataSource={dataSource}
             loading={loading}
@@ -672,8 +782,10 @@ export const BookTaskListPage = () => {
               onChange: (keys) => setSelectedRowKeys(keys as number[]),
               columnWidth: 50,
             }}
-            virtual={virtualScroll.enabled}
             scroll={virtualScroll.enabled ? { x: 'max-content', y: virtualScroll.scroll.y } : { x: 'max-content' }}
+            onOrderChange={(rows) => {
+              currentRowsRef.current = rows
+            }}
           />
         )
       },
@@ -689,27 +801,6 @@ export const BookTaskListPage = () => {
         partialDescription: '部分任务数据可能延迟返回，请稍后重试。',
         partialActionLabel: '重载完整数据',
       },
-      renderAfterContent:
-        canWrite && selectedRowKeys.length > 0 ? (
-          <div
-            className="fixed right-0 bottom-0 left-0 z-[11] px-6 py-3"
-            style={{
-              borderTop: `1px solid ${token.colorBorderSecondary}`,
-              background: token.colorBgElevated,
-            }}
-          >
-            <div className="mx-auto flex w-full max-w-[1600px] items-center justify-between gap-3">
-              <Typography.Text>
-                已选择 <span className="font-medium">{selectedRowKeys.length}</span> 项
-              </Typography.Text>
-              <Space>
-                <Button onClick={() => setBatchVisible(true)}>
-                  批量修改
-                </Button>
-              </Space>
-            </div>
-          </div>
-        ) : null,
     }),
     [
       batchQueueTask.progress.status,
@@ -719,14 +810,20 @@ export const BookTaskListPage = () => {
       handleBatchOpen,
       handleToggleOrderStatus,
       selectedRowKeys,
-      token.colorBgElevated,
-      token.colorBorderSecondary,
     ]
   )
 
+  const cardTitleOverride =
+    canWrite && selectedRowKeys.length > 0 ? (
+      <div className="flex flex-wrap items-center gap-3">
+        <Typography.Text>已选 {selectedRowKeys.length} 项</Typography.Text>
+        <Button onClick={() => setBatchVisible(true)}>批量修改</Button>
+      </div>
+    ) : undefined
+
   return (
     <>
-      <StandardListPageRecipe spec={spec} />
+      <StandardListPageRecipe spec={spec} cardTitleOverride={cardTitleOverride} />
       {editingItem ? (
         <Modal
           title="修改"

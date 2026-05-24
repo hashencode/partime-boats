@@ -5,7 +5,7 @@ import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
 import { AuthContext } from '../../../infrastructure/auth/auth-context'
 import { ThemeProvider } from '../../../shared/contexts/theme-context'
-import { BookTaskListPage } from './book-task-list-page'
+import { BookTaskListPage, CidTypeSelect } from './book-task-list-page'
 
 void React
 
@@ -74,8 +74,8 @@ const buildTaskRows = (count: number) =>
   }))
 
 const server = setupServer(
-  http.get('*/api/startport', () => HttpResponse.json(['上海'])),
-  http.get('*/api/endport', () => HttpResponse.json(['纽约'])),
+  http.get('*/startport', () => HttpResponse.json(['上海'])),
+  http.get('*/endport', () => HttpResponse.json(['纽约'])),
   http.get('http://124.70.141.127:9111/maersk/book/task', async ({ request }) => {
     listRequestCount += 1
     const url = new URL(request.url)
@@ -103,13 +103,13 @@ const server = setupServer(
     })
   }),
   http.post('http://124.70.141.127:9111/maersk/book/task', () => HttpResponse.json({ bool_status: true, data: true })),
-  http.post('*/api/maersk/group/task', async ({ request }) => {
+  http.post('*/maersk/group/task', async ({ request }) => {
     const payload = (await request.json()) as { ids?: string }
     batchOpenPayloads.push(payload.ids ?? '')
     return HttpResponse.json({ bool_status: true, data: true })
   }),
-  http.get('*/api/delay/cid', () => HttpResponse.json({ bool_status: true, data: true })),
-  http.get('*/api/delay/route', () => HttpResponse.json({ bool_status: true, data: true }))
+  http.get('*/delay/cid', () => HttpResponse.json({ bool_status: true, data: true })),
+  http.get('*/delay/route', () => HttpResponse.json({ bool_status: true, data: true }))
 )
 
 beforeAll(() => {
@@ -153,9 +153,22 @@ const renderPage = (role: 'admin' | 'editor' | 'viewer' = 'admin') =>
     </AuthContext.Provider>
   )
 
+const CidTypeSelectHarness = ({ initialValue }: { initialValue?: number }) => {
+  const [value, setValue] = React.useState<number | undefined>(initialValue)
+
+  return (
+    <ThemeProvider>
+      <div>
+        <CidTypeSelect value={value} onChange={setValue} />
+        <span>{value === undefined ? 'empty' : `current:${value}`}</span>
+      </div>
+    </ThemeProvider>
+  )
+}
+
 describe('BookTaskListPage', () => {
   it('should render task rows when request succeeds', async () => {
-    renderPage()
+    const view = renderPage()
 
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: '订舱管理' })).toBeTruthy()
@@ -167,10 +180,12 @@ describe('BookTaskListPage', () => {
       expect(screen.queryByRole('button', { name: '批量修改' })).toBeNull()
       expect(screen.queryByText(/最近刷新时间/)).toBeNull()
     })
+
+    view.unmount()
   })
 
   it('should not re-query when changing filters until query button clicked', async () => {
-    renderPage()
+    const view = renderPage()
 
     await waitFor(() => {
       expect(listRequestCount).toBeGreaterThan(0)
@@ -194,10 +209,12 @@ describe('BookTaskListPage', () => {
       perPage: '10',
       orderId: '999',
     })
+
+    view.unmount()
   }, 10000)
 
   it('should hide write actions for viewer role', async () => {
-    renderPage('viewer')
+    const view = renderPage('viewer')
 
     await waitFor(() => {
       expect(screen.getByText('tester')).toBeTruthy()
@@ -205,6 +222,8 @@ describe('BookTaskListPage', () => {
 
     expect(screen.getByRole('button', { name: '关闭初始化' }).getAttribute('disabled')).not.toBeNull()
     expect(screen.queryByText('修改')).toBeNull()
+
+    view.unmount()
   })
 
   it('should show error state when list request fails', async () => {
@@ -214,16 +233,18 @@ describe('BookTaskListPage', () => {
       )
     )
 
-    renderPage()
+    const view = renderPage()
 
     await waitFor(() => {
       expect(screen.getByText('任务列表加载失败')).toBeTruthy()
       expect(screen.getByText('请求失败，请稍后重试。')).toBeTruthy()
     })
+
+    view.unmount()
   })
 
   it('should batch open all filtered rows in queue when nothing is checked', async () => {
-    renderPage()
+    const view = renderPage()
 
     await waitFor(() => {
       expect(screen.getByText('tester')).toBeTruthy()
@@ -242,6 +263,8 @@ describe('BookTaskListPage', () => {
     expect(requestParamsHistory.some((item) => item.page === '2' && item.perPage === '100')).toBeTruthy()
     expect(batchOpenPayloads[0]?.split(',').map((item) => item.trim()).filter(Boolean)).toHaveLength(100)
     expect(batchOpenPayloads[1]?.split(',').map((item) => item.trim()).filter(Boolean)).toHaveLength(1)
+
+    view.unmount()
   }, 10000)
 
   it('should auto refresh every 15 seconds without changing submitted filters or pagination', async () => {
@@ -309,5 +332,58 @@ describe('BookTaskListPage', () => {
     view.unmount()
 
     expect(clearedIntervalId).toBe(1)
+  })
+
+  it('should show batch action in the card header when writable rows are selected', async () => {
+    const view = renderPage()
+
+    await waitFor(() => {
+      expect(screen.getByText('tester')).toBeTruthy()
+    })
+
+    const rowCheckboxes = screen.getAllByRole('checkbox')
+    fireEvent.click(rowCheckboxes[1] as Element)
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '批量修改' })).toBeTruthy()
+      expect(screen.getByText('已选 1 项')).toBeTruthy()
+    })
+
+    expect(screen.queryByText('已选择')).toBeNull()
+
+    view.unmount()
+  })
+
+  it('should allow adding a custom cid type option', async () => {
+    const view = render(<CidTypeSelectHarness initialValue={0} />)
+
+    const comboBox = screen.getByRole('combobox')
+    await act(async () => {
+      fireEvent.mouseDown(comboBox)
+    })
+
+    const customInput = await screen.findByPlaceholderText('请输入CID类型数字')
+    fireEvent.change(customInput, { target: { value: '9' } })
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /添加/ }))
+    })
+
+    await waitFor(() => {
+      expect(screen.getByText('current:9')).toBeTruthy()
+    })
+
+    view.unmount()
+  })
+
+  it('should keep an unknown cid type value visible', async () => {
+    const view = render(<CidTypeSelectHarness initialValue={9} />)
+
+    await waitFor(() => {
+      expect(screen.getByText('9')).toBeTruthy()
+      expect(screen.getByText('current:9')).toBeTruthy()
+    })
+
+    view.unmount()
   })
 })

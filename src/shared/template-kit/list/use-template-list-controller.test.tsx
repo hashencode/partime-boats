@@ -164,4 +164,37 @@ describe('useTemplateListController', () => {
 
     expect(result.current.load).toBe(firstLoad)
   })
+
+  it('keeps load reference stable when transformResponse callback identity changes', () => {
+    const fixedFilters: Filters = {}
+    const request = async (filters: Filters): Promise<Response> => {
+      void filters
+      return {
+        data: [{ key: '1', name: 'alpha' }],
+      }
+    }
+
+    const { result, rerender } = renderHook(
+      ({ transformResponse }: { transformResponse: (response: Response) => Response }) =>
+        useTemplateListController<Filters, Response, Item, ListError>({
+          filters: fixedFilters,
+          request,
+          selectItems: (response) => response?.data ?? [],
+          transformResponse,
+        }),
+      {
+        initialProps: {
+          transformResponse: (response: Response) => response,
+        },
+      }
+    )
+
+    const firstLoad = result.current.load
+
+    rerender({
+      transformResponse: (response: Response) => response,
+    })
+
+    expect(result.current.load).toBe(firstLoad)
+  })
 })

@@ -106,4 +106,34 @@ describe('list-toolbar-actions', () => {
     expect(scrollContainer?.style.maxHeight).toBe('400px')
     expect(scrollContainer?.className).toContain('overflow-y-auto')
   })
+
+  it('renders clear-sort button before reload and reports clicks', () => {
+    const callSequence: string[] = []
+
+    render(
+      <ListToolbarActions
+        tableSize="small"
+        onTableSizeChange={() => undefined}
+        onClearSort={() => {
+          callSequence.push('clear')
+        }}
+        clearSortDisabled={false}
+        onReload={() => {
+          callSequence.push('reload')
+        }}
+        columnSettingOptions={[]}
+        selectedColumnKeys={[]}
+        onSelectedColumnKeysChange={() => undefined}
+      />
+    )
+
+    const buttons = screen.getAllByRole('button')
+    expect(buttons[0].getAttribute('aria-label')).toBe('清除排序')
+    expect(buttons[1].getAttribute('aria-label')).toBe('刷新')
+
+    fireEvent.click(buttons[0])
+    fireEvent.click(buttons[1])
+
+    expect(callSequence).toEqual(['clear', 'reload'])
+  })
 })

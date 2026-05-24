@@ -1,9 +1,10 @@
 import React from 'react'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { describe, expect, it, beforeAll, afterAll, afterEach } from '@rstest/core'
 import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
 import { templateHandlers } from '../../../infrastructure/msw/handlers/template-handlers'
+import { ThemeProvider } from '../../../shared/contexts/theme-context'
 import { TableQueryPage } from './table-query-page'
 
 void React
@@ -66,7 +67,7 @@ afterAll(() => {
 
 describe('TableQueryPage', () => {
   it('loads list data from template handlers', async () => {
-    render(<TableQueryPage />)
+    render(<ThemeProvider><TableQueryPage /></ThemeProvider>)
 
     await waitFor(() => {
       expect(screen.getByText('TradeCode 0')).toBeTruthy()
@@ -86,7 +87,7 @@ describe('TableQueryPage', () => {
       return null
     }) as typeof window.open
 
-    render(<TableQueryPage />)
+    render(<ThemeProvider><TableQueryPage /></ThemeProvider>)
 
     await waitFor(() => {
       expect(screen.getByText('TradeCode 0')).toBeTruthy()
@@ -107,7 +108,7 @@ describe('TableQueryPage', () => {
       )
     )
 
-    render(<TableQueryPage />)
+    render(<ThemeProvider><TableQueryPage /></ThemeProvider>)
 
     await waitFor(() => {
       expect(screen.getByText('规则列表加载失败')).toBeTruthy()
@@ -126,7 +127,7 @@ describe('TableQueryPage', () => {
       )
     )
 
-    render(<TableQueryPage />)
+    render(<ThemeProvider><TableQueryPage /></ThemeProvider>)
 
     await waitFor(() => {
       expect(screen.getByText('当前仅返回部分数据')).toBeTruthy()
@@ -148,7 +149,7 @@ describe('TableQueryPage', () => {
       })
     )
 
-    render(<TableQueryPage />)
+    render(<ThemeProvider><TableQueryPage /></ThemeProvider>)
 
     await waitFor(() => {
       expect(requestCount).toBe(1)
@@ -166,4 +167,26 @@ describe('TableQueryPage', () => {
       expect(requestCount).toBe(2)
     })
   })
+
+  it('moves batch actions into the card header when rows are selected', async () => {
+    render(<ThemeProvider><TableQueryPage /></ThemeProvider>)
+
+    await waitFor(() => {
+      expect(screen.getByText('TradeCode 0')).toBeTruthy()
+      expect(screen.getByText('规则列表')).toBeTruthy()
+    })
+
+    const table = screen.getByRole('table')
+    const checkbox = within(table).getAllByRole('checkbox')[1]
+    fireEvent.click(checkbox)
+
+    await waitFor(() => {
+      expect(screen.getByText(/^已选 1 项，服务调用总量 \d+$/)).toBeTruthy()
+      expect(screen.getByRole('button', { name: '批量删除' })).toBeTruthy()
+      expect(screen.getByRole('button', { name: '批量审批' })).toBeTruthy()
+    })
+
+    expect(screen.queryByText('规则列表')).toBeNull()
+    expect(screen.queryByText('已选择')).toBeNull()
+  }, 30000)
 })

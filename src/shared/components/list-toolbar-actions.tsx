@@ -2,6 +2,7 @@ import { ColumnHeightOutlined, ReloadOutlined, SettingOutlined } from '@ant-desi
 import { Button, Checkbox, Dropdown, Popover, Tooltip } from 'antd'
 import type { MenuProps } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
+import { Eraser } from 'lucide-react'
 import React, { type ReactNode } from 'react'
 
 void React
@@ -34,6 +35,8 @@ type ListToolbarActionsProps = {
   tableSize: 'small' | 'middle' | 'large'
   densityItems?: MenuProps['items']
   onTableSizeChange: (size: 'small' | 'middle' | 'large') => void
+  onClearSort?: () => void
+  clearSortDisabled?: boolean
   onReload: () => void
   columnSettingOptions: ListToolbarColumnSettingOption[]
   selectedColumnKeys: string[]
@@ -45,6 +48,8 @@ export const ListToolbarActions = ({
   tableSize,
   densityItems = DEFAULT_TABLE_DENSITY_ITEMS,
   onTableSizeChange,
+  onClearSort,
+  clearSortDisabled = true,
   onReload,
   columnSettingOptions,
   selectedColumnKeys,
@@ -53,6 +58,16 @@ export const ListToolbarActions = ({
 }: ListToolbarActionsProps) => {
   return (
     <div className="inline-flex items-center gap-2">
+      {onClearSort ? (
+        <Tooltip title="清除排序">
+          <Button
+            icon={<Eraser size={16} />}
+            aria-label="清除排序"
+            onClick={onClearSort}
+            disabled={clearSortDisabled}
+          />
+        </Tooltip>
+      ) : null}
       <Tooltip title="刷新">
         <Button icon={<ReloadOutlined />} aria-label="刷新" onClick={onReload} />
       </Tooltip>

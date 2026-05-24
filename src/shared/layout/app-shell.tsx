@@ -19,6 +19,7 @@ import {
   isMswGlobalToggleAvailable,
   setStoredMswEnabled,
 } from '../../infrastructure/msw/config'
+import { RouteTitleProvider } from '../contexts/route-title-context'
 import { useTheme } from '../contexts/theme-context'
 import { getDisplayNameAvatarText, normalizeDisplayName } from '../utils/display-name'
 
@@ -67,6 +68,14 @@ export const resolveDocumentTitle = (routes: RouteContract[], pathname: string) 
   }
 
   return resolveRouteByPath(routes, pathname)?.title ?? APP_SHELL_TITLE
+}
+
+export const resolveNavigationTitle = (menuRoutes: RouteContract[], pathname: string) => {
+  if (pathname === '/') {
+    return '欢迎'
+  }
+
+  return resolveRouteByPath(menuRoutes, pathname)?.title ?? null
 }
 
 export const moveMenuGroupToEnd = <
@@ -179,7 +188,14 @@ export const AppShell = ({ routes = [], headerExtra }: AppShellProps) => {
   const selectedKey = location.pathname === '/' ? 'home' : selectedRoute?.key ?? 'home'
   const breadcrumbItems = currentRoute?.breadcrumb ?? []
   const shouldShowBreadcrumb = breadcrumbItems.length > 0
-  const documentTitle = useMemo(() => resolveDocumentTitle(routes, location.pathname), [routes, location.pathname])
+  const navigationTitle = useMemo(
+    () => resolveNavigationTitle(menuRoutes, location.pathname),
+    [location.pathname, menuRoutes]
+  )
+  const documentTitle = useMemo(
+    () => navigationTitle ?? resolveDocumentTitle(routes, location.pathname),
+    [location.pathname, navigationTitle, routes]
+  )
 
   useEffect(() => {
     document.title = documentTitle
@@ -391,15 +407,17 @@ export const AppShell = ({ routes = [], headerExtra }: AppShellProps) => {
             scrollbarGutter: 'stable both-edges',
           }}
         >
-          {shouldShowBreadcrumb && (
-            <div className="mb-3 bg-transparent p-0 [&_.ant-breadcrumb]:text-[13px]">
-              <Breadcrumb items={breadcrumbItems.map((item) => ({ title: item }))} />
-            </div>
-          )}
+          <RouteTitleProvider value={{ title: navigationTitle }}>
+            {shouldShowBreadcrumb && (
+              <div className="mb-3 bg-transparent p-0 [&_.ant-breadcrumb]:text-[13px]">
+                <Breadcrumb items={breadcrumbItems.map((item) => ({ title: item }))} />
+              </div>
+            )}
 
-          <div className="flex flex-col gap-4 [&_.ant-card_.ant-card-body]:p-6 [&_.ant-card_.ant-card-head]:min-h-[50px] [&_.ant-card_.ant-card-head]:px-6 [&_.ant-card]:rounded-lg [&_.ant-card]:shadow-none [&_.ant-result]:mx-auto [&_.ant-result]:max-w-[920px] [&_.ant-result]:px-0 [&_.ant-result]:pt-8 [&_.ant-result]:pb-3 [&_.ant-statistic-content]:text-[28px] [&_.ant-table-wrapper_.ant-table]:rounded-lg">
-            <Outlet />
-          </div>
+            <div className="flex flex-col gap-4 [&_.ant-card_.ant-card-body]:p-6 [&_.ant-card_.ant-card-head]:min-h-[50px] [&_.ant-card_.ant-card-head]:px-6 [&_.ant-card]:rounded-lg [&_.ant-card]:shadow-none [&_.ant-result]:mx-auto [&_.ant-result]:max-w-[920px] [&_.ant-result]:px-0 [&_.ant-result]:pt-8 [&_.ant-result]:pb-3 [&_.ant-statistic-content]:text-[28px] [&_.ant-table-wrapper_.ant-table]:rounded-lg">
+              <Outlet />
+            </div>
+          </RouteTitleProvider>
         </Content>
       </Layout>
     </Layout>

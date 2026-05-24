@@ -1,7 +1,7 @@
-import { Table } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import dayjs from 'dayjs'
 import React, { useMemo } from 'react'
+import { DraggableTable } from '../../../shared/components/draggable-table'
 import { normalizeApiError, type ApiError } from '../../../infrastructure/http/api-client'
 import {
   StandardListPageRecipe,
@@ -116,43 +116,41 @@ export const BookAccountListPage = () => {
             dataIndex: 'account',
             key: 'account',
             align: 'center',
-            width: 120,
           },
           {
             title: '客户代码',
             dataIndex: 'customer_code',
             key: 'customer_code',
             align: 'center',
-            width: 220,
           },
           {
             title: '是否刷新使用',
             dataIndex: 'is_refresh_use_label',
             key: 'is_refresh_use_label',
             align: 'center',
-            width: 140,
           },
           {
             title: '更新时间',
             dataIndex: 'update_time',
             key: 'update_time',
             align: 'center',
-            width: 220,
             sorter: (a, b) => dayjs(a.update_time).valueOf() - dayjs(b.update_time).valueOf(),
           },
         ] satisfies ColumnsType<BookAccountRow>,
-      buildTableNode: ({ columns, dataSource, loading, tableClassName, pagination, tableSize, virtualScroll }) => {
+      buildTableNode: ({ columns, dataSource, loading, tableClassName, pagination, tableSize, dragSort, virtualScroll }) => {
         return (
-          <Table<BookAccountRow>
+          <DraggableTable<BookAccountRow>
             rowKey="key"
+            sortPersistenceKey={dragSort.persistenceKey}
+            sortResetVersion={dragSort.resetVersion}
+            onSortPersistenceChange={dragSort.onPersistenceChange}
             className={tableClassName}
             columns={columns}
             dataSource={dataSource}
             loading={loading}
             pagination={pagination}
             size={tableSize}
-            virtual={virtualScroll.enabled}
-            scroll={virtualScroll.enabled ? { x: 700, y: virtualScroll.scroll.y } : { x: 700 }}
+            scroll={virtualScroll.enabled ? { x: 'max-content', y: virtualScroll.scroll.y } : { x: 'max-content' }}
           />
         )
       },

@@ -22,7 +22,6 @@ const DEFAULT_PAGE_SIZE = 10
 const DEFAULT_MAX_PAGE_SIZE = 99999
 const DEFAULT_PAGE_SIZE_OPTIONS = [10, 20, 50, 100]
 export const ALL_DATA_PAGE_SIZE = 99999
-export const VIRTUAL_SCROLL_PAGE_SIZE_THRESHOLD = 100
 
 const buildPageSizeOptionLabel = (value: number) => {
   return value === ALL_DATA_PAGE_SIZE ? '所有数据' : `${value} 条/页`

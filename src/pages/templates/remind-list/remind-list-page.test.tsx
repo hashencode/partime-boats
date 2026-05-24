@@ -206,4 +206,24 @@ describe('RemindListPage', () => {
       expect(remindRequestCount).toBe(1)
     })
   })
+
+  it('should move the batch action into the card header when rows are selected', async () => {
+    renderPage()
+
+    await waitFor(() => {
+      expect(screen.getByText('NINGBO')).toBeTruthy()
+      expect(screen.getAllByText('提醒列表').length).toBeGreaterThan(0)
+    })
+
+    const table = screen.getByRole('table')
+    const checkbox = within(table).getAllByRole('checkbox')[1]
+    fireEvent.click(checkbox)
+
+    await waitFor(() => {
+      expect(screen.getByText('已选 1 项')).toBeTruthy()
+      expect(screen.getByRole('button', { name: '批量作废' })).toBeTruthy()
+    })
+
+    expect(screen.queryByText('已选择')).toBeNull()
+  })
 })

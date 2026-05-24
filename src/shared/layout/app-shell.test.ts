@@ -3,6 +3,7 @@ import {
   isMenuVisibleInCurrentEnv,
   moveMenuGroupToEnd,
   resolveDocumentTitle,
+  resolveNavigationTitle,
   resolveRouteByPath,
   shouldShowDevMenuGroup,
   shouldShowMswSwitch,
@@ -143,5 +144,21 @@ describe('app-shell menu visibility helpers', () => {
     expect(resolveDocumentTitle(routes, '/get_book_task_list')).toBe('订舱管理')
     expect(resolveDocumentTitle(routes, '/')).toBe('欢迎')
     expect(resolveDocumentTitle(routes, '/unknown')).toBe('Admin Quick Start')
+  })
+
+  it('should keep the browser title aligned with the highlighted navigation item', () => {
+    const menuRoutes = [
+      {
+        key: 'base-port-list',
+        path: '/get_base_list',
+        title: '基础端口列表',
+        icon: null,
+        permission: 'list.read' as const,
+        inMenu: true,
+      },
+    ]
+
+    expect(resolveNavigationTitle(menuRoutes, '/get_base_list/form')).toBe('基础端口列表')
+    expect(resolveNavigationTitle(menuRoutes, '/')).toBe('欢迎')
   })
 })
