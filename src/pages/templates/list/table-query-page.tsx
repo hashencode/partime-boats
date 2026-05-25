@@ -280,9 +280,10 @@ export const TableQueryPage = () => {
           <DraggableTable<RuleItem>
             className={tableClassName}
             rowKey="key"
-            sortPersistenceKey={dragSort.persistenceKey}
-            sortResetVersion={dragSort.resetVersion}
-            onSortPersistenceChange={dragSort.onPersistenceChange}
+            rowOrder={dragSort.rowOrder}
+            onRowOrderChange={dragSort.onRowOrderChange}
+            columnOrder={dragSort.columnOrder}
+            onColumnOrderChange={dragSort.onColumnOrderChange}
             dataSource={dataSource}
             columns={columns}
             size={tableSize}

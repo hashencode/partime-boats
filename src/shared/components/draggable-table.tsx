@@ -1,17 +1,19 @@
-import type { DragEndEvent } from '@dnd-kit/core'
+import type { DragEndEvent, DragStartEvent } from '@dnd-kit/core'
 import { DndContext, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
-import { restrictToVerticalAxis } from '@dnd-kit/modifiers'
-import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
+import { restrictToHorizontalAxis, restrictToVerticalAxis } from '@dnd-kit/modifiers'
+import { arrayMove, horizontalListSortingStrategy, SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { Table, theme } from 'antd'
 import type { TableProps } from 'antd'
 import React, { useEffect, useMemo, useState } from 'react'
+import { applyPersistedOrderToKeys, mergePersistedOrder } from '../hooks/use-list-view-preferences'
 
 type DraggableTableProps<T extends object> = TableProps<T> & {
-  sortPersistenceKey?: string
-  sortResetVersion?: number
+  rowOrder?: string[]
+  onRowOrderChange?: (rowIds: string[]) => void
+  columnOrder?: string[]
+  onColumnOrderChange?: (columnKeys: string[]) => void
   onOrderChange?: (rows: T[]) => void
-  onSortPersistenceChange?: (hasCustomOrder: boolean) => void
 }
 
 type DragIdentifier = string
@@ -20,73 +22,13 @@ type SortableRowProps = React.HTMLAttributes<HTMLTableRowElement> & {
   'data-row-key': React.Key
 }
 
-const TABLE_ORDER_STORAGE_PREFIX = 'list:table-order:v1:'
+type SortableHeaderCellProps = React.ThHTMLAttributes<HTMLTableCellElement> & {
+  'data-column-id'?: string
+}
+
+type DragType = 'row' | 'column' | null
+
 const DRAG_ACTIVATION_DISTANCE = 6
-
-const readJson = <T,>(key: string): T | null => {
-  if (typeof window === 'undefined') {
-    return null
-  }
-
-  try {
-    const raw = window.localStorage.getItem(key)
-    return raw ? (JSON.parse(raw) as T) : null
-  } catch {
-    return null
-  }
-}
-
-const writeJson = (key: string, value: unknown) => {
-  if (typeof window === 'undefined') {
-    return
-  }
-
-  try {
-    window.localStorage.setItem(key, JSON.stringify(value))
-  } catch {
-    // ignore storage write failure and keep runtime state usable
-  }
-}
-
-const removeStorageItem = (key: string) => {
-  if (typeof window === 'undefined') {
-    return
-  }
-
-  try {
-    window.localStorage.removeItem(key)
-  } catch {
-    // ignore storage removal failure and keep runtime state usable
-  }
-}
-
-const isDragIdentifierArray = (value: unknown): value is DragIdentifier[] => {
-  return Array.isArray(value) && value.every((item) => typeof item === 'string')
-}
-
-export const buildTableOrderStorageKey = (tableId: string) => `${TABLE_ORDER_STORAGE_PREFIX}${tableId}`
-
-export const readStoredTableOrder = (tableId: string): DragIdentifier[] | null => {
-  const storedValue = readJson<unknown>(buildTableOrderStorageKey(tableId))
-  return isDragIdentifierArray(storedValue) ? storedValue : null
-}
-
-export const writeStoredTableOrder = (tableId: string, rowIds: DragIdentifier[]) => {
-  if (rowIds.length === 0) {
-    removeStorageItem(buildTableOrderStorageKey(tableId))
-    return
-  }
-
-  writeJson(buildTableOrderStorageKey(tableId), rowIds)
-}
-
-export const clearStoredTableOrder = (tableId: string) => {
-  removeStorageItem(buildTableOrderStorageKey(tableId))
-}
-
-export const hasStoredTableOrder = (tableId: string) => {
-  return Boolean(readStoredTableOrder(tableId)?.length)
-}
 
 export const normalizeDragIdentifier = (value: unknown) => String(value ?? '')
 
@@ -124,41 +66,13 @@ export const reorderTableData = <T extends object>(
   return arrayMove(rows, activeIndex, overIndex)
 }
 
-export const applyPersistedOrderToRowIds = (sourceRowIds: DragIdentifier[], persistedOrder: DragIdentifier[] | null) => {
-  if (!persistedOrder || persistedOrder.length === 0) {
-    return sourceRowIds
-  }
-
-  const sourceRowIdSet = new Set(sourceRowIds)
-  const orderedVisibleRowIds = persistedOrder.filter((rowId) => sourceRowIdSet.has(rowId))
-  const orderedVisibleRowIdSet = new Set(orderedVisibleRowIds)
-  const unseenRowIds = sourceRowIds.filter((rowId) => !orderedVisibleRowIdSet.has(rowId))
-
-  return [...orderedVisibleRowIds, ...unseenRowIds]
-}
-
-export const mergePersistedOrder = (
-  persistedOrder: DragIdentifier[] | null,
-  visibleRowIds: DragIdentifier[],
-  nextVisibleRowIds: DragIdentifier[]
-) => {
-  if (!persistedOrder || persistedOrder.length === 0) {
-    return nextVisibleRowIds
-  }
-
-  const visibleRowIdSet = new Set(visibleRowIds)
-  const reorderedVisibleQueue = [...nextVisibleRowIds]
-  const nextPersistedOrder = persistedOrder.map((rowId) =>
-    visibleRowIdSet.has(rowId) ? (reorderedVisibleQueue.shift() ?? rowId) : rowId
-  )
-
-  return [...nextPersistedOrder, ...reorderedVisibleQueue]
-}
-
 const SortableRow = (props: SortableRowProps) => {
   const { token } = theme.useToken()
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: normalizeDragIdentifier(props['data-row-key']),
+    data: {
+      type: 'row',
+    },
   })
 
   const style: React.CSSProperties = {
@@ -178,15 +92,52 @@ const SortableRow = (props: SortableRowProps) => {
   return <tr {...props} ref={setNodeRef} style={style} {...attributes} {...listeners} />
 }
 
+const SortableHeaderCell = (props: SortableHeaderCellProps) => {
+  const { token } = theme.useToken()
+  const columnId = props['data-column-id']
+  const sortable = useSortable({
+    id: columnId ?? '__non-draggable-column__',
+    data: {
+      type: 'column',
+    },
+    disabled: !columnId,
+  })
+
+  const style: React.CSSProperties = {
+    ...props.style,
+    transform: columnId ? CSS.Translate.toString(sortable.transform) : undefined,
+    transition: columnId ? sortable.transition : undefined,
+    cursor: columnId ? 'move' : props.style?.cursor,
+    ...(sortable.isDragging
+      ? {
+          position: 'relative',
+          zIndex: 1,
+          background: token.colorBgElevated,
+        }
+      : {}),
+  }
+
+  return (
+    <th
+      {...props}
+      ref={columnId ? sortable.setNodeRef : undefined}
+      style={style}
+      {...(columnId ? sortable.attributes : {})}
+      {...(columnId ? sortable.listeners : {})}
+    />
+  )
+}
+
 export const DraggableTable = <T extends object>({
   dataSource,
-  columns,
+  columns = [],
   rowKey,
   components,
-  sortPersistenceKey,
-  sortResetVersion = 0,
+  rowOrder = [],
+  onRowOrderChange,
+  columnOrder = [],
+  onColumnOrderChange,
   onOrderChange,
-  onSortPersistenceChange,
   ...tableProps
 }: DraggableTableProps<T>) => {
   const sensors = useSensors(
@@ -196,34 +147,14 @@ export const DraggableTable = <T extends object>({
       },
     })
   )
+  const [activeDragType, setActiveDragType] = useState<DragType>(null)
+
   const resolvedDataSource = useMemo(() => [...(dataSource ?? [])], [dataSource])
   const sourceRowIds = useMemo(
     () => resolvedDataSource.map((row, index) => resolveRowId(row, index, rowKey)),
     [resolvedDataSource, rowKey]
   )
-  const persistenceSyncKey = `${sortPersistenceKey ?? ''}:${sortResetVersion}`
-  const persistedOrderSnapshot = useMemo(() => {
-    const syncMarker = persistenceSyncKey
-    return syncMarker && sortPersistenceKey ? readStoredTableOrder(sortPersistenceKey) : null
-  }, [persistenceSyncKey, sortPersistenceKey])
-  const [persistedOrderState, setPersistedOrderState] = useState<{
-    syncKey: string
-    rowIds: DragIdentifier[] | null
-  }>(() => ({
-    syncKey: persistenceSyncKey,
-    rowIds: persistedOrderSnapshot,
-  }))
-  const persistedOrder =
-    persistedOrderState.syncKey === persistenceSyncKey ? persistedOrderState.rowIds : persistedOrderSnapshot
-
-  useEffect(() => {
-    onSortPersistenceChange?.(Boolean(persistedOrder?.length))
-  }, [onSortPersistenceChange, persistedOrder])
-
-  const orderedRowIds = useMemo(
-    () => applyPersistedOrderToRowIds(sourceRowIds, persistedOrder),
-    [persistedOrder, sourceRowIds]
-  )
+  const orderedRowIds = useMemo(() => applyPersistedOrderToKeys(sourceRowIds, rowOrder), [rowOrder, sourceRowIds])
 
   const orderedDataSource = useMemo(() => {
     if (orderedRowIds === sourceRowIds) {
@@ -240,9 +171,38 @@ export const DraggableTable = <T extends object>({
     onOrderChange?.(orderedDataSource)
   }, [onOrderChange, orderedDataSource])
 
+  const columnIds = useMemo(
+    () => columns.filter((column) => typeof column.key === 'string').map((column) => String(column.key)),
+    [columns]
+  )
+  const orderedColumnIds = useMemo(() => applyPersistedOrderToKeys(columnIds, columnOrder), [columnIds, columnOrder])
+
+  const columnsWithDrag = useMemo(
+    () =>
+      columns.map((column) => {
+        if (typeof column.key !== 'string') {
+          return column
+        }
+
+        const originalOnHeaderCell = column.onHeaderCell
+        return {
+          ...column,
+          onHeaderCell: (currentColumn: unknown) => ({
+            ...(originalOnHeaderCell?.(currentColumn as never) ?? {}),
+            'data-column-id': String(column.key),
+          }),
+        }
+      }),
+    [columns]
+  )
+
   const mergedComponents = useMemo(
     () => ({
       ...components,
+      header: {
+        ...components?.header,
+        cell: SortableHeaderCell,
+      },
       body: {
         ...components?.body,
         row: SortableRow,
@@ -251,44 +211,73 @@ export const DraggableTable = <T extends object>({
     [components]
   )
 
+  const resetDragType = () => {
+    setActiveDragType(null)
+  }
+
+  const handleDragStart = ({ active }: DragStartEvent) => {
+    const nextDragType = active.data.current?.type
+    setActiveDragType(nextDragType === 'column' || nextDragType === 'row' ? nextDragType : null)
+  }
+
   const handleDragEnd = ({ active, over }: DragEndEvent) => {
     const activeId = normalizeDragIdentifier(active.id)
     const overId = over ? normalizeDragIdentifier(over.id) : undefined
+    const dragType = active.data.current?.type
+
+    resetDragType()
 
     if (!overId || activeId === overId) {
       return
     }
 
-    const activeIndex = orderedRowIds.findIndex((rowId) => rowId === activeId)
-    const overIndex = orderedRowIds.findIndex((rowId) => rowId === overId)
+    if (dragType === 'row') {
+      const activeIndex = orderedRowIds.findIndex((rowId) => rowId === activeId)
+      const overIndex = orderedRowIds.findIndex((rowId) => rowId === overId)
 
-    if (activeIndex < 0 || overIndex < 0) {
+      if (activeIndex < 0 || overIndex < 0) {
+        return
+      }
+
+      const nextVisibleRowIds = arrayMove(orderedRowIds, activeIndex, overIndex)
+      const nextRowOrder = mergePersistedOrder(rowOrder, sourceRowIds, nextVisibleRowIds)
+      onRowOrderChange?.(nextRowOrder)
       return
     }
 
-    const nextVisibleRowIds = arrayMove(orderedRowIds, activeIndex, overIndex)
-    const nextPersistedOrder = mergePersistedOrder(persistedOrder, sourceRowIds, nextVisibleRowIds)
+    if (dragType === 'column') {
+      const activeIndex = orderedColumnIds.findIndex((columnId) => columnId === activeId)
+      const overIndex = orderedColumnIds.findIndex((columnId) => columnId === overId)
 
-    if (sortPersistenceKey) {
-      writeStoredTableOrder(sortPersistenceKey, nextPersistedOrder)
+      if (activeIndex < 0 || overIndex < 0) {
+        return
+      }
+
+      const nextVisibleColumnIds = arrayMove(orderedColumnIds, activeIndex, overIndex)
+      const nextColumnOrder = mergePersistedOrder(columnOrder, columnIds, nextVisibleColumnIds)
+      onColumnOrderChange?.(nextColumnOrder)
     }
-
-    setPersistedOrderState({
-      syncKey: persistenceSyncKey,
-      rowIds: nextPersistedOrder,
-    })
   }
 
+  const modifiers =
+    activeDragType === 'column'
+      ? [restrictToHorizontalAxis]
+      : activeDragType === 'row'
+        ? [restrictToVerticalAxis]
+        : undefined
+
   return (
-    <DndContext sensors={sensors} modifiers={[restrictToVerticalAxis]} onDragEnd={handleDragEnd}>
-      <SortableContext items={orderedRowIds} strategy={verticalListSortingStrategy}>
-        <Table<T>
-          {...tableProps}
-          rowKey={rowKey}
-          columns={columns}
-          dataSource={orderedDataSource}
-          components={mergedComponents}
-        />
+    <DndContext sensors={sensors} modifiers={modifiers} onDragStart={handleDragStart} onDragCancel={resetDragType} onDragEnd={handleDragEnd}>
+      <SortableContext items={orderedColumnIds} strategy={horizontalListSortingStrategy}>
+        <SortableContext items={orderedRowIds} strategy={verticalListSortingStrategy}>
+          <Table<T>
+            {...tableProps}
+            rowKey={rowKey}
+            columns={columnsWithDrag}
+            dataSource={orderedDataSource}
+            components={mergedComponents}
+          />
+        </SortableContext>
       </SortableContext>
     </DndContext>
   )

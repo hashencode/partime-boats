@@ -141,9 +141,10 @@ export const BookAccountListPage = () => {
         return (
           <DraggableTable<BookAccountRow>
             rowKey="key"
-            sortPersistenceKey={dragSort.persistenceKey}
-            sortResetVersion={dragSort.resetVersion}
-            onSortPersistenceChange={dragSort.onPersistenceChange}
+            rowOrder={dragSort.rowOrder}
+            onRowOrderChange={dragSort.onRowOrderChange}
+            columnOrder={dragSort.columnOrder}
+            onColumnOrderChange={dragSort.onColumnOrderChange}
             className={tableClassName}
             columns={columns}
             dataSource={dataSource}

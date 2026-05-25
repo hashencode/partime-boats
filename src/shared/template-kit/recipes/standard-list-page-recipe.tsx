@@ -2,12 +2,12 @@ import {
   Button,
   Card,
   Form,
+  type TableColumnsType,
   Typography,
 } from 'antd'
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
-import { clearStoredTableOrder, hasStoredTableOrder } from '../../components/draggable-table'
 import { buildListToolbarColumnSettingOptions, ListToolbarActions } from '../../components/list-toolbar-actions'
-import { useListViewPreferences } from '../../hooks/use-list-view-preferences'
+import { applyPersistedOrderToKeys, useListViewPreferences } from '../../hooks/use-list-view-preferences'
 import { useStandardPagination } from '../../hooks/use-standard-pagination'
 import { useCrudFormNavigation } from '../hooks'
 import type { StandardListPageSpec } from '../specs/standard-list-page-spec'
@@ -51,8 +51,6 @@ export const StandardListPageRecipe = <
   const { openFormPage } = useCrudFormNavigation(spec.formRoute)
   const { searchCompactLayout } = useTheme()
   const [total, setTotal] = useState(0)
-  const [sortResetVersion, setSortResetVersion] = useState(0)
-  const [hasCustomSortOrder, setHasCustomSortOrder] = useState(() => hasStoredTableOrder(spec.tableId))
   const paginationMode = spec.paginationMode ?? 'remote'
   const { current, pageSize, pagination, resetPage } = useStandardPagination({
     total,
@@ -169,15 +167,44 @@ export const StandardListPageRecipe = <
     [columns]
   )
 
-  const { tableSize, selectedColumnKeys, setTableSize, setSelectedColumnKeys } = useListViewPreferences({
+  const {
+    tableSize,
+    selectedColumnKeys,
+    columnOrder,
+    rowOrder,
+    hasCustomColumnOrder,
+    hasCustomRowOrder,
+    setTableSize,
+    setSelectedColumnKeys,
+    setColumnOrder,
+    clearColumnOrder,
+    setRowOrder,
+    clearRowOrder,
+  } = useListViewPreferences({
     tableId: spec.tableId,
     defaultColumnKeys,
     defaultDensity: 'middle',
   })
 
+  const orderedColumns = useMemo(() => {
+    const keyedColumnMap = new Map(
+      columns
+        .filter((column): column is Exclude<(typeof columns)[number], { key?: never }> & { key: string } => typeof column.key === 'string')
+        .map((column) => [String(column.key), column])
+    )
+    const orderedColumnKeys = applyPersistedOrderToKeys(defaultColumnKeys, columnOrder)
+    const orderedKeyedColumns = orderedColumnKeys
+      .map((columnKey) => keyedColumnMap.get(columnKey))
+      .filter((column): column is NonNullable<typeof column> => column !== undefined)
+    const unkeyedColumns = columns.filter((column) => typeof column.key !== 'string')
+
+    return [...orderedKeyedColumns, ...unkeyedColumns] as TableColumnsType<TItem>
+  }, [columnOrder, columns, defaultColumnKeys])
+
   const visibleColumns = useMemo(
-    () => columns.filter((column) => typeof column.key !== 'string' || selectedColumnKeys.includes(String(column.key))),
-    [columns, selectedColumnKeys]
+    () =>
+      orderedColumns.filter((column) => typeof column.key !== 'string' || selectedColumnKeys.includes(String(column.key))),
+    [orderedColumns, selectedColumnKeys]
   )
 
   const virtualScroll = useMemo(
@@ -194,12 +221,6 @@ export const StandardListPageRecipe = <
   const handleResetAll = () => {
     onResetFilters()
     resetPage()
-  }
-
-  const handleClearSort = () => {
-    clearStoredTableOrder(spec.tableId)
-    setHasCustomSortOrder(false)
-    setSortResetVersion((version) => version + 1)
   }
 
   const resolvedPageTitle = routeTitle ?? spec.pageTitle
@@ -237,9 +258,10 @@ export const StandardListPageRecipe = <
       tablePagination.onChange?.(nextCurrent, nextPageSize)
     },
     dragSort: {
-      persistenceKey: spec.tableId,
-      resetVersion: sortResetVersion,
-      onPersistenceChange: setHasCustomSortOrder,
+      rowOrder,
+      onRowOrderChange: setRowOrder,
+      columnOrder,
+      onColumnOrderChange: setColumnOrder,
     },
     virtualScroll,
   })
@@ -294,14 +316,17 @@ export const StandardListPageRecipe = <
               tableSize={tableSize}
               densityItems={spec.densityItems}
               onTableSizeChange={setTableSize}
-              onClearSort={handleClearSort}
-              clearSortDisabled={!hasCustomSortOrder}
+              onClearColumnSort={clearColumnOrder}
+              clearColumnSortDisabled={!hasCustomColumnOrder}
+              onClearRowSort={clearRowOrder}
+              clearRowSortDisabled={!hasCustomRowOrder}
               onReload={() => {
                 void load({ showSuccess: true })
               }}
-              columnSettingOptions={buildListToolbarColumnSettingOptions(columns)}
+              columnSettingOptions={buildListToolbarColumnSettingOptions(orderedColumns)}
               selectedColumnKeys={selectedColumnKeys}
               onSelectedColumnKeysChange={setSelectedColumnKeys}
+              onColumnSettingOrderChange={setColumnOrder}
             />
           </div>
         }

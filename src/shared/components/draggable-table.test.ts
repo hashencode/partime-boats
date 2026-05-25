@@ -1,14 +1,9 @@
 import { describe, expect, it } from '@rstest/core'
 import {
-  applyPersistedOrderToRowIds,
-  clearStoredTableOrder,
-  hasStoredTableOrder,
-  mergePersistedOrder,
   normalizeDragIdentifier,
-  readStoredTableOrder,
   reorderTableData,
-  writeStoredTableOrder,
 } from './draggable-table'
+import { applyPersistedOrderToKeys, mergePersistedOrder } from '../hooks/use-list-view-preferences'
 
 describe('reorderTableData', () => {
   it('should move the dragged row to the target position', () => {
@@ -50,29 +45,12 @@ describe('normalizeDragIdentifier', () => {
 
 describe('persisted table order helpers', () => {
   it('applies persisted order to the current result set and appends unseen ids', () => {
-    expect(applyPersistedOrderToRowIds(['1', '2', '3'], ['3', '1'])).toEqual(['3', '1', '2'])
-    expect(applyPersistedOrderToRowIds(['2', '4'], ['3', '1'])).toEqual(['2', '4'])
+    expect(applyPersistedOrderToKeys(['1', '2', '3'], ['3', '1'])).toEqual(['3', '1', '2'])
+    expect(applyPersistedOrderToKeys(['2', '4'], ['3', '1'])).toEqual(['2', '4'])
   })
 
   it('merges a reordered visible subset back into persisted global order', () => {
     expect(mergePersistedOrder(['1', '2', '3', '4'], ['2', '4'], ['4', '2'])).toEqual(['1', '4', '3', '2'])
-    expect(mergePersistedOrder(null, ['2', '4'], ['4', '2'])).toEqual(['4', '2'])
-  })
-
-  it('reads, writes, and clears stored table order', () => {
-    const tableId = 'test-table'
-    clearStoredTableOrder(tableId)
-
-    expect(hasStoredTableOrder(tableId)).toBe(false)
-
-    writeStoredTableOrder(tableId, ['3', '1'])
-
-    expect(readStoredTableOrder(tableId)).toEqual(['3', '1'])
-    expect(hasStoredTableOrder(tableId)).toBe(true)
-
-    clearStoredTableOrder(tableId)
-
-    expect(readStoredTableOrder(tableId)).toBeNull()
-    expect(hasStoredTableOrder(tableId)).toBe(false)
+    expect(mergePersistedOrder([], ['2', '4'], ['4', '2'])).toEqual(['4', '2'])
   })
 })

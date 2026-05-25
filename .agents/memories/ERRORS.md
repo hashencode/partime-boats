@@ -17,3 +17,4 @@
 - 2026-05-13（MSK/订舱批量操作）：在本项目跑前端单测应使用 `bun run test <file>`，直接 `bun test <file>` 会绕过 rstest 的 jsdom 环境，触发 `window is not defined` 或浏览器依赖模块初始化失败。
 - 2026-05-13（MSK列表导出）：`js-export-excel` 顶层静态导入会在测试环境因 `document` 缺失直接报错 -> 改为点击导出时再 `import('js-export-excel')` 动态加载，既保功能也避免测试环境副作用。
 - 2026-05-24（订舱管理页面测试）：`src/pages/templates/book-task-list/book-task-list-page.test.tsx` 在单测里即使断言已通过，也会继续卡到超时退出（如 `should render task rows when request succeeds`）-> 该文件存在未释放的页面副作用/测试清理问题，当前功能验证优先依赖 `api.test.ts`，后续若要恢复页面级验证需单独排查定时器或异步清理链路。
+- 2026-05-25（列表视图偏好重构）：仓库级 `bun run test` 在当前环境 60 秒内未完成并被 `timeout` 终止，但共享层定向 rstest 与 `bunx tsc -p tsconfig.app.json --noEmit` 可稳定通过 -> 先用“共享层定向测试 + 类型检查”验证本次改动，不把全量测试超时直接归因到当前提交。 #promote

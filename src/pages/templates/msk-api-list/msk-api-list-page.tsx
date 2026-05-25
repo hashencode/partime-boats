@@ -395,9 +395,10 @@ export const MskApiListPage = () => {
           <DraggableTable<RowView>
             className={tableClassName}
             rowKey="id"
-            sortPersistenceKey={dragSort.persistenceKey}
-            sortResetVersion={dragSort.resetVersion}
-            onSortPersistenceChange={dragSort.onPersistenceChange}
+            rowOrder={dragSort.rowOrder}
+            onRowOrderChange={dragSort.onRowOrderChange}
+            columnOrder={dragSort.columnOrder}
+            onColumnOrderChange={dragSort.onColumnOrderChange}
             columns={columns}
             dataSource={dataSource}
             loading={loading}

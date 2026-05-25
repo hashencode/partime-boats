@@ -72,10 +72,10 @@ describe('list-toolbar-actions', () => {
     fireEvent.click(screen.getByRole('button', { name: '列设置' }))
 
     await waitFor(() => {
-      expect(screen.getByRole('checkbox', { name: 'ID' })).toBeTruthy()
+      expect(screen.getByRole('checkbox', { name: '切换列显隐-id' })).toBeTruthy()
     })
 
-    fireEvent.click(screen.getByRole('checkbox', { name: '名称' }))
+    fireEvent.click(screen.getByRole('checkbox', { name: '切换列显隐-name' }))
 
     await waitFor(() => {
       expect(recordedKeys.length).toBeGreaterThan(0)
@@ -99,25 +99,56 @@ describe('list-toolbar-actions', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '列设置' }))
 
-    const checkbox = await screen.findByRole('checkbox', { name: '列1' })
+    const checkbox = await screen.findByRole('checkbox', { name: '切换列显隐-column-1' })
     const scrollContainer = checkbox.closest('div[class*="overflow-y-auto"]') as HTMLDivElement | null
 
     expect(scrollContainer).toBeTruthy()
-    expect(scrollContainer?.style.maxHeight).toBe('400px')
+    expect(scrollContainer?.style.maxHeight).toBe('500px')
     expect(scrollContainer?.className).toContain('overflow-y-auto')
   })
 
-  it('renders clear-sort button before reload and reports clicks', () => {
+  it('uses the label area as drag handle and does not toggle visibility on label click', async () => {
+    const recordedKeys: string[][] = []
+
+    render(
+      <ListToolbarActions
+        tableSize="small"
+        onTableSizeChange={() => undefined}
+        onReload={() => undefined}
+        columnSettingOptions={[
+          { key: 'id', label: 'ID' },
+          { key: 'name', label: '名称' },
+        ]}
+        selectedColumnKeys={['id']}
+        onSelectedColumnKeysChange={(keys) => {
+          recordedKeys.push(keys)
+        }}
+      />
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: '列设置' }))
+
+    const labelHandle = await screen.findByText('名称')
+    fireEvent.click(labelHandle)
+
+    expect(recordedKeys).toEqual([])
+  })
+
+  it('renders clear-sort dropdown before reload and reports clicks', async () => {
     const callSequence: string[] = []
 
     render(
       <ListToolbarActions
         tableSize="small"
         onTableSizeChange={() => undefined}
-        onClearSort={() => {
-          callSequence.push('clear')
+        onClearColumnSort={() => {
+          callSequence.push('clear-column')
         }}
-        clearSortDisabled={false}
+        clearColumnSortDisabled={false}
+        onClearRowSort={() => {
+          callSequence.push('clear-row')
+        }}
+        clearRowSortDisabled={false}
         onReload={() => {
           callSequence.push('reload')
         }}
@@ -128,12 +159,22 @@ describe('list-toolbar-actions', () => {
     )
 
     const buttons = screen.getAllByRole('button')
-    expect(buttons[0].getAttribute('aria-label')).toBe('清除排序')
-    expect(buttons[1].getAttribute('aria-label')).toBe('刷新')
+    expect(buttons[0].getAttribute('aria-label')).toBe('刷新')
+    expect(buttons[2].getAttribute('aria-label')).toBe('列设置')
+    expect(buttons[3].getAttribute('aria-label')).toBe('清除排序')
 
+    fireEvent.click(buttons[3])
+    await waitFor(() => {
+      expect(screen.getByText('清除列排序')).toBeTruthy()
+    })
+    fireEvent.click(screen.getByText('清除列排序'))
+    fireEvent.click(buttons[3])
+    await waitFor(() => {
+      expect(screen.getByText('清除行排序')).toBeTruthy()
+    })
+    fireEvent.click(screen.getByText('清除行排序'))
     fireEvent.click(buttons[0])
-    fireEvent.click(buttons[1])
 
-    expect(callSequence).toEqual(['clear', 'reload'])
+    expect(callSequence).toEqual(['clear-column', 'clear-row', 'reload'])
   })
 })
