@@ -3,6 +3,7 @@ import dayjs, { type Dayjs } from 'dayjs'
 import React, { useCallback, useMemo, useRef, useState } from 'react'
 import { DraggableTable } from '../../../shared/components/draggable-table'
 import { ListRowActions } from '../../../shared/components/list-row-actions'
+import { RemoteStringSelect } from '../../../shared/components/remote-string-select'
 import { normalizeApiError, type ApiError } from '../../../infrastructure/http/api-client'
 import {
   createPortFilterFields,
@@ -91,6 +92,10 @@ const BOX_TYPE_OPTIONS = ['20', '40', '45', '40NOR', '20,45', '20,40', '40,45', 
 }))
 
 const DESTINATION_MODE_OPTIONS = ['CY', 'SD'].map((value) => ({ label: value, value }))
+const FORM_START_PORT_CACHE_KEY = 'startport:1:form'
+const FORM_END_PORT_CACHE_KEY = 'endport:1:form'
+const fetchFormStartPortOptions = () => fetchStartPortOptions(1)
+const fetchFormEndPortOptions = () => fetchEndPortOptions(1)
 
 const findLabel = (options: { label: string; value: number }[], value: number | string | undefined) => {
   const found = options.find((item) => item.value === value)
@@ -459,130 +464,152 @@ export const MskQueryListPage = () => {
     <>
       <StandardListPageRecipe spec={spec} cardTitleOverride={cardTitleOverride} />
 
-      <Modal
-        title="修改"
-        open={Boolean(editingItem)}
-        onCancel={() => setEditingItem(null)}
-        onOk={async () => {
-          const values = await editForm.validateFields()
-          const payload: MskQueryItem = {
-            ...editingItem,
-            ...values,
-            delay_time: values.delay_time,
-            is_run: values.is_run,
-            is_roll: values.is_roll,
-            early_date: values.early_date ? dayjs(values.early_date as unknown as Dayjs).format('YYYY-MM-DD') : undefined,
-          }
-          await updateMskQueryItem(payload)
-          message.success('修改成功')
-          setEditingItem(null)
-          await reloadRef.current()
-        }}
-      >
-        <Form form={editForm} layout="vertical">
-          <Form.Item name="origincity_name" label="起始港" rules={[{ required: true, message: '请输入起始港' }]}>
-            <Input />
-          </Form.Item>
-          <Form.Item name="destinationcity_name" label="目的港" rules={[{ required: true, message: '请输入目的港' }]}>
-            <Input />
-          </Form.Item>
-          <Form.Item name="box_type" label="箱型" rules={[{ required: true, message: '请选择箱型' }]}>
-            <Select options={BOX_TYPE_OPTIONS} />
-          </Form.Item>
-          <Form.Item name="delay_time" label="延迟时间" rules={[{ required: true, message: '请选择延迟时间' }]}>
-            <Select options={DELAY_OPTIONS} />
-          </Form.Item>
-          <Form.Item name="is_run" label="是否开启" rules={[{ required: true, message: '请选择状态' }]}>
-            <Select options={IS_RUN_OPTIONS} />
-          </Form.Item>
-          <Form.Item name="is_roll" label="是否翻页" rules={[{ required: true, message: '请选择翻页状态' }]}>
-            <Select options={IS_ROLL_OPTIONS} />
-          </Form.Item>
-          <Form.Item name="early_date" label="开航时间">
-            <DatePicker className="!w-full" />
-          </Form.Item>
-          <Form.Item name="destination_service_mode" label="目的港类型">
-            <Select options={DESTINATION_MODE_OPTIONS} allowClear />
-          </Form.Item>
-          <Form.Item name="limit_price" label="限价">
-            <InputNumber className="!w-full" min={0} />
-          </Form.Item>
-          <Form.Item name="port" label="端口">
-            <Input />
-          </Form.Item>
-          <Form.Item name="tips" label="备注">
-            <Input.TextArea rows={2} />
-          </Form.Item>
-        </Form>
-      </Modal>
+      {editingItem ? (
+        <Modal
+          title="修改"
+          open
+          onCancel={() => setEditingItem(null)}
+          onOk={async () => {
+            const values = await editForm.validateFields()
+            const payload: MskQueryItem = {
+              ...editingItem,
+              ...values,
+              delay_time: values.delay_time,
+              is_run: values.is_run,
+              is_roll: values.is_roll,
+              early_date: values.early_date ? dayjs(values.early_date as unknown as Dayjs).format('YYYY-MM-DD') : undefined,
+            }
+            await updateMskQueryItem(payload)
+            message.success('修改成功')
+            setEditingItem(null)
+            await reloadRef.current()
+          }}
+          destroyOnHidden
+        >
+          <Form form={editForm} layout="vertical">
+            <Form.Item name="origincity_name" label="起始港" rules={[{ required: true, message: '请输入起始港' }]}>
+              <RemoteStringSelect
+                cacheKey={FORM_START_PORT_CACHE_KEY}
+                request={fetchFormStartPortOptions}
+                placeholder="请选择起始港"
+              />
+            </Form.Item>
+            <Form.Item name="destinationcity_name" label="目的港" rules={[{ required: true, message: '请输入目的港' }]}>
+              <RemoteStringSelect
+                cacheKey={FORM_END_PORT_CACHE_KEY}
+                request={fetchFormEndPortOptions}
+                placeholder="请选择目的港"
+              />
+            </Form.Item>
+            <Form.Item name="box_type" label="箱型" rules={[{ required: true, message: '请选择箱型' }]}>
+              <Select options={BOX_TYPE_OPTIONS} />
+            </Form.Item>
+            <Form.Item name="delay_time" label="延迟时间" rules={[{ required: true, message: '请选择延迟时间' }]}>
+              <Select options={DELAY_OPTIONS} />
+            </Form.Item>
+            <Form.Item name="is_run" label="是否开启" rules={[{ required: true, message: '请选择状态' }]}>
+              <Select options={IS_RUN_OPTIONS} />
+            </Form.Item>
+            <Form.Item name="is_roll" label="是否翻页" rules={[{ required: true, message: '请选择翻页状态' }]}>
+              <Select options={IS_ROLL_OPTIONS} />
+            </Form.Item>
+            <Form.Item name="early_date" label="开航时间">
+              <DatePicker className="!w-full" />
+            </Form.Item>
+            <Form.Item name="destination_service_mode" label="目的港类型">
+              <Select options={DESTINATION_MODE_OPTIONS} allowClear />
+            </Form.Item>
+            <Form.Item name="limit_price" label="限价">
+              <InputNumber className="!w-full" min={0} />
+            </Form.Item>
+            <Form.Item name="port" label="端口">
+              <Input />
+            </Form.Item>
+            <Form.Item name="tips" label="备注">
+              <Input.TextArea rows={2} />
+            </Form.Item>
+          </Form>
+        </Modal>
+      ) : null}
 
-      <Modal
-        title="批量修改"
-        open={batchVisible}
-        onCancel={() => setBatchVisible(false)}
-        onOk={async () => {
-          if (selectedRowsRef.current.length === 0) {
-            message.warning('请至少选择一条数据')
-            return
-          }
+      {batchVisible ? (
+        <Modal
+          title="批量修改"
+          open
+          onCancel={() => setBatchVisible(false)}
+          onOk={async () => {
+            if (selectedRowsRef.current.length === 0) {
+              message.warning('请至少选择一条数据')
+              return
+            }
 
-          const values = await batchForm.validateFields()
-          const payload: BatchUpdatePayload = {
-            ids: selectedRowsRef.current.map((item) => item.id).join(', '),
-          }
+            const values = await batchForm.validateFields()
+            const payload: BatchUpdatePayload = {
+              ids: selectedRowsRef.current.map((item) => item.id).join(', '),
+            }
 
-          if (values.origincity_name) payload.origincity_name = values.origincity_name
-          if (values.destinationcity_name) payload.destinationcity_name = values.destinationcity_name
-          if (values.box_type) payload.box_type = values.box_type
-          if (values.delay_time !== undefined) payload.delay_time = values.delay_time
-          if (values.early_date) payload.early_date = dayjs(values.early_date as unknown as Dayjs).format('YYYY-MM-DD')
-          if (values.destination_service_mode) payload.destination_service_mode = values.destination_service_mode
-          if (values.limit_price !== undefined) payload.limit_price = values.limit_price
-          if (values.is_run !== undefined) payload.is_run = values.is_run
-          if (values.is_roll !== undefined) payload.is_roll = values.is_roll
+            if (values.origincity_name) payload.origincity_name = values.origincity_name
+            if (values.destinationcity_name) payload.destinationcity_name = values.destinationcity_name
+            if (values.box_type) payload.box_type = values.box_type
+            if (values.delay_time !== undefined) payload.delay_time = values.delay_time
+            if (values.early_date) payload.early_date = dayjs(values.early_date as unknown as Dayjs).format('YYYY-MM-DD')
+            if (values.destination_service_mode) payload.destination_service_mode = values.destination_service_mode
+            if (values.limit_price !== undefined) payload.limit_price = values.limit_price
+            if (values.is_run !== undefined) payload.is_run = values.is_run
+            if (values.is_roll !== undefined) payload.is_roll = values.is_roll
 
-          if (Object.keys(payload).length <= 1) {
-            message.warning('请至少修改一个字段')
-            return
-          }
+            if (Object.keys(payload).length <= 1) {
+              message.warning('请至少修改一个字段')
+              return
+            }
 
-          await batchUpdateMskQueryItem(payload)
-          message.success('批量修改成功')
-          setBatchVisible(false)
-          batchForm.resetFields()
-          await reloadRef.current()
-        }}
-      >
-        <Form form={batchForm} layout="vertical">
-          <Form.Item name="origincity_name" label="起始港">
-            <Input />
-          </Form.Item>
-          <Form.Item name="destinationcity_name" label="目的港">
-            <Input />
-          </Form.Item>
-          <Form.Item name="box_type" label="箱型">
-            <Select options={BOX_TYPE_OPTIONS} allowClear />
-          </Form.Item>
-          <Form.Item name="delay_time" label="延迟时间">
-            <Select options={DELAY_OPTIONS} allowClear />
-          </Form.Item>
-          <Form.Item name="early_date" label="开航时间">
-            <DatePicker className="!w-full" />
-          </Form.Item>
-          <Form.Item name="destination_service_mode" label="目的港类型">
-            <Select options={DESTINATION_MODE_OPTIONS} allowClear />
-          </Form.Item>
-          <Form.Item name="limit_price" label="限价">
-            <InputNumber className="!w-full" min={0} />
-          </Form.Item>
-          <Form.Item name="is_run" label="是否开启">
-            <Select options={IS_RUN_OPTIONS} allowClear />
-          </Form.Item>
-          <Form.Item name="is_roll" label="是否翻页">
-            <Select options={IS_ROLL_OPTIONS} allowClear />
-          </Form.Item>
-        </Form>
-      </Modal>
+            await batchUpdateMskQueryItem(payload)
+            message.success('批量修改成功')
+            setBatchVisible(false)
+            batchForm.resetFields()
+            await reloadRef.current()
+          }}
+          destroyOnHidden
+        >
+          <Form form={batchForm} layout="vertical">
+            <Form.Item name="origincity_name" label="起始港">
+              <RemoteStringSelect
+                cacheKey={FORM_START_PORT_CACHE_KEY}
+                request={fetchFormStartPortOptions}
+                placeholder="请选择起始港"
+              />
+            </Form.Item>
+            <Form.Item name="destinationcity_name" label="目的港">
+              <RemoteStringSelect
+                cacheKey={FORM_END_PORT_CACHE_KEY}
+                request={fetchFormEndPortOptions}
+                placeholder="请选择目的港"
+              />
+            </Form.Item>
+            <Form.Item name="box_type" label="箱型">
+              <Select options={BOX_TYPE_OPTIONS} allowClear />
+            </Form.Item>
+            <Form.Item name="delay_time" label="延迟时间">
+              <Select options={DELAY_OPTIONS} allowClear />
+            </Form.Item>
+            <Form.Item name="early_date" label="开航时间">
+              <DatePicker className="!w-full" />
+            </Form.Item>
+            <Form.Item name="destination_service_mode" label="目的港类型">
+              <Select options={DESTINATION_MODE_OPTIONS} allowClear />
+            </Form.Item>
+            <Form.Item name="limit_price" label="限价">
+              <InputNumber className="!w-full" min={0} />
+            </Form.Item>
+            <Form.Item name="is_run" label="是否开启">
+              <Select options={IS_RUN_OPTIONS} allowClear />
+            </Form.Item>
+            <Form.Item name="is_roll" label="是否翻页">
+              <Select options={IS_ROLL_OPTIONS} allowClear />
+            </Form.Item>
+          </Form>
+        </Modal>
+      ) : null}
     </>
   )
 }

@@ -1,5 +1,23 @@
 import { PlusOutlined } from '@ant-design/icons'
-import { Button, Col, DatePicker, Divider, Form, Input, InputNumber, Modal, Popconfirm, Progress, Row, Select, Space, Tag, Tooltip, Typography, message } from 'antd'
+import {
+  Button,
+  Col,
+  DatePicker,
+  Divider,
+  Form,
+  Input,
+  InputNumber,
+  Modal,
+  Popconfirm,
+  Progress,
+  Row,
+  Select,
+  Space,
+  Tag,
+  Tooltip,
+  Typography,
+  message,
+} from 'antd'
 import type { InputRef } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import dayjs, { type Dayjs } from 'dayjs'
@@ -9,8 +27,8 @@ import { hasPermission } from '../../../infrastructure/auth/permissions'
 import { normalizeApiError, type ApiError } from '../../../infrastructure/http/api-client'
 import { useAuth } from '../../../infrastructure/auth/use-auth'
 import { ListRowActions } from '../../../shared/components/list-row-actions'
+import { RemoteStringSelect } from '../../../shared/components/remote-string-select'
 import {
-  getCachedListMetadata,
   createPortFilterFields,
   StandardListPageRecipe,
   type StandardListPageSpec,
@@ -86,10 +104,12 @@ type BookTaskFormValues = {
 const PAGE_TITLE = '订舱管理'
 const TABLE_ID = 'book-task-list'
 
-const BOX_TYPE_OPTIONS = ['20 Dry Standard', '40 Dry High', '40 Reefer High', '45 Dry High'].map((value) => ({
-  label: value,
-  value,
-}))
+const BOX_TYPE_OPTIONS = ['20 Dry Standard', '40 Dry High', '40 Reefer High', '45 Dry High'].map(
+  (value) => ({
+    label: value,
+    value,
+  })
+)
 
 const YES_NO_OPTIONS = [
   { label: '是', value: 1 },
@@ -121,12 +141,17 @@ const CID_TYPE_PATTERN = /^\d+$/
 
 const DESTINATION_SERVICE_OPTIONS = ['CY', 'SD'].map((value) => ({ label: value, value }))
 
-const createFilterOptions = (items: string[]) => items.map((item) => ({ label: item, value: item }))
-
 // 操作列固定宽度：当前仅展示 1 个“修改”按钮，2 个汉字按 14px/字计算为 28，
 // 额外余量按 16，总计 44；考虑按钮点击热区与表格留白，向上固化为 60。
 const ACTION_COLUMN_WIDTH = 60
 const BATCH_OPEN_CONFIRM_OVERLAY_STYLE = { maxWidth: 280 }
+const EDIT_MODAL_WIDTH = 1040
+const EDIT_MODAL_STYLE = { top: 24 }
+const EDIT_MODAL_BODY_STYLE = {
+  overflowX: 'hidden' as const,
+}
+const FORM_START_PORT_CACHE_KEY = 'legacy:startport:0:form'
+const FORM_END_PORT_CACHE_KEY = 'legacy:endport:0:form'
 
 const renderBreakAllText = (value?: string | number | null) => {
   const text = value === null || value === undefined || value === '' ? '-' : String(value)
@@ -161,37 +186,71 @@ const toQueryFilters = (values: BookTaskFilterValues): BookTaskQueryFilters => (
 })
 
 const toFormValues = (record: EditableBookTask): BookTaskFormValues => ({
-  order_id: typeof record.order_id === 'number' ? record.order_id : Number(record.order_id) || undefined,
+  order_id:
+    typeof record.order_id === 'number' ? record.order_id : Number(record.order_id) || undefined,
   account_name: record.account_name ?? '',
-  quantity: typeof record.quantity === 'number' ? record.quantity : Number(record.quantity) || undefined,
+  quantity:
+    typeof record.quantity === 'number' ? record.quantity : Number(record.quantity) || undefined,
   box_type: record.box_type ?? undefined,
   origincity_name: record.origincity_name ?? undefined,
   destinationcity_name: record.destinationcity_name ?? undefined,
   destination_service_mode: record.destination_service_mode ?? undefined,
   order_date: normalizeDateValue(record.order_date) ? dayjs(record.order_date) : undefined,
   is_order: typeof record.is_order === 'number' ? record.is_order : undefined,
-  limit_price: record.limit_price !== undefined && record.limit_price !== null ? String(record.limit_price) : undefined,
+  limit_price:
+    record.limit_price !== undefined && record.limit_price !== null
+      ? String(record.limit_price)
+      : undefined,
   is_USA: typeof record.is_USA === 'number' ? record.is_USA : undefined,
   is_plan: typeof record.is_plan === 'number' ? record.is_plan : undefined,
   is_roll: typeof record.is_roll === 'number' ? record.is_roll : undefined,
   is_cid: typeof record.is_cid === 'number' ? record.is_cid : Number(record.is_cid) || undefined,
-  limit_day: record.limit_day !== undefined && record.limit_day !== null ? String(record.limit_day) : undefined,
-  cid_group: record.cid_group === null ? null : typeof record.cid_group === 'number' ? record.cid_group : Number(record.cid_group) || null,
-  group_id: record.group_id !== undefined && record.group_id !== null ? String(record.group_id) : undefined,
-  cid_type: typeof record.cid_type === 'number' ? record.cid_type : Number(record.cid_type) || undefined,
+  limit_day:
+    record.limit_day !== undefined && record.limit_day !== null
+      ? String(record.limit_day)
+      : undefined,
+  cid_group:
+    record.cid_group === null
+      ? null
+      : typeof record.cid_group === 'number'
+        ? record.cid_group
+        : Number(record.cid_group) || null,
+  group_id:
+    record.group_id !== undefined && record.group_id !== null ? String(record.group_id) : undefined,
+  cid_type:
+    typeof record.cid_type === 'number' ? record.cid_type : Number(record.cid_type) || undefined,
   cid_loop_times:
-    typeof record.cid_loop_times === 'number' ? record.cid_loop_times : Number(record.cid_loop_times) || undefined,
+    typeof record.cid_loop_times === 'number'
+      ? record.cid_loop_times
+      : Number(record.cid_loop_times) || undefined,
   get_cid_times:
-    typeof record.get_cid_times === 'number' ? record.get_cid_times : Number(record.get_cid_times) || undefined,
+    typeof record.get_cid_times === 'number'
+      ? record.get_cid_times
+      : Number(record.get_cid_times) || undefined,
   cid_concurrent:
-    typeof record.cid_concurrent === 'number' ? record.cid_concurrent : Number(record.cid_concurrent) || undefined,
-  cid_sleep: record.cid_sleep !== undefined && record.cid_sleep !== null ? String(record.cid_sleep) : undefined,
+    typeof record.cid_concurrent === 'number'
+      ? record.cid_concurrent
+      : Number(record.cid_concurrent) || undefined,
+  cid_sleep:
+    record.cid_sleep !== undefined && record.cid_sleep !== null
+      ? String(record.cid_sleep)
+      : undefined,
   nac_loop_times:
-    record.nac_loop_times !== undefined && record.nac_loop_times !== null ? String(record.nac_loop_times) : undefined,
-  nac_times: record.nac_times !== undefined && record.nac_times !== null ? String(record.nac_times) : undefined,
+    record.nac_loop_times !== undefined && record.nac_loop_times !== null
+      ? String(record.nac_loop_times)
+      : undefined,
+  nac_times:
+    record.nac_times !== undefined && record.nac_times !== null
+      ? String(record.nac_times)
+      : undefined,
   nac_concurrent:
-    record.nac_concurrent !== undefined && record.nac_concurrent !== null ? String(record.nac_concurrent) : undefined,
-  nac_sleep: record.nac_sleep !== undefined && record.nac_sleep !== null ? String(record.nac_sleep) : undefined,
+    record.nac_concurrent !== undefined && record.nac_concurrent !== null
+      ? String(record.nac_concurrent)
+      : undefined,
+  nac_sleep:
+    record.nac_sleep !== undefined && record.nac_sleep !== null
+      ? String(record.nac_sleep)
+      : undefined,
   route_select: record.route_select ?? undefined,
 })
 
@@ -207,7 +266,11 @@ const hasScopedFilters = (filters: BookTaskQueryFilters) => {
   )
 }
 
-const buildScopedIds = async (filters: BookTaskQueryFilters, rows: EditableBookTask[], selectedIds: number[]) => {
+const buildScopedIds = async (
+  filters: BookTaskQueryFilters,
+  rows: EditableBookTask[],
+  selectedIds: number[]
+) => {
   if (selectedIds.length > 0) {
     return selectedIds.join(',')
   }
@@ -286,7 +349,10 @@ export const CidTypeSelect = ({
     const nextValue = Number(trimmedValue)
 
     setCustomOptions((previous) => {
-      if (previous.includes(nextValue) || CID_TYPE_OPTIONS.some((item) => item.value === nextValue)) {
+      if (
+        previous.includes(nextValue) ||
+        CID_TYPE_OPTIONS.some((item) => item.value === nextValue)
+      ) {
         return previous
       }
       return [...previous, nextValue]
@@ -336,44 +402,160 @@ export const CidTypeSelect = ({
 }
 
 const BookTaskFormFields = ({
-  startPortOptions,
-  endPortOptions,
   includeRepeatAdd,
 }: {
-  startPortOptions: string[]
-  endPortOptions: string[]
   includeRepeatAdd?: boolean
 }) => (
   <Row gutter={16}>
-    <Col span={24}><Form.Item label="对应taskID" name="order_id"><Input /></Form.Item></Col>
-    <Col span={24}><Form.Item label="账户" name="account_name"><Input /></Form.Item></Col>
-    <Col span={12}><Form.Item label="数量" name="quantity"><Input /></Form.Item></Col>
-    <Col span={12}><Form.Item label="箱型" name="box_type"><Select options={BOX_TYPE_OPTIONS} allowClear showSearch /></Form.Item></Col>
-    <Col span={24}><Form.Item label="起始港" name="origincity_name"><Select options={createFilterOptions(startPortOptions)} allowClear showSearch /></Form.Item></Col>
-    <Col span={24}><Form.Item label="目的港" name="destinationcity_name"><Select options={createFilterOptions(endPortOptions)} allowClear showSearch /></Form.Item></Col>
-    <Col span={24}><Form.Item label="目的港类型" name="destination_service_mode"><Select options={DESTINATION_SERVICE_OPTIONS} allowClear showSearch /></Form.Item></Col>
-    <Col span={12}><Form.Item label="搜索开航日" name="order_date"><DatePicker className="!w-full" format="YYYY-MM-DD" /></Form.Item></Col>
-    <Col span={12}><Form.Item label="路由" name="route_select"><Input /></Form.Item></Col>
-    <Col span={12}><Form.Item label="是否开启" name="is_order"><Select options={OPEN_CLOSE_OPTIONS} allowClear showSearch /></Form.Item></Col>
-    <Col span={12}><Form.Item label="限价" name="limit_price"><Input /></Form.Item></Col>
-    <Col span={12}><Form.Item label="直接下单" name="is_plan"><Select options={YES_NO_OPTIONS} allowClear showSearch /></Form.Item></Col>
-    <Col span={12}><Form.Item label="is_roll" name="is_roll"><Select options={YES_NO_OPTIONS} allowClear showSearch /></Form.Item></Col>
-    <Col span={12}><Form.Item label="美线" name="is_USA"><Select options={YES_NO_OPTIONS} allowClear showSearch /></Form.Item></Col>
-    <Col span={12}><Form.Item label="是否开启CID" name="is_cid"><Select options={CID_INIT_OPTIONS} allowClear showSearch /></Form.Item></Col>
-    <Col span={12}><Form.Item label="限制天数" name="limit_day"><Input /></Form.Item></Col>
-    <Col span={12}><Form.Item label="CID分组" name="cid_group"><InputNumber className="!w-full" precision={0} /></Form.Item></Col>
-    <Col span={12}><Form.Item label="分组" name="group_id"><Input /></Form.Item></Col>
-    <Col span={12}><Form.Item label="cid类型" name="cid_type"><CidTypeSelect /></Form.Item></Col>
-    <Col span={12}><Form.Item label="cid循环次数" name="cid_loop_times"><Input /></Form.Item></Col>
-    <Col span={12}><Form.Item label="cid请求次数" name="get_cid_times"><Input /></Form.Item></Col>
-    <Col span={12}><Form.Item label="cid并发次数" name="cid_concurrent"><Input /></Form.Item></Col>
-    <Col span={12}><Form.Item label="cid间隔时间" name="cid_sleep"><Input /></Form.Item></Col>
-    <Col span={12}><Form.Item label="nac循环次数" name="nac_loop_times"><Input /></Form.Item></Col>
-    <Col span={12}><Form.Item label="nac请求次数" name="nac_times"><Input /></Form.Item></Col>
-    <Col span={12}><Form.Item label="nac并发次数" name="nac_concurrent"><Input /></Form.Item></Col>
-    <Col span={12}><Form.Item label="nac间隔时间" name="nac_sleep"><Input /></Form.Item></Col>
+    <Col span={8}>
+      <Form.Item label="对应taskID" name="order_id">
+        <Input />
+      </Form.Item>
+    </Col>
+    <Col span={8}>
+      <Form.Item label="账户" name="account_name">
+        <Input />
+      </Form.Item>
+    </Col>
+    <Col span={8}>
+      <Form.Item label="数量" name="quantity">
+        <Input />
+      </Form.Item>
+    </Col>
+    <Col span={8}>
+      <Form.Item label="箱型" name="box_type">
+        <Select options={BOX_TYPE_OPTIONS} allowClear showSearch />
+      </Form.Item>
+    </Col>
+    <Col span={8}>
+      <Form.Item label="起始港" name="origincity_name">
+        <RemoteStringSelect
+          cacheKey={FORM_START_PORT_CACHE_KEY}
+          request={fetchStartPortOptions}
+          placeholder="请选择起始港"
+        />
+      </Form.Item>
+    </Col>
+    <Col span={8}>
+      <Form.Item label="目的港" name="destinationcity_name">
+        <RemoteStringSelect
+          cacheKey={FORM_END_PORT_CACHE_KEY}
+          request={fetchEndPortOptions}
+          placeholder="请选择目的港"
+        />
+      </Form.Item>
+    </Col>
+    <Col span={8}>
+      <Form.Item label="目的港类型" name="destination_service_mode">
+        <Select options={DESTINATION_SERVICE_OPTIONS} allowClear showSearch />
+      </Form.Item>
+    </Col>
+    <Col span={8}>
+      <Form.Item label="搜索开航日" name="order_date">
+        <DatePicker className="!w-full" format="YYYY-MM-DD" />
+      </Form.Item>
+    </Col>
+    <Col span={8}>
+      <Form.Item label="路由" name="route_select">
+        <Input />
+      </Form.Item>
+    </Col>
+    <Col span={8}>
+      <Form.Item label="是否开启" name="is_order">
+        <Select options={OPEN_CLOSE_OPTIONS} allowClear showSearch />
+      </Form.Item>
+    </Col>
+    <Col span={8}>
+      <Form.Item label="限价" name="limit_price">
+        <Input />
+      </Form.Item>
+    </Col>
+    <Col span={8}>
+      <Form.Item label="直接下单" name="is_plan">
+        <Select options={YES_NO_OPTIONS} allowClear showSearch />
+      </Form.Item>
+    </Col>
+    <Col span={8}>
+      <Form.Item label="is_roll" name="is_roll">
+        <Select options={YES_NO_OPTIONS} allowClear showSearch />
+      </Form.Item>
+    </Col>
+    <Col span={8}>
+      <Form.Item label="美线" name="is_USA">
+        <Select options={YES_NO_OPTIONS} allowClear showSearch />
+      </Form.Item>
+    </Col>
+    <Col span={8}>
+      <Form.Item label="是否开启CID" name="is_cid">
+        <Select options={CID_INIT_OPTIONS} allowClear showSearch />
+      </Form.Item>
+    </Col>
+    <Col span={8}>
+      <Form.Item label="限制天数" name="limit_day">
+        <Input />
+      </Form.Item>
+    </Col>
+    <Col span={8}>
+      <Form.Item label="CID分组" name="cid_group">
+        <InputNumber className="!w-full" precision={0} />
+      </Form.Item>
+    </Col>
+    <Col span={8}>
+      <Form.Item label="分组" name="group_id">
+        <Input />
+      </Form.Item>
+    </Col>
+    <Col span={8}>
+      <Form.Item label="cid类型" name="cid_type">
+        <CidTypeSelect />
+      </Form.Item>
+    </Col>
+    <Col span={8}>
+      <Form.Item label="cid循环次数" name="cid_loop_times">
+        <Input />
+      </Form.Item>
+    </Col>
+    <Col span={8}>
+      <Form.Item label="cid请求次数" name="get_cid_times">
+        <Input />
+      </Form.Item>
+    </Col>
+    <Col span={8}>
+      <Form.Item label="cid并发次数" name="cid_concurrent">
+        <Input />
+      </Form.Item>
+    </Col>
+    <Col span={8}>
+      <Form.Item label="cid间隔时间" name="cid_sleep">
+        <Input />
+      </Form.Item>
+    </Col>
+    <Col span={8}>
+      <Form.Item label="nac循环次数" name="nac_loop_times">
+        <Input />
+      </Form.Item>
+    </Col>
+    <Col span={8}>
+      <Form.Item label="nac请求次数" name="nac_times">
+        <Input />
+      </Form.Item>
+    </Col>
+    <Col span={8}>
+      <Form.Item label="nac并发次数" name="nac_concurrent">
+        <Input />
+      </Form.Item>
+    </Col>
+    <Col span={8}>
+      <Form.Item label="nac间隔时间" name="nac_sleep">
+        <Input />
+      </Form.Item>
+    </Col>
     {includeRepeatAdd ? (
-      <Col span={12}><Form.Item label="是否重复添加" name="is_add_data"><Select options={YES_NO_OPTIONS} allowClear showSearch /></Form.Item></Col>
+      <Col span={8}>
+        <Form.Item label="是否重复添加" name="is_add_data">
+          <Select options={YES_NO_OPTIONS} allowClear showSearch />
+        </Form.Item>
+      </Col>
     ) : null}
   </Row>
 )
@@ -386,32 +568,20 @@ export const BookTaskListPage = () => {
   const [editingItem, setEditingItem] = useState<EditableBookTask | null>(null)
   const [selectedRowKeys, setSelectedRowKeys] = useState<number[]>([])
   const [batchVisible, setBatchVisible] = useState(false)
-  const [startPortOptions, setStartPortOptions] = useState<string[]>([])
-  const [endPortOptions, setEndPortOptions] = useState<string[]>([])
   const [saving, setSaving] = useState(false)
   const latestFiltersRef = useRef<BookTaskQueryFilters>({})
   const currentRowsRef = useRef<EditableBookTask[]>([])
   const reloadRef = useRef<() => Promise<void>>(async () => {})
   const batchQueueTask = useBatchQueueTask()
 
-  useEffect(() => {
-    void Promise.all([
-      getCachedListMetadata('legacy:startport:0:form', fetchStartPortOptions),
-      getCachedListMetadata('legacy:endport:0:form', fetchEndPortOptions),
-    ])
-      .then(([startPorts, endPorts]) => {
-        setStartPortOptions(startPorts)
-        setEndPortOptions(endPorts)
-      })
-      .catch(() => {
-        setStartPortOptions([])
-        setEndPortOptions([])
-      })
-  }, [])
-
   const filterFields = useMemo<TemplateListFilterField<BookTaskFilterValues>[]>(
     () => [
-      { type: 'input', name: 'order_id', label: '对应taskID', inputProps: { placeholder: '请输入对应taskID' } },
+      {
+        type: 'input',
+        name: 'order_id',
+        label: '对应taskID',
+        inputProps: { placeholder: '请输入对应taskID' },
+      },
       ...createPortFilterFields<BookTaskFilterValues>({
         originName: 'origincity_name',
         destinationName: 'destinationcity_name',
@@ -427,9 +597,19 @@ export const BookTaskListPage = () => {
         selectProps: { showSearch: true, allowClear: true, placeholder: '请选择箱型' },
         options: BOX_TYPE_OPTIONS,
       },
-      { type: 'input', name: 'cid_group', label: 'CID分组', inputProps: { placeholder: '请输入CID分组' } },
+      {
+        type: 'input',
+        name: 'cid_group',
+        label: 'CID分组',
+        inputProps: { placeholder: '请输入CID分组' },
+      },
       { type: 'input', name: 'group_id', label: '分组', inputProps: { placeholder: '请输入分组' } },
-      { type: 'input', name: 'list_type', label: '列表分组', inputProps: { placeholder: '请输入列表分组' } },
+      {
+        type: 'input',
+        name: 'list_type',
+        label: '列表分组',
+        inputProps: { placeholder: '请输入列表分组' },
+      },
     ],
     []
   )
@@ -452,7 +632,9 @@ export const BookTaskListPage = () => {
       try {
         setSaving(true)
         const values = await editForm.validateFields()
-        const payload: BookTaskSavePayload = buildBookTaskSavePayload(values as Record<string, unknown>)
+        const payload: BookTaskSavePayload = buildBookTaskSavePayload(
+          values as Record<string, unknown>
+        )
         await updateBookTask(record.id, payload)
         message.success('保存成功')
         editForm.resetFields()
@@ -481,7 +663,10 @@ export const BookTaskListPage = () => {
       try {
         setSaving(true)
         const values = await batchForm.validateFields()
-        const payload: BookTaskBatchPayload = buildBookTaskBatchPayload(values as Record<string, unknown>, selectedRowKeys)
+        const payload: BookTaskBatchPayload = buildBookTaskBatchPayload(
+          values as Record<string, unknown>,
+          selectedRowKeys
+        )
         await batchUpdateBookTask(payload)
         message.success('修改成功')
         batchForm.resetFields()
@@ -558,11 +743,20 @@ export const BookTaskListPage = () => {
 
   const batchOpenProgressPercent =
     batchQueueTask.progress.total > 0
-      ? Math.min(100, Math.round((batchQueueTask.progress.processed / batchQueueTask.progress.total) * 100))
+      ? Math.min(
+          100,
+          Math.round((batchQueueTask.progress.processed / batchQueueTask.progress.total) * 100)
+        )
       : 0
 
   const spec = useMemo<
-    StandardListPageSpec<BookTaskFilterValues, BookTaskQueryFilters, BookTaskListResponse, EditableBookTask, ApiError>
+    StandardListPageSpec<
+      BookTaskFilterValues,
+      BookTaskQueryFilters,
+      BookTaskListResponse,
+      EditableBookTask,
+      ApiError
+    >
   >(
     () => ({
       pageTitle: PAGE_TITLE,
@@ -600,30 +794,34 @@ export const BookTaskListPage = () => {
             okText="是"
             cancelText="否"
             onConfirm={async () => {
-              const ids = await buildScopedIds(latestFiltersRef.current, currentRowsRef.current, selectedRowKeys)
+              const ids = await buildScopedIds(
+                latestFiltersRef.current,
+                currentRowsRef.current,
+                selectedRowKeys
+              )
               await closeBookTaskInitialization(ids)
               message.success('关闭初始化成功')
               await reloadRef.current()
             }}
           >
-            <Button disabled={!canWrite}>
-              关闭初始化
-            </Button>
+            <Button disabled={!canWrite}>关闭初始化</Button>
           </Popconfirm>
           <Popconfirm
             title="确认清除路由吗？"
             okText="是"
             cancelText="否"
             onConfirm={async () => {
-              const ids = await buildScopedIds(latestFiltersRef.current, currentRowsRef.current, selectedRowKeys)
+              const ids = await buildScopedIds(
+                latestFiltersRef.current,
+                currentRowsRef.current,
+                selectedRowKeys
+              )
               await clearBookTaskRouter(ids)
               message.success('清除路由成功')
               await reloadRef.current()
             }}
           >
-            <Button disabled={!canWrite}>
-              清除路由
-            </Button>
+            <Button disabled={!canWrite}>清除路由</Button>
           </Popconfirm>
         </Space>
       ),
@@ -635,6 +833,7 @@ export const BookTaskListPage = () => {
             key: 'order_id',
             title: '对应taskID',
             dataIndex: 'order_id',
+            width: 160,
             render: (value) => renderEllipsisText(value),
           },
           { key: 'account_name', title: '账户名', dataIndex: 'account_name' },
@@ -752,7 +951,16 @@ export const BookTaskListPage = () => {
           },
         ] as ColumnsType<EditableBookTask>
       },
-      buildTableNode: ({ columns, dataSource, loading, tableSize, tableClassName, pagination, dragSort, virtualScroll }) => {
+      buildTableNode: ({
+        columns,
+        dataSource,
+        loading,
+        tableSize,
+        tableClassName,
+        pagination,
+        dragSort,
+        virtualScroll,
+      }) => {
         currentRowsRef.current = dataSource
 
         return (
@@ -772,7 +980,11 @@ export const BookTaskListPage = () => {
               onChange: (keys) => setSelectedRowKeys(keys as number[]),
               columnWidth: 50,
             }}
-            scroll={virtualScroll.enabled ? { x: 'max-content', y: virtualScroll.scroll.y } : { x: 'max-content' }}
+            scroll={
+              virtualScroll.enabled
+                ? { x: 'max-content', y: virtualScroll.scroll.y }
+                : { x: 'max-content' }
+            }
             onOrderChange={(rows) => {
               currentRowsRef.current = rows
             }}
@@ -818,6 +1030,8 @@ export const BookTaskListPage = () => {
         <Modal
           title="修改"
           open
+          width={EDIT_MODAL_WIDTH}
+          style={EDIT_MODAL_STYLE}
           onOk={() => {
             void handleSave(editingItem, reloadRef.current)
           }}
@@ -826,26 +1040,30 @@ export const BookTaskListPage = () => {
             setEditingItem(null)
           }}
           confirmLoading={saving}
+          styles={{ body: EDIT_MODAL_BODY_STYLE }}
           destroyOnHidden
         >
           <Form form={editForm} layout="vertical">
-            <BookTaskFormFields startPortOptions={startPortOptions} endPortOptions={endPortOptions} />
+            <BookTaskFormFields />
           </Form>
         </Modal>
       ) : null}
       <Modal
         title="批量修改"
         open={batchVisible}
+        width={EDIT_MODAL_WIDTH}
+        style={EDIT_MODAL_STYLE}
         onOk={() => undefined}
         onCancel={() => {
           batchForm.resetFields()
           setBatchVisible(false)
         }}
         footer={null}
+        styles={{ body: EDIT_MODAL_BODY_STYLE }}
         destroyOnHidden
       >
         <Form form={batchForm} layout="vertical">
-          <BookTaskFormFields startPortOptions={startPortOptions} endPortOptions={endPortOptions} includeRepeatAdd />
+          <BookTaskFormFields includeRepeatAdd />
           <div className="flex justify-end gap-2">
             <Button
               onClick={() => {
@@ -869,16 +1087,23 @@ export const BookTaskListPage = () => {
       </Modal>
       <Modal
         title="批量打开进度"
-        open={batchQueueTask.progress.status === 'running' || batchQueueTask.progress.status === 'paused'}
+        open={
+          batchQueueTask.progress.status === 'running' ||
+          batchQueueTask.progress.status === 'paused'
+        }
         footer={null}
         closable={false}
         mask={{ closable: false }}
         destroyOnHidden={false}
       >
         <div className="flex w-full flex-col gap-4">
-          <Progress percent={batchOpenProgressPercent} status={batchQueueTask.progress.status === 'paused' ? 'exception' : 'active'} />
+          <Progress
+            percent={batchOpenProgressPercent}
+            status={batchQueueTask.progress.status === 'paused' ? 'exception' : 'active'}
+          />
           <Typography.Text>
-            当前正在处理第 {batchQueueTask.progress.currentStart} 到 {batchQueueTask.progress.currentEnd} 条的开启任务队列
+            当前正在处理第 {batchQueueTask.progress.currentStart} 到{' '}
+            {batchQueueTask.progress.currentEnd} 条的开启任务队列
           </Typography.Text>
           {batchQueueTask.progress.errorMessage ? (
             <Typography.Text type="danger">{batchQueueTask.progress.errorMessage}</Typography.Text>

@@ -277,6 +277,49 @@ describe('BookTaskListPage', () => {
     view.unmount()
   })
 
+  it('should open edit modal with the repacked form fields', async () => {
+    const view = renderPage()
+
+    await waitFor(() => {
+      expect(screen.getByText('tester')).toBeTruthy()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: '修改' }))
+
+    await waitFor(() => {
+      expect(screen.getByRole('dialog', { name: '修改' })).toBeTruthy()
+      expect(screen.getByLabelText('起始港')).toBeTruthy()
+      expect(screen.getByLabelText('cid类型')).toBeTruthy()
+      expect(screen.getByLabelText('nac间隔时间')).toBeTruthy()
+    })
+
+    view.unmount()
+  })
+
+  it('should open batch modal with repeat-add field intact', async () => {
+    const view = renderPage()
+
+    await waitFor(() => {
+      expect(screen.getByText('tester')).toBeTruthy()
+    })
+
+    const rowCheckboxes = screen.getAllByRole('checkbox')
+    fireEvent.click(rowCheckboxes[1] as Element)
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '批量修改' })).toBeTruthy()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: '批量修改' }))
+
+    await waitFor(() => {
+      expect(screen.getByRole('dialog', { name: '批量修改' })).toBeTruthy()
+      expect(screen.getByLabelText('是否重复添加')).toBeTruthy()
+    })
+
+    view.unmount()
+  })
+
   it('should allow adding a custom cid type option', async () => {
     const view = render(<CidTypeSelectHarness initialValue={0} />)
 
