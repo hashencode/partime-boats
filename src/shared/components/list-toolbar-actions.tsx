@@ -8,7 +8,7 @@ import { Button, Checkbox, Dropdown, Popover, Tooltip, theme } from 'antd'
 import type { MenuProps } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { Columns3, Eraser } from 'lucide-react'
-import React, { type ReactNode } from 'react'
+import React, { type ReactNode, useId } from 'react'
 
 void React
 
@@ -61,6 +61,7 @@ type SortableColumnSettingRowProps = {
 
 const SortableColumnSettingRow = ({ checked, option, onCheckedChange }: SortableColumnSettingRowProps) => {
   const { token } = theme.useToken()
+  const labelId = useId()
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: option.key,
     disabled: option.disabled,
@@ -80,9 +81,10 @@ const SortableColumnSettingRow = ({ checked, option, onCheckedChange }: Sortable
         checked={checked}
         disabled={option.disabled}
         onChange={(event) => onCheckedChange(option.key, event.target.checked)}
-        aria-label={`切换列显隐-${option.key}`}
+        aria-labelledby={labelId}
       />
       <span
+        id={labelId}
         className={`flex-1 select-none text-sm ${option.disabled ? 'cursor-not-allowed opacity-50' : 'cursor-move'}`}
         {...(!option.disabled ? attributes : {})}
         {...(!option.disabled ? listeners : {})}

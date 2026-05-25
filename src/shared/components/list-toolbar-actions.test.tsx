@@ -72,10 +72,10 @@ describe('list-toolbar-actions', () => {
     fireEvent.click(screen.getByRole('button', { name: '列设置' }))
 
     await waitFor(() => {
-      expect(screen.getByRole('checkbox', { name: '切换列显隐-id' })).toBeTruthy()
+      expect(screen.getByRole('checkbox', { name: 'ID' })).toBeTruthy()
     })
 
-    fireEvent.click(screen.getByRole('checkbox', { name: '切换列显隐-name' }))
+    fireEvent.click(screen.getByRole('checkbox', { name: '名称' }))
 
     await waitFor(() => {
       expect(recordedKeys.length).toBeGreaterThan(0)
@@ -99,7 +99,7 @@ describe('list-toolbar-actions', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '列设置' }))
 
-    const checkbox = await screen.findByRole('checkbox', { name: '切换列显隐-column-1' })
+    const checkbox = await screen.findByRole('checkbox', { name: '列1' })
     const scrollContainer = checkbox.closest('div[class*="overflow-y-auto"]') as HTMLDivElement | null
 
     expect(scrollContainer).toBeTruthy()

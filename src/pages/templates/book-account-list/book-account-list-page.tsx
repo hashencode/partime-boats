@@ -143,8 +143,6 @@ export const BookAccountListPage = () => {
             rowKey="key"
             rowOrder={dragSort.rowOrder}
             onRowOrderChange={dragSort.onRowOrderChange}
-            columnOrder={dragSort.columnOrder}
-            onColumnOrderChange={dragSort.onColumnOrderChange}
             className={tableClassName}
             columns={columns}
             dataSource={dataSource}

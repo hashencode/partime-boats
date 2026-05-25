@@ -405,8 +405,6 @@ export const OrderListPage = () => {
             rowKey="id"
             rowOrder={dragSort.rowOrder}
             onRowOrderChange={dragSort.onRowOrderChange}
-            columnOrder={dragSort.columnOrder}
-            onColumnOrderChange={dragSort.onColumnOrderChange}
             columns={columns}
             dataSource={dataSource}
             size={tableSize}

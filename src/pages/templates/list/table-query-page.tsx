@@ -282,8 +282,6 @@ export const TableQueryPage = () => {
             rowKey="key"
             rowOrder={dragSort.rowOrder}
             onRowOrderChange={dragSort.onRowOrderChange}
-            columnOrder={dragSort.columnOrder}
-            onColumnOrderChange={dragSort.onColumnOrderChange}
             dataSource={dataSource}
             columns={columns}
             size={tableSize}

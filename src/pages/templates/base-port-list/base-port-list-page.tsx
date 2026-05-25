@@ -133,8 +133,6 @@ export const BasePortListPage = () => {
           rowKey="key"
           rowOrder={dragSort.rowOrder}
           onRowOrderChange={dragSort.onRowOrderChange}
-          columnOrder={dragSort.columnOrder}
-          onColumnOrderChange={dragSort.onColumnOrderChange}
           bordered
           columns={columns}
           dataSource={dataSource}
