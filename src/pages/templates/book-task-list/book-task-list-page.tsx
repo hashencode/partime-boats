@@ -1,5 +1,6 @@
 import { PlusOutlined } from '@ant-design/icons'
 import { Button, Col, DatePicker, Divider, Form, Input, InputNumber, Modal, Popconfirm, Progress, Row, Select, Space, Tag, Tooltip, Typography, message } from 'antd'
+import type { InputRef } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import dayjs, { type Dayjs } from 'dayjs'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -84,7 +85,6 @@ type BookTaskFormValues = {
 
 const PAGE_TITLE = '订舱管理'
 const TABLE_ID = 'book-task-list'
-const AUTO_REFRESH_INTERVAL_MS = 15_000
 
 const BOX_TYPE_OPTIONS = ['20 Dry Standard', '40 Dry High', '40 Reefer High', '45 Dry High'].map((value) => ({
   label: value,
@@ -245,7 +245,7 @@ export const CidTypeSelect = ({
 }) => {
   const [customOptions, setCustomOptions] = useState<number[]>([])
   const [draftValue, setDraftValue] = useState('')
-  const inputRef = useRef<{ focus?: () => void } | null>(null)
+  const inputRef = useRef<InputRef | null>(null)
 
   useEffect(() => {
     if (typeof value !== 'number') {
@@ -555,16 +555,6 @@ export const BookTaskListPage = () => {
     message.success('批量打开成功')
     batchQueueTask.reset()
   }, [batchQueueTask.progress.status, batchQueueTask.reset])
-
-  useEffect(() => {
-    const timerId = window.setInterval(() => {
-      void reloadRef.current()
-    }, AUTO_REFRESH_INTERVAL_MS)
-
-    return () => {
-      window.clearInterval(timerId)
-    }
-  }, [])
 
   const batchOpenProgressPercent =
     batchQueueTask.progress.total > 0

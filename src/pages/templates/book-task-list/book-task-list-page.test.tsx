@@ -1,5 +1,5 @@
 import React from 'react'
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterAll, afterEach, beforeAll, describe, expect, it } from '@rstest/core'
 import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
@@ -30,12 +30,6 @@ Object.defineProperty(window, 'getComputedStyle', {
   writable: true,
   value: (element: Element) => originalGetComputedStyle(element),
 })
-
-const originalSetInterval = window.setInterval.bind(window)
-const originalClearInterval = window.clearInterval.bind(window)
-let intervalCallback: (() => void) | null = null
-let clearedIntervalId: number | null = null
-let nextTimerId = 1
 
 if (!window.ResizeObserver) {
   class ResizeObserverMock {
@@ -117,16 +111,12 @@ beforeAll(() => {
 })
 
 afterEach(() => {
+  cleanup()
   listRequestCount = 0
   latestPage = null
   latestPerPage = null
   requestParamsHistory = []
   batchOpenPayloads = []
-  intervalCallback = null
-  clearedIntervalId = null
-  nextTimerId = 1
-  window.setInterval = originalSetInterval
-  window.clearInterval = originalClearInterval
   server.resetHandlers()
 })
 
@@ -266,73 +256,6 @@ describe('BookTaskListPage', () => {
 
     view.unmount()
   }, 10000)
-
-  it('should auto refresh every 15 seconds without changing submitted filters or pagination', async () => {
-    window.setInterval = ((handler: TimerHandler, timeout?: number) => {
-      if (timeout === 15000) {
-        intervalCallback = () => {
-          if (typeof handler === 'function') {
-            handler()
-          }
-        }
-        return nextTimerId++
-      }
-
-      return originalSetInterval(handler, timeout)
-    }) as typeof window.setInterval
-
-    window.clearInterval = ((timerId?: number) => {
-      clearedIntervalId = timerId ?? null
-    }) as typeof window.clearInterval
-
-    const view = renderPage()
-
-    await waitFor(() => {
-      expect(screen.getByText('tester')).toBeTruthy()
-    })
-
-    fireEvent.change(screen.getByLabelText('对应taskID'), { target: { value: '101' } })
-    fireEvent.click(screen.getByRole('button', { name: /查\s*询/ }))
-
-    await waitFor(() => {
-      expect(requestParamsHistory.at(-1)).toEqual({
-        page: '1',
-        perPage: '10',
-        orderId: '101',
-      })
-    })
-
-    const pageTwoItem = view.container.querySelector('.ant-pagination-item-2') as HTMLElement | null
-    expect(pageTwoItem).toBeTruthy()
-    fireEvent.click(pageTwoItem!)
-
-    await waitFor(() => {
-      expect(requestParamsHistory.at(-1)).toEqual({
-        page: '2',
-        perPage: '10',
-        orderId: '101',
-      })
-    })
-
-    fireEvent.change(screen.getByLabelText('对应taskID'), { target: { value: '999' } })
-
-    expect(intervalCallback).toBeTruthy()
-    await act(async () => {
-      intervalCallback?.()
-    })
-
-    await waitFor(() => {
-      expect(requestParamsHistory.at(-1)).toEqual({
-        page: '2',
-        perPage: '10',
-        orderId: '101',
-      })
-    })
-
-    view.unmount()
-
-    expect(clearedIntervalId).toBe(1)
-  })
 
   it('should show batch action in the card header when writable rows are selected', async () => {
     const view = renderPage()

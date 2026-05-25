@@ -2,7 +2,7 @@ import { Button, Dropdown, Popconfirm, Space, Typography, message } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import dayjs, { type Dayjs } from 'dayjs'
 import ExportJsonExcel from 'js-export-excel'
-import React, { useCallback, useMemo, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { DraggableTable } from '../../../shared/components/draggable-table'
 import { hasPermission } from '../../../infrastructure/auth/permissions'
 import { useAuth } from '../../../infrastructure/auth/use-auth'
@@ -52,6 +52,7 @@ type RemindPageResponse = {
 const PAGE_TITLE = '提醒列表'
 const CARD_TITLE = '提醒列表'
 const TABLE_ID = 'remind-list'
+const AUTO_REFRESH_INTERVAL_MS = 30_000
 const EXPORT_ALL_PAGE_SIZE = 10000
 
 const BOX_TYPE_OPTIONS = ['20DRY', '40HDRY', '40NOR', '45HDRY'].map((value) => ({
@@ -220,6 +221,16 @@ export const RemindListPage = () => {
       total: filters.shipping_line ? rows.length : response.total ?? rows.length,
       current: filters.page ?? 1,
       size: (filters.per_page ?? rows.length) || 10,
+    }
+  }, [])
+
+  useEffect(() => {
+    const timerId = window.setInterval(() => {
+      void reloadRef.current()
+    }, AUTO_REFRESH_INTERVAL_MS)
+
+    return () => {
+      window.clearInterval(timerId)
     }
   }, [])
 

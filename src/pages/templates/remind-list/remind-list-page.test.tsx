@@ -1,5 +1,5 @@
 import React from 'react'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterAll, afterEach, beforeAll, describe, expect, it } from '@rstest/core'
 import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
@@ -35,26 +35,36 @@ if (!window.ResizeObserver) {
   window.ResizeObserver = ResizeObserverMock as unknown as typeof ResizeObserver
 }
 
-const remindRows = [
-  {
-    id: 1,
-    portofloading: 'NINGBO',
-    portofdischarge: 'ONNE',
-    boxcode: '20DRY',
-    departuredate: '2026-05-01',
-    oceanfreightamount: 100,
-    total_amount: 120,
-    source: 'demo',
-    insert_datetime: '2026-05-01 12:00:00',
-    is_use: 0,
-    ship_info: 'V001',
-    price_id: 1001,
-  },
-]
+const originalSetInterval = window.setInterval.bind(window)
+const originalClearInterval = window.clearInterval.bind(window)
+let intervalCallback: (() => void) | null = null
+let clearedIntervalId: number | null = null
+let nextTimerId = 1
+
+const remindRows = Array.from({ length: 11 }, (_, index) => ({
+  id: index + 1,
+  portofloading: 'NINGBO',
+  portofdischarge: 'ONNE',
+  boxcode: '20DRY',
+  departuredate: '2026-05-01',
+  oceanfreightamount: 100 + index,
+  total_amount: 120 + index,
+  source: 'demo',
+  insert_datetime: '2026-05-01 12:00:00',
+  is_use: 0,
+  ship_info: `V${String(index + 1).padStart(3, '0')}`,
+  price_id: 1001 + index,
+}))
 
 let remindRequestCount = 0
 let invalidatePayload: Record<string, unknown> | null = null
+let latestPage: string | null = null
 let latestPerPage: string | null = null
+let requestParamsHistory: Array<{
+  page: string | null
+  perPage: string | null
+  boxcode: string | null
+}> = []
 
 const server = setupServer(
   http.get('*/startport', () => HttpResponse.json(['NINGBO'])),
@@ -62,10 +72,24 @@ const server = setupServer(
   http.get('*/shippingLine', () => HttpResponse.json(['西非基本港'])),
   http.get('*/maersk/remind/list', ({ request }) => {
     remindRequestCount += 1
-    latestPerPage = new URL(request.url).searchParams.get('per_page')
+    const url = new URL(request.url)
+    latestPage = url.searchParams.get('page')
+    latestPerPage = url.searchParams.get('per_page')
+    const boxcode = url.searchParams.get('boxcode')
+    requestParamsHistory.push({
+      page: latestPage,
+      perPage: latestPerPage,
+      boxcode,
+    })
+
+    const page = Number(latestPage || 1)
+    const perPage = Number(latestPerPage || 10)
+    const filteredRows = boxcode ? remindRows.filter((item) => item.boxcode === boxcode) : remindRows
+    const startIndex = (page - 1) * perPage
+
     return HttpResponse.json({
-      data: remindRows,
-      total: 1,
+      data: filteredRows.slice(startIndex, startIndex + perPage),
+      total: filteredRows.length,
     })
   }),
   http.post('*/maersk/remind/list', async ({ request }) => {
@@ -79,9 +103,17 @@ beforeAll(() => {
 })
 
 afterEach(() => {
+  cleanup()
   remindRequestCount = 0
   invalidatePayload = null
+  latestPage = null
   latestPerPage = null
+  requestParamsHistory = []
+  intervalCallback = null
+  clearedIntervalId = null
+  nextTimerId = 1
+  window.setInterval = originalSetInterval
+  window.clearInterval = originalClearInterval
   server.resetHandlers()
 })
 
@@ -225,5 +257,75 @@ describe('RemindListPage', () => {
     })
 
     expect(screen.queryByText('已选择')).toBeNull()
+  })
+
+  it('should auto refresh every 30 seconds without changing submitted filters or pagination', async () => {
+    window.setInterval = ((handler: TimerHandler, timeout?: number) => {
+      if (timeout === 30000) {
+        intervalCallback = () => {
+          if (typeof handler === 'function') {
+            handler()
+          }
+        }
+        return nextTimerId++
+      }
+
+      return originalSetInterval(handler, timeout)
+    }) as typeof window.setInterval
+
+    window.clearInterval = ((timerId?: number) => {
+      clearedIntervalId = timerId ?? null
+    }) as typeof window.clearInterval
+
+    const view = renderPage()
+
+    await waitFor(() => {
+      expect(screen.getByText('NINGBO')).toBeTruthy()
+    })
+
+    const comboboxes = screen.getAllByRole('combobox')
+    fireEvent.mouseDown(comboboxes[2]!)
+    fireEvent.click(await screen.findByRole('option', { name: '20DRY' }))
+    fireEvent.click(screen.getByRole('button', { name: /查\s*询/ }))
+
+    await waitFor(() => {
+      expect(requestParamsHistory.at(-1)).toEqual({
+        page: '1',
+        perPage: '10',
+        boxcode: '20DRY',
+      })
+    })
+
+    const pageTwoItem = view.container.querySelector('.ant-pagination-item-2') as HTMLElement | null
+    expect(pageTwoItem).toBeTruthy()
+    fireEvent.click(pageTwoItem!)
+
+    await waitFor(() => {
+      expect(requestParamsHistory.at(-1)).toEqual({
+        page: '2',
+        perPage: '10',
+        boxcode: '20DRY',
+      })
+    })
+
+    fireEvent.mouseDown(screen.getAllByRole('combobox')[2]!)
+    fireEvent.click(await screen.findByRole('option', { name: '40HDRY' }))
+
+    expect(intervalCallback).toBeTruthy()
+    await act(async () => {
+      intervalCallback?.()
+    })
+
+    await waitFor(() => {
+      expect(requestParamsHistory.at(-1)).toEqual({
+        page: '2',
+        perPage: '10',
+        boxcode: '20DRY',
+      })
+    })
+
+    view.unmount()
+
+    expect(clearedIntervalId).toBe(1)
   })
 })
