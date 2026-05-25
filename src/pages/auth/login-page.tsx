@@ -79,7 +79,7 @@ export const LoginPage = () => {
               className="mx-auto mb-3 h-10 w-10"
             />
             <Typography.Title level={3} className="!mb-1">
-              Github
+              Boats
             </Typography.Title>
             <Typography.Text type="secondary">全球最大的代码托管平台</Typography.Text>
           </div>
@@ -94,11 +94,7 @@ export const LoginPage = () => {
             />
           ) : null}
 
-          <Form<LoginValues>
-            form={form}
-            layout="vertical"
-            onFinish={handleSubmit}
-          >
+          <Form<LoginValues> form={form} layout="vertical" onFinish={handleSubmit}>
             <Form.Item name="username" rules={[{ required: true, message: '请输入用户名!' }]}>
               <Input
                 size="large"

@@ -40,7 +40,7 @@ type RouteContract = {
 
 const isStandaloneMenuItem = (route: RouteContract) => route.menuMode === 'standalone'
 const getMenuGroup = (route: RouteContract) => route.menuGroup ?? route.breadcrumb?.[0] ?? 'General'
-const APP_SHELL_TITLE = 'Admin Quick Start'
+const APP_SHELL_TITLE = 'Boats'
 export const isMenuVisibleInCurrentEnv = (route: RouteContract, isDev: boolean) =>
   route.menuVisibility !== 'dev-only' || isDev
 
@@ -366,7 +366,7 @@ export const AppShell = ({ routes = [], headerExtra }: AppShellProps) => {
             style={{ color: token.colorText }}
             onClick={() => navigate('/')}
           >
-            <span className="text-base tracking-[0.2px]">Admin Quick Start</span>
+            <span className="text-base tracking-[0.2px]">Boats</span>
           </div>
           <Menu
             className="min-w-0 flex-1 border-0 [&_.ant-menu-item]:!h-14 [&_.ant-menu-item]:!leading-[56px] [&_.ant-menu-overflow-item]:!h-14 [&_.ant-menu-overflow-item]:!leading-[56px]"

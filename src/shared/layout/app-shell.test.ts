@@ -143,7 +143,7 @@ describe('app-shell menu visibility helpers', () => {
 
     expect(resolveDocumentTitle(routes, '/get_book_task_list')).toBe('订舱管理')
     expect(resolveDocumentTitle(routes, '/')).toBe('欢迎')
-    expect(resolveDocumentTitle(routes, '/unknown')).toBe('Admin Quick Start')
+    expect(resolveDocumentTitle(routes, '/unknown')).toBe('Boats')
   })
 
   it('should keep the browser title aligned with the highlighted navigation item', () => {

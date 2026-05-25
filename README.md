@@ -1,4 +1,4 @@
-# Codex Admin Quick Start
+# Boats
 
 A reusable admin template built with React, TypeScript, Ant Design v6, Tailwind CSS, ESLint, and Prettier.
 
