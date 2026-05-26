@@ -103,7 +103,7 @@ describe('list-toolbar-actions', () => {
     const scrollContainer = checkbox.closest('div[class*="overflow-y-auto"]') as HTMLDivElement | null
 
     expect(scrollContainer).toBeTruthy()
-    expect(scrollContainer?.style.maxHeight).toBe('500px')
+    expect(scrollContainer?.className).toContain('max-h-[500px]')
     expect(scrollContainer?.className).toContain('overflow-y-auto')
   })
 
@@ -134,7 +134,7 @@ describe('list-toolbar-actions', () => {
     expect(recordedKeys).toEqual([])
   })
 
-  it('renders clear-sort dropdown before reload and reports clicks', async () => {
+  it('renders reset-column action inside column settings and reports clicks', async () => {
     const callSequence: string[] = []
 
     render(
@@ -145,10 +145,6 @@ describe('list-toolbar-actions', () => {
           callSequence.push('clear-column')
         }}
         clearColumnSortDisabled={false}
-        onClearRowSort={() => {
-          callSequence.push('clear-row')
-        }}
-        clearRowSortDisabled={false}
         onReload={() => {
           callSequence.push('reload')
         }}
@@ -161,20 +157,14 @@ describe('list-toolbar-actions', () => {
     const buttons = screen.getAllByRole('button')
     expect(buttons[0].getAttribute('aria-label')).toBe('刷新')
     expect(buttons[2].getAttribute('aria-label')).toBe('列设置')
-    expect(buttons[3].getAttribute('aria-label')).toBe('清除排序')
 
-    fireEvent.click(buttons[3])
+    fireEvent.click(buttons[2])
     await waitFor(() => {
-      expect(screen.getByText('清除列排序')).toBeTruthy()
+      expect(screen.getByRole('button', { name: '重置列排序' })).toBeTruthy()
     })
-    fireEvent.click(screen.getByText('清除列排序'))
-    fireEvent.click(buttons[3])
-    await waitFor(() => {
-      expect(screen.getByText('清除行排序')).toBeTruthy()
-    })
-    fireEvent.click(screen.getByText('清除行排序'))
+    fireEvent.click(screen.getByRole('button', { name: '重置列排序' }))
     fireEvent.click(buttons[0])
 
-    expect(callSequence).toEqual(['clear-column', 'clear-row', 'reload'])
+    expect(callSequence).toEqual(['clear-column', 'reload'])
   })
 })

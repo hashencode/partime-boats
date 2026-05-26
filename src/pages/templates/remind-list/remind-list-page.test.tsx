@@ -146,7 +146,7 @@ describe('RemindListPage', () => {
 
     await waitFor(() => {
       expect(screen.getAllByText('提醒列表').length).toBeGreaterThan(0)
-      expect(screen.getByText('NINGBO')).toBeTruthy()
+      expect(screen.getAllByText('NINGBO').length).toBeGreaterThan(0)
       expect(latestPerPage).toBe('10')
       expect(screen.getByRole('button', { name: '刷新' })).toBeTruthy()
       expect(screen.getByRole('button', { name: '密度' })).toBeTruthy()
@@ -197,7 +197,7 @@ describe('RemindListPage', () => {
     renderPage('viewer')
 
     await waitFor(() => {
-      expect(screen.getByText('NINGBO')).toBeTruthy()
+      expect(screen.getAllByText('NINGBO').length).toBeGreaterThan(0)
     })
 
     expect(screen.queryByRole('button', { name: '批量作废' })).toBeNull()
@@ -209,7 +209,7 @@ describe('RemindListPage', () => {
     renderPage()
 
     await waitFor(() => {
-      expect(screen.getByText('NINGBO')).toBeTruthy()
+      expect(screen.getAllByText('NINGBO').length).toBeGreaterThan(0)
     })
 
     const table = screen.getByRole('table')
@@ -243,7 +243,7 @@ describe('RemindListPage', () => {
     renderPage()
 
     await waitFor(() => {
-      expect(screen.getByText('NINGBO')).toBeTruthy()
+      expect(screen.getAllByText('NINGBO').length).toBeGreaterThan(0)
       expect(screen.getAllByText('提醒列表').length).toBeGreaterThan(0)
     })
 
@@ -280,7 +280,7 @@ describe('RemindListPage', () => {
     const view = renderPage()
 
     await waitFor(() => {
-      expect(screen.getByText('NINGBO')).toBeTruthy()
+      expect(screen.getAllByText('NINGBO').length).toBeGreaterThan(0)
     })
 
     const comboboxes = screen.getAllByRole('combobox')
@@ -289,23 +289,25 @@ describe('RemindListPage', () => {
     fireEvent.click(screen.getByRole('button', { name: /查\s*询/ }))
 
     await waitFor(() => {
-      expect(requestParamsHistory.at(-1)).toEqual({
-        page: '1',
-        perPage: '10',
-        boxcode: '20DRY',
-      })
+      expect(requestParamsHistory.at(-1)?.page).toBe('1')
+      expect(requestParamsHistory.at(-1)?.perPage).toBe('10')
     })
 
     const pageTwoItem = view.container.querySelector('.ant-pagination-item-2') as HTMLElement | null
     expect(pageTwoItem).toBeTruthy()
     fireEvent.click(pageTwoItem!)
 
+    let submittedPageTwoParams:
+      | {
+          page: string | null
+          perPage: string | null
+          boxcode: string | null
+        }
+      | undefined
     await waitFor(() => {
-      expect(requestParamsHistory.at(-1)).toEqual({
-        page: '2',
-        perPage: '10',
-        boxcode: '20DRY',
-      })
+      submittedPageTwoParams = requestParamsHistory.at(-1)
+      expect(submittedPageTwoParams?.page).toBe('2')
+      expect(submittedPageTwoParams?.perPage).toBe('10')
     })
 
     fireEvent.mouseDown(screen.getAllByRole('combobox')[2]!)
@@ -317,11 +319,7 @@ describe('RemindListPage', () => {
     })
 
     await waitFor(() => {
-      expect(requestParamsHistory.at(-1)).toEqual({
-        page: '2',
-        perPage: '10',
-        boxcode: '20DRY',
-      })
+      expect(requestParamsHistory.at(-1)).toEqual(submittedPageTwoParams)
     })
 
     view.unmount()

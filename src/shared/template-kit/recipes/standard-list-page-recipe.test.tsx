@@ -219,7 +219,7 @@ describe('StandardListPageRecipe', () => {
     })
   })
 
-  it('should keep virtual scroll disabled when page size changes', async () => {
+  it('should enable virtual scroll when page size reaches the large-page threshold', async () => {
     let latestVirtualScroll: VirtualScrollSnapshot | null = null
     const spec: StandardListPageSpec<FilterValues, RequestFilters, Response, { id: number; name: string }, Error> = {
       pageTitle: '测试列表',
@@ -282,7 +282,7 @@ describe('StandardListPageRecipe', () => {
 
     await waitFor(() => {
       expect(latestVirtualScroll).toEqual({
-        enabled: false,
+        enabled: true,
         scroll: {
           x: 1200,
           y: 700,

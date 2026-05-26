@@ -1,7 +1,6 @@
-import { Alert, Button, DatePicker, Form, Input, InputNumber, Modal, Popconfirm, Select, Space, Tag, Typography, message } from 'antd'
+import { Alert, Button, DatePicker, Form, Input, InputNumber, Modal, Popconfirm, Select, Space, Table, Tag, Typography, message } from 'antd'
 import dayjs, { type Dayjs } from 'dayjs'
 import React, { useCallback, useMemo, useRef, useState } from 'react'
-import { DraggableTable } from '../../../shared/components/draggable-table'
 import { ListRowActions } from '../../../shared/components/list-row-actions'
 import { RemoteStringSelect } from '../../../shared/components/remote-string-select'
 import { normalizeApiError, type ApiError } from '../../../infrastructure/http/api-client'
@@ -389,14 +388,12 @@ export const MskApiListPage = () => {
           },
         ]
       },
-      buildTableNode: ({ columns, dataSource, loading, tableSize, tableClassName, pagination, dragSort, virtualScroll }) => {
+      buildTableNode: ({ columns, dataSource, loading, tableSize, tableClassName, pagination, virtualScroll }) => {
         currentRowsRef.current = dataSource
         return (
-          <DraggableTable<RowView>
+          <Table<RowView>
             className={tableClassName}
             rowKey="id"
-            rowOrder={dragSort.rowOrder}
-            onRowOrderChange={dragSort.onRowOrderChange}
             columns={columns}
             dataSource={dataSource}
             loading={loading}
@@ -411,9 +408,6 @@ export const MskApiListPage = () => {
               columnWidth: 50,
             }}
             scroll={virtualScroll.enabled ? { x: 'max-content', y: virtualScroll.scroll.y } : { x: 'max-content' }}
-            onOrderChange={(rows) => {
-              currentRowsRef.current = rows
-            }}
           />
         )
       },

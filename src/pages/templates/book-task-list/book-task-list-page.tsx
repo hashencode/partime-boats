@@ -14,6 +14,7 @@ import {
   Select,
   Space,
   Tag,
+  Table,
   Tooltip,
   Typography,
   message,
@@ -22,7 +23,6 @@ import type { InputRef } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import dayjs, { type Dayjs } from 'dayjs'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { DraggableTable } from '../../../shared/components/draggable-table'
 import { hasPermission } from '../../../infrastructure/auth/permissions'
 import { normalizeApiError, type ApiError } from '../../../infrastructure/http/api-client'
 import { useAuth } from '../../../infrastructure/auth/use-auth'
@@ -958,17 +958,14 @@ export const BookTaskListPage = () => {
         tableSize,
         tableClassName,
         pagination,
-        dragSort,
         virtualScroll,
       }) => {
         currentRowsRef.current = dataSource
 
         return (
-          <DraggableTable<EditableBookTask>
+          <Table<EditableBookTask>
             className={tableClassName}
             rowKey="id"
-            rowOrder={dragSort.rowOrder}
-            onRowOrderChange={dragSort.onRowOrderChange}
             columns={columns}
             dataSource={dataSource}
             loading={loading}
@@ -984,9 +981,6 @@ export const BookTaskListPage = () => {
                 ? { x: 'max-content', y: virtualScroll.scroll.y }
                 : { x: 'max-content' }
             }
-            onOrderChange={(rows) => {
-              currentRowsRef.current = rows
-            }}
           />
         )
       },

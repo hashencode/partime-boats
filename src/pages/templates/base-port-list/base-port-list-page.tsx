@@ -1,6 +1,6 @@
+import { Table } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import React, { useMemo } from 'react'
-import { DraggableTable } from '../../../shared/components/draggable-table'
 import { hasPermission } from '../../../infrastructure/auth/permissions'
 import { ListRowActions } from '../../../shared/components/list-row-actions'
 import { normalizeApiError, type ApiError } from '../../../infrastructure/http/api-client'
@@ -127,12 +127,10 @@ export const BasePortListPage = () => {
             ),
           },
         ] satisfies ColumnsType<BasePortRow>,
-      buildTableNode: ({ columns, dataSource, loading, tableClassName, pagination, tableSize, dragSort, virtualScroll }) => (
-        <DraggableTable<BasePortRow>
+      buildTableNode: ({ columns, dataSource, loading, tableClassName, pagination, tableSize, virtualScroll }) => (
+        <Table<BasePortRow>
           className={tableClassName}
           rowKey="key"
-          rowOrder={dragSort.rowOrder}
-          onRowOrderChange={dragSort.onRowOrderChange}
           bordered
           columns={columns}
           dataSource={dataSource}

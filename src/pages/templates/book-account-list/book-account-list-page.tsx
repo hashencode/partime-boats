@@ -1,7 +1,7 @@
+import { Table } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import dayjs from 'dayjs'
 import React, { useMemo } from 'react'
-import { DraggableTable } from '../../../shared/components/draggable-table'
 import { normalizeApiError, type ApiError } from '../../../infrastructure/http/api-client'
 import {
   StandardListPageRecipe,
@@ -137,12 +137,10 @@ export const BookAccountListPage = () => {
             sorter: (a, b) => dayjs(a.update_time).valueOf() - dayjs(b.update_time).valueOf(),
           },
         ] satisfies ColumnsType<BookAccountRow>,
-      buildTableNode: ({ columns, dataSource, loading, tableClassName, pagination, tableSize, dragSort, virtualScroll }) => {
+      buildTableNode: ({ columns, dataSource, loading, tableClassName, pagination, tableSize, virtualScroll }) => {
         return (
-          <DraggableTable<BookAccountRow>
+          <Table<BookAccountRow>
             rowKey="key"
-            rowOrder={dragSort.rowOrder}
-            onRowOrderChange={dragSort.onRowOrderChange}
             className={tableClassName}
             columns={columns}
             dataSource={dataSource}

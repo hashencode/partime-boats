@@ -3,13 +3,13 @@ import {
   Button,
   Drawer,
   Popconfirm,
+  Table,
   Tag,
   Typography,
   message,
 } from 'antd'
 import dayjs, { type Dayjs } from 'dayjs'
 import React, { useCallback, useMemo, useRef, useState } from 'react'
-import { DraggableTable } from '../../../shared/components/draggable-table'
 import { ListRowActions } from '../../../shared/components/list-row-actions'
 import { normalizeApiError, type ApiError } from '../../../infrastructure/http/api-client'
 import { LIST_REFRESH_CHANNEL, LIST_REFRESH_EVENT } from '../../../shared/constants/list-refresh-channel'
@@ -273,15 +273,13 @@ export const TableQueryPage = () => {
           ),
         },
       ],
-      buildTableNode: ({ columns, dataSource, loading, tableSize, current, pageSize, tableClassName, pagination, dragSort, virtualScroll }) => {
+      buildTableNode: ({ columns, dataSource, loading, tableSize, current, pageSize, tableClassName, pagination, virtualScroll }) => {
         paginationMetaRef.current = { current, pageSize }
 
         return (
-          <DraggableTable<RuleItem>
+          <Table<RuleItem>
             className={tableClassName}
             rowKey="key"
-            rowOrder={dragSort.rowOrder}
-            onRowOrderChange={dragSort.onRowOrderChange}
             dataSource={dataSource}
             columns={columns}
             size={tableSize}

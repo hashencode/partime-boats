@@ -54,12 +54,6 @@ export type StandardListPageSpec<
     tableClassName: string
     pagination: TablePaginationConfig
     onPageChange: (nextCurrent: number, nextPageSize: number) => void
-    dragSort: {
-      rowOrder: string[]
-      onRowOrderChange: (rowIds: string[]) => void
-      columnOrder: string[]
-      onColumnOrderChange: (columnKeys: string[]) => void
-    }
     virtualScroll: {
       enabled: boolean
       scroll: {

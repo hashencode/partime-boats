@@ -4,10 +4,10 @@ import { restrictToVerticalAxis } from '@dnd-kit/modifiers'
 import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { ColumnHeightOutlined, ReloadOutlined } from '@ant-design/icons'
-import { Button, Checkbox, Dropdown, Popover, Tooltip, theme } from 'antd'
+import { Button, Checkbox, Dropdown, Tooltip, theme } from 'antd'
 import type { MenuProps } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
-import { Columns3, Eraser } from 'lucide-react'
+import { Columns3 } from 'lucide-react'
 import React, { type ReactNode, useId } from 'react'
 
 void React
@@ -24,7 +24,6 @@ export type ListToolbarColumnSettingOption = {
   disabled?: boolean
 }
 
-const DEFAULT_COLUMN_SETTING_MAX_HEIGHT = 500
 const COLUMN_SETTING_DRAG_DISTANCE = 6
 
 export const buildListToolbarColumnSettingOptions = <TItem,>(
@@ -43,8 +42,6 @@ type ListToolbarActionsProps = {
   onTableSizeChange: (size: 'small' | 'middle' | 'large') => void
   onClearColumnSort?: () => void
   clearColumnSortDisabled?: boolean
-  onClearRowSort?: () => void
-  clearRowSortDisabled?: boolean
   onReload: () => void
   columnSettingOptions: ListToolbarColumnSettingOption[]
   selectedColumnKeys: string[]
@@ -101,8 +98,6 @@ export const ListToolbarActions = ({
   onTableSizeChange,
   onClearColumnSort,
   clearColumnSortDisabled = true,
-  onClearRowSort,
-  clearRowSortDisabled = true,
   onReload,
   columnSettingOptions,
   selectedColumnKeys,
@@ -110,6 +105,7 @@ export const ListToolbarActions = ({
   onColumnSettingOrderChange,
   columnSettingMinWidth = 220,
 }: ListToolbarActionsProps) => {
+  const { token } = theme.useToken()
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
@@ -117,26 +113,6 @@ export const ListToolbarActions = ({
       },
     })
   )
-  const clearSortItems = [
-    onClearColumnSort
-      ? {
-          key: 'column-sort',
-          label: '清除列排序',
-          disabled: clearColumnSortDisabled,
-          onClick: onClearColumnSort,
-        }
-      : null,
-    onClearRowSort
-      ? {
-          key: 'row-sort',
-          label: '清除行排序',
-          disabled: clearRowSortDisabled,
-          onClick: onClearRowSort,
-        }
-      : null,
-  ].filter((item): item is NonNullable<typeof item> => item !== null)
-
-  const clearSortDisabled = clearSortItems.length === 0 || clearSortItems.every((item) => item.disabled)
   const visibleColumnKeySet = new Set(selectedColumnKeys)
 
   const handleColumnSettingCheckedChange = (key: string, checked: boolean) => {
@@ -183,57 +159,52 @@ export const ListToolbarActions = ({
           <Button icon={<ColumnHeightOutlined />} aria-label="密度" />
         </Tooltip>
       </Dropdown>
-      <Popover
-        trigger="click"
+      <Dropdown
+        trigger={['click']}
         placement="bottomRight"
-        content={
+        popupRender={() => (
           <DndContext sensors={sensors} modifiers={[restrictToVerticalAxis]} onDragEnd={handleColumnSettingDragEnd}
           >
             <SortableContext items={columnSettingOptions.map((option) => option.key)} strategy={verticalListSortingStrategy}>
               <div
-                className="flex flex-col overflow-y-auto"
+                className="flex flex-col gap-3 rounded-xl border p-2 shadow-sm"
                 style={{
                   minWidth: columnSettingMinWidth,
-                  maxHeight: DEFAULT_COLUMN_SETTING_MAX_HEIGHT,
+                  background: token.colorBgElevated,
+                  borderColor: token.colorBorderSecondary,
+                  boxShadow: token.boxShadowSecondary,
                 }}
               >
-                {columnSettingOptions.map((option) => (
-                  <SortableColumnSettingRow
-                    key={option.key}
-                    option={option}
-                    checked={visibleColumnKeySet.has(option.key)}
-                    onCheckedChange={handleColumnSettingCheckedChange}
-                  />
-                ))}
+                <div className="flex max-h-[500px] flex-col overflow-y-auto">
+                  {columnSettingOptions.map((option) => (
+                    <SortableColumnSettingRow
+                      key={option.key}
+                      option={option}
+                      checked={visibleColumnKeySet.has(option.key)}
+                      onCheckedChange={handleColumnSettingCheckedChange}
+                    />
+                  ))}
+                </div>
+                {onClearColumnSort ? (
+                  <Button
+                    type="text"
+                    size="small"
+                    className="self-start"
+                    disabled={clearColumnSortDisabled}
+                    onClick={onClearColumnSort}
+                  >
+                    重置列排序
+                  </Button>
+                ) : null}
               </div>
             </SortableContext>
           </DndContext>
-        }
+        )}
       >
         <Tooltip title="列设置">
           <Button icon={<Columns3 size={16} />} aria-label="列设置" />
         </Tooltip>
-      </Popover>
-      {clearSortItems.length > 0 ? (
-        <Dropdown
-          menu={{
-            items: clearSortItems.map((item) => ({
-              key: item.key,
-              label: item.label,
-              disabled: item.disabled,
-            })),
-            onClick: ({ key }) => {
-              clearSortItems.find((item) => item.key === key)?.onClick()
-            },
-          }}
-          trigger={['click']}
-          placement="bottomRight"
-        >
-          <Tooltip title="清除排序">
-            <Button icon={<Eraser size={16} />} aria-label="清除排序" disabled={clearSortDisabled} />
-          </Tooltip>
-        </Dropdown>
-      ) : null}
+      </Dropdown>
     </div>
   )
 }

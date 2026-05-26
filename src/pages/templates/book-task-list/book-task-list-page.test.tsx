@@ -162,7 +162,7 @@ describe('BookTaskListPage', () => {
 
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: '订舱管理' })).toBeTruthy()
-      expect(screen.getByText('tester')).toBeTruthy()
+      expect(screen.getAllByText('tester').length).toBeGreaterThan(0)
       expect(latestPage).toBe('1')
       expect(latestPerPage).toBe('10')
       expect(screen.getByRole('button', { name: '批量打开' })).toBeTruthy()
@@ -207,7 +207,7 @@ describe('BookTaskListPage', () => {
     const view = renderPage('viewer')
 
     await waitFor(() => {
-      expect(screen.getByText('tester')).toBeTruthy()
+      expect(screen.getAllByText('tester').length).toBeGreaterThan(0)
     })
 
     expect(screen.getByRole('button', { name: '关闭初始化' }).getAttribute('disabled')).not.toBeNull()
@@ -237,7 +237,7 @@ describe('BookTaskListPage', () => {
     const view = renderPage()
 
     await waitFor(() => {
-      expect(screen.getByText('tester')).toBeTruthy()
+      expect(screen.getAllByText('tester').length).toBeGreaterThan(0)
     })
 
     fireEvent.click(screen.getByRole('button', { name: '批量打开' }))
@@ -261,7 +261,7 @@ describe('BookTaskListPage', () => {
     const view = renderPage()
 
     await waitFor(() => {
-      expect(screen.getByText('tester')).toBeTruthy()
+      expect(screen.getAllByText('tester').length).toBeGreaterThan(0)
     })
 
     const rowCheckboxes = screen.getAllByRole('checkbox')
@@ -281,10 +281,12 @@ describe('BookTaskListPage', () => {
     const view = renderPage()
 
     await waitFor(() => {
-      expect(screen.getByText('tester')).toBeTruthy()
+      expect(screen.getAllByText('tester').length).toBeGreaterThan(0)
     })
 
-    fireEvent.click(screen.getByRole('button', { name: '修改' }))
+    await act(async () => {
+      fireEvent.click(screen.getAllByRole('button', { name: '修改' })[0] as Element)
+    })
 
     await waitFor(() => {
       expect(screen.getByRole('dialog', { name: '修改' })).toBeTruthy()
@@ -300,7 +302,7 @@ describe('BookTaskListPage', () => {
     const view = renderPage()
 
     await waitFor(() => {
-      expect(screen.getByText('tester')).toBeTruthy()
+      expect(screen.getAllByText('tester').length).toBeGreaterThan(0)
     })
 
     const rowCheckboxes = screen.getAllByRole('checkbox')
@@ -310,7 +312,9 @@ describe('BookTaskListPage', () => {
       expect(screen.getByRole('button', { name: '批量修改' })).toBeTruthy()
     })
 
-    fireEvent.click(screen.getByRole('button', { name: '批量修改' }))
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: '批量修改' }))
+    })
 
     await waitFor(() => {
       expect(screen.getByRole('dialog', { name: '批量修改' })).toBeTruthy()

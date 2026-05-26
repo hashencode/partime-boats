@@ -1,8 +1,7 @@
-import { Button, Dropdown, message, Popconfirm, Tag } from 'antd'
+import { Button, Dropdown, message, Popconfirm, Table, Tag } from 'antd'
 import dayjs, { type Dayjs } from 'dayjs'
 import React, { useCallback, useMemo, useRef, useState } from 'react'
 import ExportJsonExcel from 'js-export-excel'
-import { DraggableTable } from '../../../shared/components/draggable-table'
 import { normalizeApiError, type ApiError } from '../../../infrastructure/http/api-client'
 import {
   createPortFilterFields,
@@ -397,23 +396,18 @@ export const OrderListPage = () => {
         { title: '返回值1', key: 'is_instant_confirmation', dataIndex: 'is_instant_confirmation' },
         { title: '免用箱', key: 'free_day', dataIndex: 'free_day' },
       ],
-      buildTableNode: ({ columns, dataSource, loading, tableSize, tableClassName, pagination, dragSort, virtualScroll }) => {
+      buildTableNode: ({ columns, dataSource, loading, tableSize, tableClassName, pagination, virtualScroll }) => {
         currentRowsRef.current = dataSource
         return (
-          <DraggableTable
+          <Table
             className={tableClassName}
             rowKey="id"
-            rowOrder={dragSort.rowOrder}
-            onRowOrderChange={dragSort.onRowOrderChange}
             columns={columns}
             dataSource={dataSource}
             size={tableSize}
             loading={loading}
             scroll={virtualScroll.enabled ? { x: 'max-content', y: virtualScroll.scroll.y } : { x: 'max-content' }}
             pagination={pagination}
-            onOrderChange={(rows) => {
-              currentRowsRef.current = rows
-            }}
           />
         )
       },

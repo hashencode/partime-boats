@@ -1,17 +1,15 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 
 type TableSize = 'small' | 'middle' | 'large'
 
 const TABLE_DENSITY_STORAGE_KEY = 'list:table-density:v1'
 const TABLE_COLUMNS_STORAGE_PREFIX = 'list:table-columns:v1:'
-const TABLE_ROW_ORDER_STORAGE_PREFIX = 'list:table-order:v1:'
 const TABLE_VIEW_PREFERENCES_STORAGE_PREFIX = 'list:table-view-preferences:v1:'
 
 type TableViewPreferences = {
   density: TableSize
   visibleColumnKeys: string[]
   columnOrder: string[]
-  rowOrder: string[]
 }
 
 const isTableSize = (value: unknown): value is TableSize => {
@@ -47,20 +45,7 @@ const writeJson = (key: string, value: unknown) => {
   }
 }
 
-const removeStorageItem = (key: string) => {
-  if (typeof window === 'undefined') {
-    return
-  }
-
-  try {
-    window.localStorage.removeItem(key)
-  } catch {
-    // ignore storage removal failure and keep runtime state usable
-  }
-}
-
 const buildTableColumnsStorageKey = (tableId: string) => `${TABLE_COLUMNS_STORAGE_PREFIX}${tableId}`
-const buildTableRowOrderStorageKey = (tableId: string) => `${TABLE_ROW_ORDER_STORAGE_PREFIX}${tableId}`
 const buildTableViewPreferencesStorageKey = (tableId: string) => `${TABLE_VIEW_PREFERENCES_STORAGE_PREFIX}${tableId}`
 
 export const applyPersistedOrderToKeys = (sourceKeys: string[], persistedOrder: string[]) => {
@@ -76,20 +61,6 @@ export const applyPersistedOrderToKeys = (sourceKeys: string[], persistedOrder: 
   return [...orderedVisibleKeys, ...unseenKeys]
 }
 
-export const mergePersistedOrder = (persistedOrder: string[], visibleKeys: string[], nextVisibleKeys: string[]) => {
-  if (persistedOrder.length === 0) {
-    return nextVisibleKeys
-  }
-
-  const visibleKeySet = new Set(visibleKeys)
-  const reorderedVisibleQueue = [...nextVisibleKeys]
-  const nextPersistedOrder = persistedOrder.map((key) =>
-    visibleKeySet.has(key) ? (reorderedVisibleQueue.shift() ?? key) : key
-  )
-
-  return [...nextPersistedOrder, ...reorderedVisibleQueue]
-}
-
 const sanitizeVisibleColumnKeys = (keys: string[], defaultColumnKeys: string[]) => {
   const defaultColumnKeySet = new Set(defaultColumnKeys)
   const visibleColumnKeys = keys.filter((key) => defaultColumnKeySet.has(key))
@@ -99,10 +70,6 @@ const sanitizeVisibleColumnKeys = (keys: string[], defaultColumnKeys: string[]) 
 
 const sanitizeColumnOrder = (order: string[], defaultColumnKeys: string[]) => {
   return applyPersistedOrderToKeys(defaultColumnKeys, order)
-}
-
-const isSameStringArray = (left: string[], right: string[]) => {
-  return left.length === right.length && left.every((value, index) => value === right[index])
 }
 
 const readLegacyDensity = (defaultDensity: TableSize) => {
@@ -117,7 +84,6 @@ const readStoredTableViewPreferences = (
 ): TableViewPreferences => {
   const storedPreferences = readJson<Partial<TableViewPreferences>>(buildTableViewPreferencesStorageKey(tableId))
   const legacyVisibleColumns = readJson<unknown>(buildTableColumnsStorageKey(tableId))
-  const legacyRowOrder = readJson<unknown>(buildTableRowOrderStorageKey(tableId))
 
   return {
     density: isTableSize(storedPreferences?.density) ? storedPreferences.density : readLegacyDensity(defaultDensity),
@@ -133,11 +99,6 @@ const readStoredTableViewPreferences = (
       isStringArray(storedPreferences?.columnOrder) ? storedPreferences.columnOrder : defaultColumnKeys,
       defaultColumnKeys
     ),
-    rowOrder: isStringArray(storedPreferences?.rowOrder)
-      ? storedPreferences.rowOrder
-      : isStringArray(legacyRowOrder)
-        ? legacyRowOrder
-        : [],
   }
 }
 
@@ -152,7 +113,6 @@ export const useListViewPreferences = ({
   defaultColumnKeys,
   defaultDensity = 'middle',
 }: UseListViewPreferencesOptions) => {
-  const defaultColumnKeysKey = useMemo(() => defaultColumnKeys.join('|'), [defaultColumnKeys])
   const [preferences, setPreferencesState] = useState<TableViewPreferences>(() =>
     readStoredTableViewPreferences(tableId, defaultColumnKeys, defaultDensity)
   )
@@ -176,24 +136,15 @@ export const useListViewPreferences = ({
     [writePreferences]
   )
 
-  useEffect(() => {
-    setPreferencesState((current) => {
-      const nextVisibleColumnKeys = sanitizeVisibleColumnKeys(current.visibleColumnKeys, defaultColumnKeys)
-      const nextColumnOrder = sanitizeColumnOrder(current.columnOrder, defaultColumnKeys)
-      const nextPreferences = {
-        ...current,
-        visibleColumnKeys: nextVisibleColumnKeys,
-        columnOrder: nextColumnOrder,
-      }
+  const selectedColumnKeys = useMemo(
+    () => sanitizeVisibleColumnKeys(preferences.visibleColumnKeys, defaultColumnKeys),
+    [defaultColumnKeys, preferences.visibleColumnKeys]
+  )
 
-      if (isSameStringArray(nextVisibleColumnKeys, current.visibleColumnKeys) && isSameStringArray(nextColumnOrder, current.columnOrder)) {
-        return current
-      }
-
-      writePreferences(nextPreferences)
-      return nextPreferences
-    })
-  }, [defaultColumnKeys, defaultColumnKeysKey, writePreferences])
+  const columnOrder = useMemo(
+    () => sanitizeColumnOrder(preferences.columnOrder, defaultColumnKeys),
+    [defaultColumnKeys, preferences.columnOrder]
+  )
 
   const setTableSize = useCallback((size: TableSize) => {
     setPreferences((current) => ({
@@ -229,41 +180,19 @@ export const useListViewPreferences = ({
     }))
   }, [defaultColumnKeys, setPreferences])
 
-  const setRowOrder = useCallback(
-    (rowOrder: string[]) => {
-      setPreferences((current) => ({
-        ...current,
-        rowOrder,
-      }))
-    },
-    [setPreferences]
-  )
-
-  const clearRowOrder = useCallback(() => {
-    setPreferences((current) => ({
-      ...current,
-      rowOrder: [],
-    }))
-    removeStorageItem(buildTableRowOrderStorageKey(tableId))
-  }, [setPreferences, tableId])
-
   const hasCustomColumnOrder = useMemo(
     () => preferences.columnOrder.join('|') !== defaultColumnKeys.join('|'),
-    [defaultColumnKeysKey, preferences.columnOrder]
+    [defaultColumnKeys, preferences.columnOrder]
   )
 
   return {
     tableSize: preferences.density,
-    selectedColumnKeys: preferences.visibleColumnKeys,
-    columnOrder: preferences.columnOrder,
-    rowOrder: preferences.rowOrder,
+    selectedColumnKeys,
+    columnOrder,
     hasCustomColumnOrder,
-    hasCustomRowOrder: preferences.rowOrder.length > 0,
     setTableSize,
     setSelectedColumnKeys,
     setColumnOrder,
     clearColumnOrder,
-    setRowOrder,
-    clearRowOrder,
   }
 }

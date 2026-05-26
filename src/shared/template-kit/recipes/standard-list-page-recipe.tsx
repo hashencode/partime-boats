@@ -8,7 +8,7 @@ import {
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { buildListToolbarColumnSettingOptions, ListToolbarActions } from '../../components/list-toolbar-actions'
 import { applyPersistedOrderToKeys, useListViewPreferences } from '../../hooks/use-list-view-preferences'
-import { useStandardPagination } from '../../hooks/use-standard-pagination'
+import { ALL_DATA_PAGE_SIZE, useStandardPagination } from '../../hooks/use-standard-pagination'
 import { useCrudFormNavigation } from '../hooks'
 import type { StandardListPageSpec } from '../specs/standard-list-page-spec'
 import { buildSearchGridProps } from '../list/build-search-grid-props'
@@ -24,6 +24,7 @@ void React
 
 const VIRTUAL_TABLE_HEIGHT = 700
 const DEFAULT_VIRTUAL_TABLE_WIDTH = 1200
+const VIRTUAL_SCROLL_PAGE_SIZE_THRESHOLD = 50
 
 const resolveVirtualScrollX = (columns: Array<{ width?: string | number }>) => {
   const numericWidthSum = columns.reduce((sum, column) => {
@@ -171,15 +172,11 @@ export const StandardListPageRecipe = <
     tableSize,
     selectedColumnKeys,
     columnOrder,
-    rowOrder,
     hasCustomColumnOrder,
-    hasCustomRowOrder,
     setTableSize,
     setSelectedColumnKeys,
     setColumnOrder,
     clearColumnOrder,
-    setRowOrder,
-    clearRowOrder,
   } = useListViewPreferences({
     tableId: spec.tableId,
     defaultColumnKeys,
@@ -209,13 +206,13 @@ export const StandardListPageRecipe = <
 
   const virtualScroll = useMemo(
     () => ({
-      enabled: false,
+      enabled: pageSize >= VIRTUAL_SCROLL_PAGE_SIZE_THRESHOLD || pageSize === ALL_DATA_PAGE_SIZE,
       scroll: {
         x: resolveVirtualScrollX(visibleColumns),
         y: VIRTUAL_TABLE_HEIGHT,
       },
     }),
-    [visibleColumns]
+    [pageSize, visibleColumns]
   )
 
   const handleResetAll = () => {
@@ -256,12 +253,6 @@ export const StandardListPageRecipe = <
     pagination: tablePagination,
     onPageChange: (nextCurrent, nextPageSize) => {
       tablePagination.onChange?.(nextCurrent, nextPageSize)
-    },
-    dragSort: {
-      rowOrder,
-      onRowOrderChange: setRowOrder,
-      columnOrder,
-      onColumnOrderChange: setColumnOrder,
     },
     virtualScroll,
   })
@@ -318,8 +309,6 @@ export const StandardListPageRecipe = <
               onTableSizeChange={setTableSize}
               onClearColumnSort={clearColumnOrder}
               clearColumnSortDisabled={!hasCustomColumnOrder}
-              onClearRowSort={clearRowOrder}
-              clearRowSortDisabled={!hasCustomRowOrder}
               onReload={() => {
                 void load({ showSuccess: true })
               }}

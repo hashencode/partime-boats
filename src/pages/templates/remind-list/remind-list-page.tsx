@@ -1,9 +1,8 @@
-import { Button, Dropdown, Popconfirm, Space, Typography, message } from 'antd'
+import { Button, Dropdown, Popconfirm, Space, Table, Typography, message } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import dayjs, { type Dayjs } from 'dayjs'
 import ExportJsonExcel from 'js-export-excel'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { DraggableTable } from '../../../shared/components/draggable-table'
 import { hasPermission } from '../../../infrastructure/auth/permissions'
 import { useAuth } from '../../../infrastructure/auth/use-auth'
 import { ListRowActions } from '../../../shared/components/list-row-actions'
@@ -379,14 +378,12 @@ export const RemindListPage = () => {
           },
         ] as ColumnsType<RemindRow>
       },
-      buildTableNode: ({ columns, dataSource, loading, tableClassName, pagination, tableSize, dragSort, virtualScroll }) => {
+      buildTableNode: ({ columns, dataSource, loading, tableClassName, pagination, tableSize, virtualScroll }) => {
         currentRowsRef.current = dataSource
         return (
-          <DraggableTable<RemindRow>
+          <Table<RemindRow>
             className={tableClassName}
             rowKey="id"
-            rowOrder={dragSort.rowOrder}
-            onRowOrderChange={dragSort.onRowOrderChange}
             columns={columns}
             dataSource={dataSource}
             loading={loading}
@@ -406,9 +403,6 @@ export const RemindListPage = () => {
                 : undefined
             }
             scroll={virtualScroll.enabled ? { x: 'max-content', y: virtualScroll.scroll.y } : { x: 'max-content' }}
-            onOrderChange={(rows) => {
-              currentRowsRef.current = rows
-            }}
           />
         )
       },
