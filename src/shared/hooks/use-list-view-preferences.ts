@@ -181,8 +181,8 @@ export const useListViewPreferences = ({
   }, [defaultColumnKeys, setPreferences])
 
   const hasCustomColumnOrder = useMemo(
-    () => preferences.columnOrder.join('|') !== defaultColumnKeys.join('|'),
-    [defaultColumnKeys, preferences.columnOrder]
+    () => columnOrder.join('|') !== defaultColumnKeys.join('|'),
+    [columnOrder, defaultColumnKeys]
   )
 
   return {

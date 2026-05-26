@@ -1,4 +1,5 @@
 import React from 'react'
+import { Form } from 'antd'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterAll, afterEach, beforeAll, describe, expect, it } from '@rstest/core'
 import { http, HttpResponse } from 'msw'
@@ -36,6 +37,9 @@ if (!window.ResizeObserver) {
 
 let latestToggleIds = ''
 let latestToggleStatus = ''
+type CapturedFilterForm = {
+  setFieldValue: (name: string, value: unknown) => void
+}
 
 const server = setupServer(
   http.get('*/check/show', () =>
@@ -107,7 +111,15 @@ describe('MskQueryListPage', () => {
     })
   })
 
-  it('should not re-request when filter values change before submit', async () => {
+  it('should only re-request after clicking query when filter values change', async () => {
+    const originalUseForm = Form.useForm
+    let capturedForm: CapturedFilterForm | null = null
+    Form.useForm = ((...args: Parameters<typeof originalUseForm>) => {
+      const formTuple = originalUseForm(...args)
+      capturedForm = formTuple[0] as CapturedFilterForm
+      return formTuple
+    }) as typeof Form.useForm
+
     let requestCount = 0
     server.use(
       http.get('*/check/show', () => {
@@ -122,18 +134,31 @@ describe('MskQueryListPage', () => {
       })
     )
 
-    render(<ThemeProvider><MskQueryListPage /></ThemeProvider>)
+    try {
+      render(<ThemeProvider><MskQueryListPage /></ThemeProvider>)
 
-    await waitFor(() => {
-      expect(requestCount).toBeGreaterThan(0)
-    })
-    const initialCount = requestCount
+      await waitFor(() => {
+        expect(requestCount).toBeGreaterThan(0)
+      })
+      const initialCount = requestCount
 
-    const comboBoxes = screen.getAllByRole('combobox')
-    fireEvent.change(comboBoxes[0] as Element, { target: { value: 'SHA' } })
+      expect(capturedForm).toBeTruthy()
+      if (!capturedForm) {
+        throw new Error('filter form was not created')
+      }
+      const filterForm = capturedForm as CapturedFilterForm
+      filterForm.setFieldValue('type_name', 2)
 
-    expect(requestCount).toBe(initialCount)
-  })
+      expect(requestCount).toBe(initialCount)
+      fireEvent.click(screen.getByRole('button', { name: /查\s*询/ }))
+
+      await waitFor(() => {
+        expect(requestCount).toBe(initialCount + 1)
+      })
+    } finally {
+      Form.useForm = originalUseForm
+    }
+  }, 10000)
 
   it('should toggle all visible rows when nothing is checked', async () => {
     render(<ThemeProvider><MskQueryListPage /></ThemeProvider>)
