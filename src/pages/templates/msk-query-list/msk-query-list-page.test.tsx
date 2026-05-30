@@ -1,6 +1,6 @@
 import React from 'react'
 import { Form } from 'antd'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterAll, afterEach, beforeAll, describe, expect, it } from '@rstest/core'
 import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
@@ -37,6 +37,7 @@ if (!window.ResizeObserver) {
 
 let latestToggleIds = ''
 let latestToggleStatus = ''
+let latestSingleUpdatePayload: Record<string, unknown> | null = null
 type CapturedFilterForm = {
   setFieldValue: (name: string, value: unknown) => void
 }
@@ -62,7 +63,6 @@ const server = setupServer(
       },
     ])
   ),
-  http.get('*/query/list', () => HttpResponse.json({ lineA: 'https://example.com/log' })),
   http.get('*/shippingLine', () => HttpResponse.json(['MSK', 'CMA'])),
   http.get('*/startport', () => HttpResponse.json(['NINGBO', 'SHA'])),
   http.get('*/endport', () => HttpResponse.json(['GDANSK', 'HAMBURG'])),
@@ -73,6 +73,10 @@ const server = setupServer(
     latestToggleIds = url.searchParams.get('ids') ?? ''
     latestToggleStatus = url.searchParams.get('early_date') ?? ''
     return HttpResponse.json({ bool_status: true, data: true })
+  }),
+  http.post('*/check/update', async ({ request }) => {
+    latestSingleUpdatePayload = (await request.json()) as Record<string, unknown>
+    return HttpResponse.json({ bool_status: true, data: true })
   })
 )
 
@@ -81,8 +85,10 @@ beforeAll(() => {
 })
 
 afterEach(() => {
+  cleanup()
   latestToggleIds = ''
   latestToggleStatus = ''
+  latestSingleUpdatePayload = null
   server.resetHandlers()
 })
 
@@ -97,6 +103,51 @@ describe('MskQueryListPage', () => {
     await waitFor(() => {
       expect(screen.getAllByText('NINGBO').length).toBeGreaterThan(0)
       expect(screen.getByText('账号数: 12')).toBeTruthy()
+    })
+
+    expect(screen.getByRole('button', { name: '修改' })).toBeTruthy()
+    expect(screen.queryByRole('link', { name: '订舱' })).toBeNull()
+  })
+
+  it('should show all returned rows on first render by default', async () => {
+    server.use(
+      http.get('*/check/show', () =>
+        HttpResponse.json(
+          Array.from({ length: 11 }, (_, index) => ({
+            id: index + 1,
+            origincity_name: `PORT-${index + 1}`,
+            destinationcity_name: `DEST-${index + 1}`,
+            host: 'MSK',
+            box_type: '40',
+            delay_time: 30,
+            is_run: 0,
+            is_roll: 1,
+            early_date: '2026-05-01',
+            destination_service_mode: 'CY',
+            limit_price: 1200 + index,
+            port: `A${index + 1}`,
+            tips: `tip-${index + 1}`,
+          }))
+        )
+      )
+    )
+
+    render(<ThemeProvider><MskQueryListPage /></ThemeProvider>)
+
+    await waitFor(() => {
+      expect(screen.getByText('PORT-1')).toBeTruthy()
+      expect(screen.getByText('PORT-11')).toBeTruthy()
+    })
+
+    expect(screen.getByText('所有数据')).toBeTruthy()
+
+    fireEvent.mouseDown(screen.getByText('所有数据'))
+
+    await waitFor(() => {
+      expect(screen.getByText('10 条/页')).toBeTruthy()
+      expect(screen.getByText('20 条/页')).toBeTruthy()
+      expect(screen.getByText('50 条/页')).toBeTruthy()
+      expect(screen.getByText('100 条/页')).toBeTruthy()
     })
   })
 
@@ -204,6 +255,74 @@ describe('MskQueryListPage', () => {
     await waitFor(() => {
       expect(latestToggleIds).toBe('1')
       expect(latestToggleStatus).toBe('-1')
+    })
+  })
+
+  it('should toggle a single row status via the status column and submit numeric is_run', async () => {
+    let requestCount = 0
+    server.use(
+      http.get('*/check/show', () => {
+        requestCount += 1
+        return HttpResponse.json([
+          {
+            id: 1,
+            origincity_name: 'NINGBO',
+            destinationcity_name: 'GDANSK',
+            host: 'MSK',
+            box_type: '40',
+            delay_time: 30,
+            is_run: 0,
+            is_roll: 1,
+            early_date: '2026-05-01',
+            destination_service_mode: 'CY',
+            limit_price: 1200,
+            port: 'A1',
+            log: 'lineA',
+            tips: 'ok',
+          },
+        ])
+      })
+    )
+
+    render(<ThemeProvider><MskQueryListPage /></ThemeProvider>)
+
+    await waitFor(() => {
+      expect(screen.getByText('NINGBO')).toBeTruthy()
+      expect(requestCount).toBeGreaterThan(0)
+    })
+
+    const initialCount = requestCount
+
+    fireEvent.click(screen.getByText('开启'))
+    fireEvent.click(await screen.findByRole('button', { name: '是' }))
+
+    await waitFor(() => {
+      expect(latestSingleUpdatePayload).toMatchObject({
+        id: 1,
+        is_run: -1,
+        delay_time: 30,
+        is_roll: 1,
+      })
+      expect(requestCount).toBe(initialCount + 1)
+    })
+  })
+
+  it('should keep the row unchanged when single status toggle request fails', async () => {
+    server.use(
+      http.post('*/check/update', () => HttpResponse.json({ message: 'server err' }, { status: 500 }))
+    )
+
+    render(<ThemeProvider><MskQueryListPage /></ThemeProvider>)
+
+    await waitFor(() => {
+      expect(screen.getByText('NINGBO')).toBeTruthy()
+    })
+
+    fireEvent.click(screen.getByText('开启'))
+    fireEvent.click(await screen.findByRole('button', { name: '是' }))
+
+    await waitFor(() => {
+      expect(screen.getByText('server err')).toBeTruthy()
     })
   })
 

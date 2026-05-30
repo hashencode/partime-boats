@@ -1,4 +1,5 @@
 import React from 'react'
+import { Form } from 'antd'
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterAll, afterEach, beforeAll, describe, expect, it } from '@rstest/core'
 import { http, HttpResponse } from 'msw'
@@ -51,7 +52,7 @@ const remindRows = Array.from({ length: 11 }, (_, index) => ({
   total_amount: 120 + index,
   source: 'demo',
   insert_datetime: '2026-05-01 12:00:00',
-  is_use: 0,
+  is_use: index === 0 ? 1 : 0,
   ship_info: `V${String(index + 1).padStart(3, '0')}`,
   price_id: 1001 + index,
 }))
@@ -65,6 +66,9 @@ let requestParamsHistory: Array<{
   perPage: string | null
   boxcode: string | null
 }> = []
+type CapturedFilterForm = {
+  setFieldValue: (name: string, value: unknown) => void
+}
 
 const server = setupServer(
   http.get('*/startport', () => HttpResponse.json(['NINGBO'])),
@@ -151,31 +155,49 @@ describe('RemindListPage', () => {
       expect(screen.getByRole('button', { name: '刷新' })).toBeTruthy()
       expect(screen.getByRole('button', { name: '密度' })).toBeTruthy()
       expect(screen.getByRole('button', { name: '列设置' })).toBeTruthy()
+      expect(screen.getByText('已作废')).toBeTruthy()
+      expect(screen.getAllByText('未作废').length).toBeGreaterThan(0)
     })
+
+    expect(screen.queryByText('是')).toBeNull()
+    expect(screen.queryByText('否')).toBeNull()
   })
 
   it('should not re-query when changing filters until query button clicked', async () => {
-    renderPage()
+    const originalUseForm = Form.useForm
+    let capturedForm: CapturedFilterForm | null = null
+    Form.useForm = ((...args: Parameters<typeof originalUseForm>) => {
+      const formTuple = originalUseForm(...args)
+      capturedForm = formTuple[0] as CapturedFilterForm
+      return formTuple
+    }) as typeof Form.useForm
 
-    await waitFor(() => {
-      expect(remindRequestCount).toBe(1)
-    })
+    try {
+      renderPage()
 
-    const comboboxes = screen.getAllByRole('combobox')
-    fireEvent.mouseDown(comboboxes[2]!)
+      await waitFor(() => {
+        expect(remindRequestCount).toBe(1)
+      })
 
-    const option = await screen.findByRole('option', { name: '20DRY' })
-    fireEvent.click(option)
+      expect(capturedForm).toBeTruthy()
+      if (!capturedForm) {
+        throw new Error('filter form was not created')
+      }
 
-    await waitFor(() => {
-      expect(remindRequestCount).toBe(1)
-    })
+      capturedForm.setFieldValue('boxcode', '20DRY')
 
-    fireEvent.click(screen.getByRole('button', { name: /查\s*询/ }))
+      await waitFor(() => {
+        expect(remindRequestCount).toBe(1)
+      })
 
-    await waitFor(() => {
-      expect(remindRequestCount).toBe(2)
-    })
+      fireEvent.click(screen.getByRole('button', { name: /查\s*询/ }))
+
+      await waitFor(() => {
+        expect(remindRequestCount).toBe(2)
+      })
+    } finally {
+      Form.useForm = originalUseForm
+    }
   })
 
   it('should show error state when list request fails', async () => {
@@ -260,6 +282,14 @@ describe('RemindListPage', () => {
   })
 
   it('should auto refresh every 30 seconds without changing submitted filters or pagination', async () => {
+    const originalUseForm = Form.useForm
+    let capturedForm: CapturedFilterForm | null = null
+    Form.useForm = ((...args: Parameters<typeof originalUseForm>) => {
+      const formTuple = originalUseForm(...args)
+      capturedForm = formTuple[0] as CapturedFilterForm
+      return formTuple
+    }) as typeof Form.useForm
+
     window.setInterval = ((handler: TimerHandler, timeout?: number) => {
       if (timeout === 30000) {
         intervalCallback = () => {
@@ -277,53 +307,63 @@ describe('RemindListPage', () => {
       clearedIntervalId = timerId ?? null
     }) as typeof window.clearInterval
 
-    const view = renderPage()
+    try {
+      const view = renderPage()
 
-    await waitFor(() => {
-      expect(screen.getAllByText('NINGBO').length).toBeGreaterThan(0)
-    })
+      await waitFor(() => {
+        expect(screen.getAllByText('NINGBO').length).toBeGreaterThan(0)
+      })
 
-    const comboboxes = screen.getAllByRole('combobox')
-    fireEvent.mouseDown(comboboxes[2]!)
-    fireEvent.click(await screen.findByRole('option', { name: '20DRY' }))
-    fireEvent.click(screen.getByRole('button', { name: /查\s*询/ }))
+      expect(capturedForm).toBeTruthy()
+      if (!capturedForm) {
+        throw new Error('filter form was not created')
+      }
 
-    await waitFor(() => {
-      expect(requestParamsHistory.at(-1)?.page).toBe('1')
-      expect(requestParamsHistory.at(-1)?.perPage).toBe('10')
-    })
+      capturedForm.setFieldValue('boxcode', '20DRY')
+      fireEvent.click(screen.getByRole('button', { name: /查\s*询/ }))
 
-    const pageTwoItem = view.container.querySelector('.ant-pagination-item-2') as HTMLElement | null
-    expect(pageTwoItem).toBeTruthy()
-    fireEvent.click(pageTwoItem!)
+      await waitFor(() => {
+        expect(requestParamsHistory.at(-1)?.page).toBe('1')
+        expect(requestParamsHistory.at(-1)?.perPage).toBe('10')
+      })
 
-    let submittedPageTwoParams:
-      | {
-          page: string | null
-          perPage: string | null
-          boxcode: string | null
-        }
-      | undefined
-    await waitFor(() => {
-      submittedPageTwoParams = requestParamsHistory.at(-1)
-      expect(submittedPageTwoParams?.page).toBe('2')
-      expect(submittedPageTwoParams?.perPage).toBe('10')
-    })
+      const pageTwoItem = view.container.querySelector('.ant-pagination-item-2') as HTMLElement | null
+      expect(pageTwoItem).toBeTruthy()
+      fireEvent.click(pageTwoItem!)
 
-    fireEvent.mouseDown(screen.getAllByRole('combobox')[2]!)
-    fireEvent.click(await screen.findByRole('option', { name: '40HDRY' }))
+      let submittedPageTwoParams:
+        | {
+            page: string | null
+            perPage: string | null
+            boxcode: string | null
+          }
+        | undefined
+      await waitFor(() => {
+        submittedPageTwoParams = requestParamsHistory.at(-1)
+        expect(submittedPageTwoParams?.page).toBe('2')
+        expect(submittedPageTwoParams?.perPage).toBe('10')
+      })
 
-    expect(intervalCallback).toBeTruthy()
-    await act(async () => {
-      intervalCallback?.()
-    })
+      capturedForm.setFieldValue('boxcode', '40HDRY')
 
-    await waitFor(() => {
-      expect(requestParamsHistory.at(-1)).toEqual(submittedPageTwoParams)
-    })
+      expect(intervalCallback).toBeTruthy()
+      await act(async () => {
+        intervalCallback?.()
+      })
 
-    view.unmount()
+      await waitFor(() => {
+        expect(requestParamsHistory.at(-1)).toEqual(submittedPageTwoParams)
+      })
 
-    expect(clearedIntervalId).toBe(1)
+      await act(async () => {
+        view.unmount()
+      })
+
+      await waitFor(() => {
+        expect(clearedIntervalId).toBe(1)
+      })
+    } finally {
+      Form.useForm = originalUseForm
+    }
   })
 })

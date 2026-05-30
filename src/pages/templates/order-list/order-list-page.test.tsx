@@ -76,6 +76,17 @@ describe('OrderListPage', () => {
       expect(screen.getAllByText('订单列表').length).toBeGreaterThan(0)
       expect(screen.getByText('demo_user')).toBeTruthy()
     })
+
+    expect(screen.getByText('50 条/页')).toBeTruthy()
+
+    fireEvent.mouseDown(screen.getByText('50 条/页'))
+
+    await waitFor(() => {
+      expect(screen.getByText('100 条/页')).toBeTruthy()
+      expect(screen.getByText('200 条/页')).toBeTruthy()
+      expect(screen.getByText('500 条/页')).toBeTruthy()
+      expect(screen.getByText('所有数据')).toBeTruthy()
+    })
   })
 
   it('should not re-query when changing filters until query button clicked', async () => {

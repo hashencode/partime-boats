@@ -1,4 +1,4 @@
-import { Button, Dropdown, Popconfirm, Space, Table, Typography, message } from 'antd'
+import { Button, Dropdown, Popconfirm, Space, Table, Tag, Typography, message } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import dayjs, { type Dayjs } from 'dayjs'
 import ExportJsonExcel from 'js-export-excel'
@@ -38,7 +38,7 @@ type RemindSearchValues = {
 type RemindRow = RemindListItem & {
   key: number
   ship_name: string
-  is_use_label: '是' | '否' | '-'
+  is_use_label: '已作废' | '未作废' | '-'
 }
 
 type RemindPageResponse = {
@@ -95,7 +95,7 @@ const mapRow = (item: RemindListItem): RemindRow => ({
   ...item,
   key: item.id,
   ship_name: resolveHostByDestination(item.portofdischarge) ?? '',
-  is_use_label: item.is_use === 1 ? '是' : item.is_use === 0 ? '否' : '-',
+  is_use_label: item.is_use === 1 ? '已作废' : item.is_use === 0 ? '未作废' : '-',
 })
 
 const buildExportRows = (rows: RemindRow[]) =>
@@ -333,6 +333,17 @@ export const RemindListPage = () => {
             title: '是否作废',
             dataIndex: 'is_use_label',
             key: 'is_use_label',
+            render: (value: RemindRow['is_use_label']) => {
+              if (value === '已作废') {
+                return <Tag color="error">{value}</Tag>
+              }
+
+              if (value === '未作废') {
+                return <Tag color="success">{value}</Tag>
+              }
+
+              return value
+            },
           },
           {
             title: '船名航次',
@@ -364,7 +375,7 @@ export const RemindListPage = () => {
                         cancelText: '否',
                       },
                       onClick: async () => {
-                        if (record.is_use_label === '是') {
+                        if (record.is_use === 1) {
                           message.error('请勿重复作废')
                           return
                         }

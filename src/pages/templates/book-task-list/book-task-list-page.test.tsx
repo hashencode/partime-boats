@@ -156,8 +156,13 @@ const renderPage = (role: 'admin' | 'editor' | 'viewer' = 'admin') =>
       <ThemeProvider>
         <BookTaskListPage />
       </ThemeProvider>
-    </AuthContext.Provider>
+      </AuthContext.Provider>
   )
+
+const getRenderedBodyRowsText = (container: HTMLElement) =>
+  Array.from(container.querySelectorAll('tbody tr.ant-table-row'))
+    .map((row) => row.textContent?.trim() ?? '')
+    .filter(Boolean)
 
 const CidTypeSelectHarness = ({ initialValue }: { initialValue?: number }) => {
   const [value, setValue] = React.useState<number | undefined>(initialValue)
@@ -181,11 +186,22 @@ describe('BookTaskListPage', () => {
     expect(screen.getByRole('heading', { name: '订舱管理' })).toBeTruthy()
     expect(screen.getAllByText('tester').length).toBeGreaterThan(0)
     expect(latestPage).toBe('1')
-    expect(latestPerPage).toBe('10')
+    expect(latestPerPage).toBe('100')
     expect(screen.getByRole('button', { name: '批量打开' })).toBeTruthy()
     expect(screen.getByRole('button', { name: '关闭初始化' })).toBeTruthy()
     expect(screen.queryByRole('button', { name: '批量修改' })).toBeNull()
     expect(screen.queryByText(/最近刷新时间/)).toBeNull()
+    expect(screen.getByText('100 条/页')).toBeTruthy()
+    expect(screen.queryByText('常规下单')).toBeNull()
+
+    fireEvent.mouseDown(screen.getByText('100 条/页'))
+
+    await waitFor(() => {
+      expect(screen.getByText('200 条/页')).toBeTruthy()
+      expect(screen.getByText('500 条/页')).toBeTruthy()
+      expect(screen.getByText('1000 条/页')).toBeTruthy()
+      expect(screen.getByText('所有数据')).toBeTruthy()
+    })
 
     view.unmount()
   }, 10000)
@@ -198,7 +214,7 @@ describe('BookTaskListPage', () => {
     })
     const initialCount = listRequestCount
 
-    fireEvent.change(screen.getByLabelText('对应taskID'), { target: { value: '999' } })
+    fireEvent.change(screen.getByPlaceholderText('请输入对应taskID'), { target: { value: '999' } })
 
     await waitFor(() => {
       expect(listRequestCount).toBe(initialCount)
@@ -212,7 +228,7 @@ describe('BookTaskListPage', () => {
 
     expect(requestParamsHistory.at(-1)).toEqual({
       page: '1',
-      perPage: '10',
+      perPage: '100',
       orderId: '999',
     })
 
@@ -244,6 +260,136 @@ describe('BookTaskListPage', () => {
     await waitFor(() => {
       expect(screen.getByText('任务列表加载失败')).toBeTruthy()
       expect(screen.getByText('请求失败，请稍后重试。')).toBeTruthy()
+    })
+
+    view.unmount()
+  })
+
+  it('should sort text and numeric columns when clicking the column headers', async () => {
+    server.use(
+      http.get('http://124.70.141.127:9111/maersk/book/task', () =>
+        HttpResponse.json({
+          data: [
+            {
+              id: 1,
+              order_id: 301,
+              account_name: 'charlie',
+              quantity: 2,
+              box_type: '20 Dry Standard',
+              origincity_name: '上海',
+              destinationcity_name: '纽约',
+              destination_service_mode: 'CY',
+              order_date: '2026-05-03',
+              is_order: 1,
+              limit_price: 200,
+              is_USA: 1,
+              is_plan: 0,
+              is_roll: 0,
+              is_cid: 1,
+              cid_type: 0,
+              cid_loop_times: 12,
+              get_cid_times: 1,
+              cid_concurrent: 1,
+              cid_sleep: 20,
+              nac_loop_times: 2,
+              nac_times: 6,
+              nac_concurrent: 1,
+              nac_sleep: 1,
+              limit_day: 3,
+              route_select: 'R3',
+              cid_group: 3,
+              group_id: 3,
+            },
+            {
+              id: 2,
+              order_id: 201,
+              account_name: 'alice',
+              quantity: 3,
+              box_type: '40 Dry High',
+              origincity_name: '宁波',
+              destinationcity_name: '汉堡',
+              destination_service_mode: 'SD',
+              order_date: '2026-05-02',
+              is_order: 0,
+              limit_price: 100,
+              is_USA: 0,
+              is_plan: 1,
+              is_roll: 1,
+              is_cid: 0,
+              cid_type: 1,
+              cid_loop_times: 8,
+              get_cid_times: 2,
+              cid_concurrent: 2,
+              cid_sleep: 10,
+              nac_loop_times: 3,
+              nac_times: 4,
+              nac_concurrent: 2,
+              nac_sleep: 2,
+              limit_day: 2,
+              route_select: 'R2',
+              cid_group: 2,
+              group_id: 2,
+            },
+            {
+              id: 3,
+              order_id: 101,
+              account_name: 'bravo',
+              quantity: 1,
+              box_type: '45 Dry High',
+              origincity_name: '青岛',
+              destinationcity_name: '长滩',
+              destination_service_mode: 'CY',
+              order_date: '2026-05-01',
+              is_order: 1,
+              limit_price: 300,
+              is_USA: 1,
+              is_plan: 0,
+              is_roll: 0,
+              is_cid: 1,
+              cid_type: 2,
+              cid_loop_times: 10,
+              get_cid_times: 3,
+              cid_concurrent: 3,
+              cid_sleep: 30,
+              nac_loop_times: 1,
+              nac_times: 8,
+              nac_concurrent: 3,
+              nac_sleep: 3,
+              limit_day: 1,
+              route_select: 'R1',
+              cid_group: 1,
+              group_id: 1,
+            },
+          ],
+          pagination: {
+            total: 3,
+            page: 1,
+            per_page: 10,
+          },
+        })
+      )
+    )
+
+    const view = renderPage()
+
+    await screen.findByText('charlie')
+
+    fireEvent.click(screen.getByRole('columnheader', { name: '账户名' }))
+
+    await waitFor(() => {
+      const rowTexts = getRenderedBodyRowsText(view.container).slice(0, 3)
+      expect(rowTexts[0]).toContain('alice')
+      expect(rowTexts[1]).toContain('bravo')
+      expect(rowTexts[2]).toContain('charlie')
+    })
+
+    fireEvent.click(screen.getByRole('columnheader', { name: '数量' }))
+
+    await waitFor(() => {
+      const rowTexts = getRenderedBodyRowsText(view.container).slice(0, 3)
+      expect(rowTexts[0]).toContain('bravo')
+      expect(rowTexts[1]).toContain('charlie')
+      expect(rowTexts[2]).toContain('alice')
     })
 
     view.unmount()
@@ -302,8 +448,14 @@ describe('BookTaskListPage', () => {
       fireEvent.click(screen.getAllByRole('button', { name: '修改' })[0] as Element)
     })
 
-    await screen.findByLabelText('起始港')
-    expect(screen.getAllByText('cid类型').length).toBeGreaterThan(0)
+    await screen.findByDisplayValue('tester')
+    expect(screen.getAllByText('下单方式').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('下单请求次数').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('下单并发次数').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('下单时间间隔').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('分组2').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('分组1').length).toBeGreaterThan(0)
+    expect(screen.queryByText('cid类型')).toBeNull()
     expect(screen.getAllByText('nac间隔时间').length).toBeGreaterThan(0)
 
     view.unmount()
@@ -318,7 +470,7 @@ describe('BookTaskListPage', () => {
       fireEvent.click(screen.getAllByRole('button', { name: '修改' })[0] as Element)
     })
 
-    await screen.findByLabelText('起始港')
+    await screen.findByDisplayValue('tester')
 
     const submitButton = screen
       .getAllByRole('button')
@@ -370,7 +522,7 @@ describe('BookTaskListPage', () => {
       fireEvent.click(screen.getByRole('button', { name: '批量修改' }))
     })
 
-    await screen.findByLabelText('是否重复添加')
+    await screen.findByText('是否重复添加')
 
     view.unmount()
   }, 10000)
@@ -381,6 +533,14 @@ describe('BookTaskListPage', () => {
     const comboBox = screen.getByRole('combobox')
     await act(async () => {
       fireEvent.mouseDown(comboBox)
+    })
+
+    await waitFor(() => {
+      expect(screen.queryAllByText('1').length).toBeGreaterThan(0)
+      expect(screen.queryAllByText('2').length).toBeGreaterThan(0)
+      expect(screen.queryAllByText('3').length).toBeGreaterThan(0)
+      expect(screen.queryAllByText('4').length).toBeGreaterThan(0)
+      expect(screen.queryByText('模式下单')).toBeNull()
     })
 
     const customInput = await screen.findByPlaceholderText('请输入CID类型数字')

@@ -34,6 +34,7 @@ import {
   type StandardListPageSpec,
   type TemplateListFilterField,
 } from '../../../shared/template-kit/list'
+import { ALL_DATA_PAGE_SIZE } from '../../../shared/hooks/use-standard-pagination'
 import {
   batchUpdateBookTask,
   buildBookTaskBatchPayload,
@@ -129,13 +130,10 @@ const CID_INIT_OPTIONS = [
   { label: '4', value: 4 },
 ]
 
-const CID_TYPE_OPTIONS = [
-  { label: '常规下单', value: 0 },
-  { label: '模式下单', value: 1 },
-  { label: '模式下单2', value: 2 },
-  { label: '模式下单3', value: 3 },
-  { label: '模式下单4', value: 4 },
-]
+const CID_TYPE_OPTIONS = [0, 1, 2, 3, 4].map((value) => ({
+  label: String(value),
+  value,
+}))
 
 const CID_TYPE_PATTERN = /^\d+$/
 
@@ -165,6 +163,74 @@ const renderEllipsisText = (value?: string | number | null) => {
       <div className="truncate">{text}</div>
     </Tooltip>
   )
+}
+
+const normalizeTextValue = (value?: string | number | null) => {
+  if (value === null || value === undefined || value === '') {
+    return ''
+  }
+  return String(value).trim()
+}
+
+const compareTextValue = (left?: string | number | null, right?: string | number | null) => {
+  return normalizeTextValue(left).localeCompare(normalizeTextValue(right), 'zh-Hans-CN', {
+    numeric: true,
+    sensitivity: 'base',
+  })
+}
+
+const parseFiniteNumber = (value?: string | number | null) => {
+  if (value === null || value === undefined || value === '') {
+    return undefined
+  }
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : undefined
+}
+
+const compareNumberValue = (left?: string | number | null, right?: string | number | null) => {
+  const leftNumber = parseFiniteNumber(left)
+  const rightNumber = parseFiniteNumber(right)
+
+  if (leftNumber !== undefined && rightNumber !== undefined) {
+    return leftNumber - rightNumber
+  }
+
+  if (leftNumber !== undefined) {
+    return -1
+  }
+
+  if (rightNumber !== undefined) {
+    return 1
+  }
+
+  return compareTextValue(left, right)
+}
+
+const parseDateTimestamp = (value?: string | number | null) => {
+  if (value === null || value === undefined || value === '') {
+    return undefined
+  }
+  const parsed = dayjs(value)
+  return parsed.isValid() ? parsed.valueOf() : undefined
+}
+
+const compareDateValue = (left?: string | number | null, right?: string | number | null) => {
+  const leftTimestamp = parseDateTimestamp(left)
+  const rightTimestamp = parseDateTimestamp(right)
+
+  if (leftTimestamp !== undefined && rightTimestamp !== undefined) {
+    return leftTimestamp - rightTimestamp
+  }
+
+  if (leftTimestamp !== undefined) {
+    return -1
+  }
+
+  if (rightTimestamp !== undefined) {
+    return 1
+  }
+
+  return compareTextValue(left, right)
 }
 
 const numberLabel = (options: { label: string; value: number }[], value?: number | string | null) =>
@@ -496,17 +562,17 @@ const BookTaskFormFields = ({
       </Form.Item>
     </Col>
     <Col span={8}>
-      <Form.Item label="CID分组" name="cid_group">
+      <Form.Item label="分组2" name="cid_group">
         <InputNumber className="!w-full" precision={0} />
       </Form.Item>
     </Col>
     <Col span={8}>
-      <Form.Item label="分组" name="group_id">
+      <Form.Item label="分组1" name="group_id">
         <Input />
       </Form.Item>
     </Col>
     <Col span={8}>
-      <Form.Item label="cid类型" name="cid_type">
+      <Form.Item label="下单方式" name="cid_type">
         <CidTypeSelect />
       </Form.Item>
     </Col>
@@ -516,17 +582,17 @@ const BookTaskFormFields = ({
       </Form.Item>
     </Col>
     <Col span={8}>
-      <Form.Item label="cid请求次数" name="get_cid_times">
+      <Form.Item label="下单请求次数" name="get_cid_times">
         <Input />
       </Form.Item>
     </Col>
     <Col span={8}>
-      <Form.Item label="cid并发次数" name="cid_concurrent">
+      <Form.Item label="下单并发次数" name="cid_concurrent">
         <Input />
       </Form.Item>
     </Col>
     <Col span={8}>
-      <Form.Item label="cid间隔时间" name="cid_sleep">
+      <Form.Item label="下单时间间隔" name="cid_sleep">
         <Input />
       </Form.Item>
     </Col>
@@ -763,6 +829,10 @@ export const BookTaskListPage = () => {
       tableId: TABLE_ID,
       formRoute: '/get_book_task_list/form',
       initialFilters: {},
+      pagination: {
+        defaultPageSize: 100,
+        pageSizeOptions: [100, 200, 500, 1000, ALL_DATA_PAGE_SIZE],
+      },
       toFilters: toQueryFilters,
       buildRequestFilters: ({ filters, current, pageSize }) => ({
         ...filters,
@@ -834,40 +904,72 @@ export const BookTaskListPage = () => {
             title: '对应taskID',
             dataIndex: 'order_id',
             width: 160,
+            sorter: (a, b) => compareNumberValue(a.order_id, b.order_id),
             render: (value) => renderEllipsisText(value),
           },
-          { key: 'account_name', title: '账户名', dataIndex: 'account_name' },
-          { key: 'quantity', title: '数量', dataIndex: 'quantity' },
-          { key: 'box_type', title: '箱型', dataIndex: 'box_type' },
+          {
+            key: 'account_name',
+            title: '账户名',
+            dataIndex: 'account_name',
+            sorter: (a, b) => compareTextValue(a.account_name, b.account_name),
+          },
+          {
+            key: 'quantity',
+            title: '数量',
+            dataIndex: 'quantity',
+            sorter: (a, b) => compareNumberValue(a.quantity, b.quantity),
+          },
+          {
+            key: 'box_type',
+            title: '箱型',
+            dataIndex: 'box_type',
+            sorter: (a, b) => compareTextValue(a.box_type, b.box_type),
+          },
           {
             key: 'origincity_name',
             title: '起始港',
             dataIndex: 'origincity_name',
+            sorter: (a, b) => compareTextValue(a.origincity_name, b.origincity_name),
             render: (value) => renderBreakAllText(value),
           },
           {
             key: 'destinationcity_name',
             title: '目的港',
             dataIndex: 'destinationcity_name',
+            sorter: (a, b) => compareTextValue(a.destinationcity_name, b.destinationcity_name),
             render: (value) => renderBreakAllText(value),
           },
           {
             key: 'destination_service_mode',
             title: '目的港类型',
             dataIndex: 'destination_service_mode',
+            sorter: (a, b) =>
+              compareTextValue(a.destination_service_mode, b.destination_service_mode),
           },
-          { key: 'order_date', title: '搜索开航日', dataIndex: 'order_date' },
+          {
+            key: 'order_date',
+            title: '搜索开航日',
+            dataIndex: 'order_date',
+            sorter: (a, b) => compareDateValue(a.order_date, b.order_date),
+          },
           {
             key: 'is_USA',
             title: '美线',
             dataIndex: 'is_USA',
+            sorter: (a, b) => compareNumberValue(a.is_USA, b.is_USA),
             render: (value) => numberLabel(YES_NO_OPTIONS, value),
           },
-          { key: 'route_select', title: '路由', dataIndex: 'route_select' },
+          {
+            key: 'route_select',
+            title: '路由',
+            dataIndex: 'route_select',
+            sorter: (a, b) => compareTextValue(a.route_select, b.route_select),
+          },
           {
             key: 'is_order',
             title: '是否开启',
             dataIndex: 'is_order',
+            sorter: (a, b) => compareNumberValue(a.is_order, b.is_order),
             render: (value, record) => {
               const label = numberLabel(OPEN_CLOSE_OPTIONS, value)
               return (
@@ -886,45 +988,124 @@ export const BookTaskListPage = () => {
               )
             },
           },
-          { key: 'limit_price', title: '限价', dataIndex: 'limit_price' },
+          {
+            key: 'limit_price',
+            title: '限价',
+            dataIndex: 'limit_price',
+            sorter: (a, b) => compareNumberValue(a.limit_price, b.limit_price),
+          },
           {
             key: 'is_plan',
             title: '直接下单',
             dataIndex: 'is_plan',
+            sorter: (a, b) => compareNumberValue(a.is_plan, b.is_plan),
             render: (value) => numberLabel(YES_NO_OPTIONS, value),
           },
           {
             key: 'is_roll',
             title: 'is_roll',
             dataIndex: 'is_roll',
+            sorter: (a, b) => compareNumberValue(a.is_roll, b.is_roll),
             render: (value) => numberLabel(YES_NO_OPTIONS, value),
           },
-          { key: 'cid', title: 'CID', dataIndex: 'cid' },
+          {
+            key: 'cid',
+            title: 'CID',
+            dataIndex: 'cid',
+            sorter: (a, b) => compareTextValue(a.cid, b.cid),
+          },
           {
             key: 'is_cid',
             title: '是否开启CID',
             dataIndex: 'is_cid',
+            sorter: (a, b) => compareNumberValue(a.is_cid, b.is_cid),
             render: (value) => numberLabel(CID_INIT_OPTIONS, value),
           },
-          { key: 'fake_account', title: 'CID账号', dataIndex: 'fake_account' },
-          { key: 'update_cid_time', title: 'CID更新时间', dataIndex: 'update_cid_time' },
+          {
+            key: 'fake_account',
+            title: 'CID账号',
+            dataIndex: 'fake_account',
+            sorter: (a, b) => compareTextValue(a.fake_account, b.fake_account),
+          },
+          {
+            key: 'update_cid_time',
+            title: 'CID更新时间',
+            dataIndex: 'update_cid_time',
+            sorter: (a, b) => compareDateValue(a.update_cid_time, b.update_cid_time),
+          },
           {
             key: 'cid_type',
-            title: 'cid类型',
+            title: '下单方式',
             dataIndex: 'cid_type',
-            render: (value) => numberLabel(CID_TYPE_OPTIONS, value),
+            sorter: (a, b) => compareNumberValue(a.cid_type, b.cid_type),
+            render: (value) => renderEllipsisText(value),
           },
-          { key: 'cid_loop_times', title: 'cid循环次数', dataIndex: 'cid_loop_times' },
-          { key: 'get_cid_times', title: 'cid请求次数', dataIndex: 'get_cid_times' },
-          { key: 'cid_concurrent', title: 'cid并发次数', dataIndex: 'cid_concurrent' },
-          { key: 'cid_sleep', title: 'cid间隔时间', dataIndex: 'cid_sleep' },
-          { key: 'nac_loop_times', title: 'nac循环次数', dataIndex: 'nac_loop_times' },
-          { key: 'nac_times', title: 'nac请求次数', dataIndex: 'nac_times' },
-          { key: 'nac_concurrent', title: 'nac并发次数', dataIndex: 'nac_concurrent' },
-          { key: 'nac_sleep', title: 'nac间隔时间', dataIndex: 'nac_sleep' },
-          { key: 'limit_day', title: '限制天数', dataIndex: 'limit_day' },
-          { key: 'cid_group', title: 'CID分组', dataIndex: 'cid_group' },
-          { key: 'group_id', title: '分组', dataIndex: 'group_id' },
+          {
+            key: 'cid_loop_times',
+            title: 'cid循环次数',
+            dataIndex: 'cid_loop_times',
+            sorter: (a, b) => compareNumberValue(a.cid_loop_times, b.cid_loop_times),
+          },
+          {
+            key: 'get_cid_times',
+            title: '下单请求次数',
+            dataIndex: 'get_cid_times',
+            sorter: (a, b) => compareNumberValue(a.get_cid_times, b.get_cid_times),
+          },
+          {
+            key: 'cid_concurrent',
+            title: '下单并发次数',
+            dataIndex: 'cid_concurrent',
+            sorter: (a, b) => compareNumberValue(a.cid_concurrent, b.cid_concurrent),
+          },
+          {
+            key: 'cid_sleep',
+            title: '下单时间间隔',
+            dataIndex: 'cid_sleep',
+            sorter: (a, b) => compareNumberValue(a.cid_sleep, b.cid_sleep),
+          },
+          {
+            key: 'nac_loop_times',
+            title: 'nac循环次数',
+            dataIndex: 'nac_loop_times',
+            sorter: (a, b) => compareNumberValue(a.nac_loop_times, b.nac_loop_times),
+          },
+          {
+            key: 'nac_times',
+            title: 'nac请求次数',
+            dataIndex: 'nac_times',
+            sorter: (a, b) => compareNumberValue(a.nac_times, b.nac_times),
+          },
+          {
+            key: 'nac_concurrent',
+            title: 'nac并发次数',
+            dataIndex: 'nac_concurrent',
+            sorter: (a, b) => compareNumberValue(a.nac_concurrent, b.nac_concurrent),
+          },
+          {
+            key: 'nac_sleep',
+            title: 'nac间隔时间',
+            dataIndex: 'nac_sleep',
+            sorter: (a, b) => compareNumberValue(a.nac_sleep, b.nac_sleep),
+          },
+          {
+            key: 'limit_day',
+            title: '限制天数',
+            dataIndex: 'limit_day',
+            sorter: (a, b) => compareNumberValue(a.limit_day, b.limit_day),
+          },
+          {
+            key: 'cid_group',
+            title: '分组2',
+            dataIndex: 'cid_group',
+            sorter: (a, b) => compareNumberValue(a.cid_group, b.cid_group),
+          },
+          {
+            key: 'group_id',
+            title: '分组1',
+            dataIndex: 'group_id',
+            sorter: (a, b) => compareNumberValue(a.group_id, b.group_id),
+          },
           {
             key: 'operation',
             title: '操作',

@@ -4,6 +4,7 @@ import React, { useCallback, useMemo, useRef, useState } from 'react'
 import { ListRowActions } from '../../../shared/components/list-row-actions'
 import { RemoteStringSelect } from '../../../shared/components/remote-string-select'
 import { normalizeApiError, type ApiError } from '../../../infrastructure/http/api-client'
+import { ALL_DATA_PAGE_SIZE } from '../../../shared/hooks/use-standard-pagination'
 import {
   createPortFilterFields,
   createShippingLineFilterField,
@@ -18,7 +19,6 @@ import {
   fetchAccountNum,
   fetchEndPortOptions,
   fetchMskQueryList,
-  fetchShippingLineMap,
   fetchShippingLineOptions,
   fetchStartPortOptions,
   toggleAllByEarlyDate,
@@ -44,7 +44,6 @@ type RowView = MskQueryItem & {
   delay_time_label: string
   is_run_label: string
   is_roll_label: string
-  booking_url?: string
 }
 
 type ListResponse = {
@@ -111,9 +110,9 @@ const parseFilter = (values: SearchValues): MskQueryFilters => ({
 const TABLE_HEADER = ['ID', '起始港', '目的港', '航线', '箱型', '延迟时间(秒)', '是否开启', '是否翻页', '开航时间', '目的港类型', '限价', '端口', '备注']
 const TABLE_FILTER = ['id', 'origincity_name', 'destinationcity_name', 'host', 'box_type', 'delay_time', 'is_run', 'is_roll', 'early_date', 'destination_service_mode', 'limit_price', 'port', 'tips']
 
-// 操作列固定宽度：2 个按钮“订舱/修改”各 2 字，按 14px/字计算为 28*2=56，
-// 按钮间距按 13，额外余量 16，总计 85，向上取整为 100。
-const ACTION_COLUMN_WIDTH = 100
+// 操作列固定宽度：1 个按钮“修改”按 2 字计算为 28，
+// 额外余量 16，总计 44，向上取整为 60。
+const ACTION_COLUMN_WIDTH = 60
 const TOGGLE_CONFIRM_OVERLAY_STYLE = { maxWidth: 280 }
 
 const timeStamp = (value?: string) => {
@@ -128,6 +127,23 @@ const buildToggleConfirmTitle = (selectedCount: number, actionLabel: '开启' | 
   }
   return `确认要${actionLabel}选中的列表项吗？`
 }
+
+const buildSingleTogglePayload = (record: RowView, nextStatus: 0 | -1): MskQueryItem => ({
+  id: record.id,
+  origincity_name: record.origincity_name,
+  destinationcity_name: record.destinationcity_name,
+  host: record.host,
+  box_type: record.box_type,
+  delay_time: record.delay_time,
+  is_run: nextStatus,
+  is_roll: record.is_roll,
+  early_date: record.early_date,
+  destination_service_mode: record.destination_service_mode,
+  limit_price: record.limit_price,
+  port: record.port,
+  log: record.log,
+  tips: record.tips,
+})
 
 export const MskQueryListPage = () => {
   const [selectedCount, setSelectedCount] = useState(0)
@@ -161,6 +177,19 @@ export const MskQueryListPage = () => {
     []
   )
 
+  const handleToggleSingle = useCallback(async (record: RowView) => {
+    const nextStatus = record.is_run === 0 ? -1 : 0
+
+    try {
+      await updateMskQueryItem(buildSingleTogglePayload(record, nextStatus))
+      message.success(`${nextStatus === 0 ? '开启' : '关闭'}成功`)
+      await reloadRef.current()
+    } catch (error) {
+      const messageText = error instanceof Error ? error.message : '操作失败，请稍后重试。'
+      message.error(messageText)
+    }
+  }, [])
+
   const filterFields = useMemo<TemplateListFilterField<SearchValues>[]>(
     () => [
       ...createPortFilterFields<SearchValues>({
@@ -183,17 +212,14 @@ export const MskQueryListPage = () => {
   )
 
   const requestList = useCallback(async (filters: MskQueryFilters): Promise<ListResponse> => {
-    const [rows, lineMap, accountNum] = await Promise.all([
+    const [rows, accountNum] = await Promise.all([
       fetchMskQueryList(filters),
-      getCachedListMetadata('shippingLineMap', fetchShippingLineMap),
       getCachedListMetadata('accountNum', fetchAccountNum, { ttlMs: 60 * 1000 }),
     ])
 
     setAccountNumText(Array.isArray(accountNum) ? accountNum.join(' ') : accountNum)
 
     const list = rows.map((item) => {
-      const logLabel = item.log ?? ''
-      const logUrl = lineMap[logLabel]
       return {
         ...item,
         key: item.id,
@@ -202,7 +228,6 @@ export const MskQueryListPage = () => {
         delay_time_label: findLabel(DELAY_OPTIONS, item.delay_time),
         is_run_label: findLabel(IS_RUN_OPTIONS, item.is_run),
         is_roll_label: findLabel(IS_ROLL_OPTIONS, item.is_roll),
-        booking_url: logUrl,
       }
     })
 
@@ -225,6 +250,9 @@ export const MskQueryListPage = () => {
       tableId: 'msk-query-list',
       formRoute: '/msk-query-list/form',
       initialFilters: {},
+      pagination: {
+        defaultPageSize: ALL_DATA_PAGE_SIZE,
+      },
       toFilters: parseFilter,
       request: requestList,
       selectItems: (response) => response?.data ?? [],
@@ -336,8 +364,19 @@ export const MskQueryListPage = () => {
             title: '是否开启',
             dataIndex: 'is_run_label',
             key: 'is_run_label',
-            render: (value: string) => (
-              <Tag color={value === '开启' ? 'success' : 'default'}>{value || '-'}</Tag>
+            render: (value: string, record) => (
+              <Popconfirm
+                title={`确认${record.is_run === 0 ? '关闭' : '开启'}当前任务吗？`}
+                okText="是"
+                cancelText="否"
+                onConfirm={() => {
+                  void handleToggleSingle(record)
+                }}
+              >
+                <Button type="link" className="!px-0">
+                  <Tag color={value === '开启' ? 'success' : 'default'}>{value || '-'}</Tag>
+                </Button>
+              </Popconfirm>
             ),
           },
           {
@@ -373,14 +412,6 @@ export const MskQueryListPage = () => {
             render: (_, record) => (
               <ListRowActions
                 actions={[
-                  {
-                    key: 'booking',
-                    label: '订舱',
-                    visible: Boolean(record.booking_url),
-                    href: record.booking_url,
-                    target: '_blank',
-                    rel: 'noreferrer',
-                  },
                   {
                     key: 'edit',
                     label: '修改',
@@ -439,6 +470,7 @@ export const MskQueryListPage = () => {
       accountNumText,
       editForm,
       filterFields,
+      handleToggleSingle,
       handleToggleAll,
       requestList,
       selectedCount,

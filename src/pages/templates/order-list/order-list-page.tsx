@@ -3,6 +3,7 @@ import dayjs, { type Dayjs } from 'dayjs'
 import React, { useCallback, useMemo, useRef, useState } from 'react'
 import ExportJsonExcel from 'js-export-excel'
 import { normalizeApiError, type ApiError } from '../../../infrastructure/http/api-client'
+import { ALL_DATA_PAGE_SIZE } from '../../../shared/hooks/use-standard-pagination'
 import {
   createPortFilterFields,
   StandardListPageRecipe,
@@ -240,7 +241,8 @@ export const OrderListPage = () => {
       initialFilters: {},
       pagination: {
         defaultCurrent: 1,
-        defaultPageSize: 10,
+        defaultPageSize: 50,
+        pageSizeOptions: [50, 100, 200, 500, ALL_DATA_PAGE_SIZE],
       },
       toFilters,
       buildRequestFilters: ({ filters, current, pageSize }) => ({ ...filters, page: current, per_page: pageSize }),
