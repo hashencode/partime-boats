@@ -70,6 +70,14 @@ type CapturedFilterForm = {
   setFieldValue: (name: string, value: unknown) => void
 }
 
+const requireCapturedForm = (capturedForm: CapturedFilterForm | null): CapturedFilterForm => {
+  if (!capturedForm) {
+    throw new Error('filter form was not created')
+  }
+
+  return capturedForm
+}
+
 const server = setupServer(
   http.get('*/startport', () => HttpResponse.json(['NINGBO'])),
   http.get('*/endport', () => HttpResponse.json(['ONNE'])),
@@ -180,11 +188,9 @@ describe('RemindListPage', () => {
       })
 
       expect(capturedForm).toBeTruthy()
-      if (!capturedForm) {
-        throw new Error('filter form was not created')
-      }
+      const filterForm = requireCapturedForm(capturedForm)
 
-      capturedForm.setFieldValue('boxcode', '20DRY')
+      filterForm.setFieldValue('boxcode', '20DRY')
 
       await waitFor(() => {
         expect(remindRequestCount).toBe(1)
@@ -315,11 +321,9 @@ describe('RemindListPage', () => {
       })
 
       expect(capturedForm).toBeTruthy()
-      if (!capturedForm) {
-        throw new Error('filter form was not created')
-      }
+      const filterForm = requireCapturedForm(capturedForm)
 
-      capturedForm.setFieldValue('boxcode', '20DRY')
+      filterForm.setFieldValue('boxcode', '20DRY')
       fireEvent.click(screen.getByRole('button', { name: /查\s*询/ }))
 
       await waitFor(() => {
@@ -344,7 +348,7 @@ describe('RemindListPage', () => {
         expect(submittedPageTwoParams?.perPage).toBe('10')
       })
 
-      capturedForm.setFieldValue('boxcode', '40HDRY')
+      filterForm.setFieldValue('boxcode', '40HDRY')
 
       expect(intervalCallback).toBeTruthy()
       await act(async () => {

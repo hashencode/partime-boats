@@ -20,3 +20,4 @@
 - 2026-05-25（列表视图偏好重构）：仓库级 `bun run test` 在当前环境 60 秒内未完成并被 `timeout` 终止，但共享层定向 rstest 与 `bunx tsc -p tsconfig.app.json --noEmit` 可稳定通过 -> 先用“共享层定向测试 + 类型检查”验证本次改动，不把全量测试超时直接归因到当前提交。 #promote
 - 2026-05-30（接口对照）：`docs/api/api.md` 当前为空文件，按 AGENTS 流程读取时拿不到任何接口契约 -> 涉及迁移/联调需求时不能把该文件当成有效来源，应回退到已接通页面实现或旧项目源码做接口对照。
 - 2026-05-30（antd表格排序测试）：给列表列加 `sorter` 后，测试里原先用 `getByLabelText/getByText` 选筛选项或弹窗字段，容易和可排序表头同名节点冲突而误报 -> 列表页测试优先改用 `placeholder/role=columnheader/findByDisplayValue`，表格顺序断言优先读 `tbody tr.ant-table-row` 的真实数据行。 #promote
+- 2026-05-30（生产打包）：`bun run build:production` 会先跑 `tsc -b`，因此 `src/**/*.test.tsx` 的类型错误也会直接拦住打包；本次报错为 `remind-list-page.test.tsx` 中闭包变量 `capturedForm` 经非空判断后仍被推断异常，修复方式是收口到返回明确类型的 helper，再调用 `setFieldValue`。同时仓库需保留标准 `build` 脚本，避免 `npm run build` 直接报 `Missing script: "build"`。
