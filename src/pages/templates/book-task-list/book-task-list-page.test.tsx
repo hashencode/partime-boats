@@ -113,7 +113,7 @@ const server = setupServer(
     return HttpResponse.json({ bool_status: true, data: true })
   }),
   http.post('*/maersk/group/task', async ({ request }) => {
-    const payload = (await request.json()) as { ids?: string }
+    const payload = (await request.json()) as Record<string, unknown> & { ids?: string }
     batchOpenPayloads.push(payload.ids ?? '')
     return HttpResponse.json({ bool_status: true, data: true })
   }),
@@ -501,6 +501,50 @@ describe('BookTaskListPage', () => {
       nac_concurrent: 1,
       nac_sleep: 1,
       id: 1,
+    })
+
+    view.unmount()
+  }, 10000)
+
+  it('should preserve comma-separated order ids when reopening an edited row', async () => {
+    server.use(
+      http.get('http://124.70.141.127:9111/maersk/book/task', () =>
+        HttpResponse.json({
+          data: [
+            {
+              ...buildTaskRows(1)[0],
+              order_id: '101,102',
+            },
+          ],
+          pagination: {
+            total: 1,
+            page: 1,
+            per_page: 100,
+          },
+        })
+      )
+    )
+
+    const view = renderPage()
+
+    await screen.findByText('tester')
+
+    await act(async () => {
+      fireEvent.click(screen.getAllByRole('button', { name: '修改' })[0] as Element)
+    })
+
+    expect(await screen.findByDisplayValue('101,102')).toBeTruthy()
+
+    const submitButton = screen
+      .getAllByRole('button')
+      .find((button) => ['确 定', '确定', 'OK'].includes(button.textContent?.trim() ?? ''))
+
+    await act(async () => {
+      fireEvent.click(submitButton as Element)
+    })
+
+    await waitFor(() => {
+      expect(latestUpdatePayload).toMatchObject({ order_id: '101,102' })
     })
 
     view.unmount()

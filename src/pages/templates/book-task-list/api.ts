@@ -281,7 +281,7 @@ export const clearBookTaskRouter = async (ids?: string): Promise<void> => {
 }
 
 export const buildBookTaskSavePayload = (values: Record<string, unknown>): BookTaskSavePayload => ({
-  order_id: toNumber(values.order_id),
+  order_id: toOptionalString(values.order_id),
   account_name: toOptionalString(values.account_name),
   quantity: toNumber(values.quantity),
   box_type: toOptionalString(values.box_type),

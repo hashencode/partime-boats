@@ -72,7 +72,7 @@ type EditableBookTask = BookTaskItem & {
 }
 
 type BookTaskFormValues = {
-  order_id?: number
+  order_id?: string
   account_name?: string
   quantity?: number
   box_type?: string
@@ -252,8 +252,7 @@ const toQueryFilters = (values: BookTaskFilterValues): BookTaskQueryFilters => (
 })
 
 const toFormValues = (record: EditableBookTask): BookTaskFormValues => ({
-  order_id:
-    typeof record.order_id === 'number' ? record.order_id : Number(record.order_id) || undefined,
+  order_id: normalizeTextValue(record.order_id) || undefined,
   account_name: record.account_name ?? '',
   quantity:
     typeof record.quantity === 'number' ? record.quantity : Number(record.quantity) || undefined,

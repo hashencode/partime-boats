@@ -3,6 +3,7 @@ import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
 import { apiClient } from '../../../infrastructure/http/api-client'
 import {
+  buildBookTaskBatchPayload,
   buildBookTaskSavePayload,
   buildBookTaskUpdatePayload,
   fetchAllBookTaskIds,
@@ -101,6 +102,18 @@ describe('book task api', () => {
     })
 
     expect(payload.cid_type).toBeUndefined()
+  })
+
+  it('should preserve comma-separated order ids for batch updates', () => {
+    const payload = buildBookTaskBatchPayload(
+      {
+        order_id: '101,102',
+      },
+      [1, 2]
+    )
+
+    expect(payload.order_id).toBe('101,102')
+    expect(payload.ids).toBe('1, 2')
   })
 
   it('should keep the legacy update payload shape for nullable fields', () => {
