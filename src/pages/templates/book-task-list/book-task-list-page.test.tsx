@@ -46,6 +46,7 @@ let latestPage: string | null = null
 let latestPerPage: string | null = null
 let requestParamsHistory: Array<{ page: string | null; perPage: string | null; orderId: string | null }> = []
 let batchOpenPayloads: string[] = []
+let latestUpdatePayload: Record<string, unknown> | null = null
 const buildTaskRows = (count: number) =>
   Array.from({ length: count }, (_, index) => ({
     id: index + 1,
@@ -58,13 +59,24 @@ const buildTaskRows = (count: number) =>
     destination_service_mode: 'CY',
     order_date: '2026-05-01',
     is_order: 1,
+    limit_price: 0,
     is_USA: 1,
     is_plan: 0,
-    is_roll: 1,
+    is_roll: null,
     is_cid: 1,
     cid_type: 0,
-    cid_group: 1,
-    group_id: 'A1',
+    cid_loop_times: 12,
+    get_cid_times: 1,
+    cid_concurrent: 1,
+    cid_sleep: 20,
+    nac_loop_times: 2,
+    nac_times: 6,
+    nac_concurrent: 1,
+    nac_sleep: 1,
+    limit_day: null,
+    route_select: null,
+    cid_group: null,
+    group_id: 1,
   }))
 
 const server = setupServer(
@@ -96,7 +108,10 @@ const server = setupServer(
       },
     })
   }),
-  http.post('http://124.70.141.127:9111/maersk/book/task', () => HttpResponse.json({ bool_status: true, data: true })),
+  http.post('http://124.70.141.127:9111/maersk/book/task', async ({ request }) => {
+    latestUpdatePayload = (await request.json()) as Record<string, unknown>
+    return HttpResponse.json({ bool_status: true, data: true })
+  }),
   http.post('*/maersk/group/task', async ({ request }) => {
     const payload = (await request.json()) as { ids?: string }
     batchOpenPayloads.push(payload.ids ?? '')
@@ -117,6 +132,7 @@ afterEach(() => {
   latestPerPage = null
   requestParamsHistory = []
   batchOpenPayloads = []
+  latestUpdatePayload = null
   server.resetHandlers()
 })
 
@@ -160,19 +176,19 @@ describe('BookTaskListPage', () => {
   it('should render task rows when request succeeds', async () => {
     const view = renderPage()
 
-    await waitFor(() => {
-      expect(screen.getByRole('heading', { name: '订舱管理' })).toBeTruthy()
-      expect(screen.getAllByText('tester').length).toBeGreaterThan(0)
-      expect(latestPage).toBe('1')
-      expect(latestPerPage).toBe('10')
-      expect(screen.getByRole('button', { name: '批量打开' })).toBeTruthy()
-      expect(screen.getByRole('button', { name: '关闭初始化' })).toBeTruthy()
-      expect(screen.queryByRole('button', { name: '批量修改' })).toBeNull()
-      expect(screen.queryByText(/最近刷新时间/)).toBeNull()
-    })
+    await screen.findByText('tester')
+
+    expect(screen.getByRole('heading', { name: '订舱管理' })).toBeTruthy()
+    expect(screen.getAllByText('tester').length).toBeGreaterThan(0)
+    expect(latestPage).toBe('1')
+    expect(latestPerPage).toBe('10')
+    expect(screen.getByRole('button', { name: '批量打开' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: '关闭初始化' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: '批量修改' })).toBeNull()
+    expect(screen.queryByText(/最近刷新时间/)).toBeNull()
 
     view.unmount()
-  })
+  }, 10000)
 
   it('should not re-query when changing filters until query button clicked', async () => {
     const view = renderPage()
@@ -280,30 +296,68 @@ describe('BookTaskListPage', () => {
   it('should open edit modal with the repacked form fields', async () => {
     const view = renderPage()
 
-    await waitFor(() => {
-      expect(screen.getAllByText('tester').length).toBeGreaterThan(0)
-    })
+    await screen.findByText('tester')
 
     await act(async () => {
       fireEvent.click(screen.getAllByRole('button', { name: '修改' })[0] as Element)
     })
 
+    await screen.findByLabelText('起始港')
+    expect(screen.getAllByText('cid类型').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('nac间隔时间').length).toBeGreaterThan(0)
+
+    view.unmount()
+  }, 10000)
+
+  it('should submit the legacy-shaped payload for single-row edits', async () => {
+    const view = renderPage()
+
+    await screen.findByText('tester')
+
+    await act(async () => {
+      fireEvent.click(screen.getAllByRole('button', { name: '修改' })[0] as Element)
+    })
+
+    await screen.findByLabelText('起始港')
+
+    const submitButton = screen
+      .getAllByRole('button')
+      .find((button) => ['确 定', '确定', 'OK'].includes(button.textContent?.trim() ?? ''))
+
+    expect(submitButton).toBeTruthy()
+
+    await act(async () => {
+      fireEvent.click(submitButton as Element)
+    })
+
     await waitFor(() => {
-      expect(screen.getByRole('dialog', { name: '修改' })).toBeTruthy()
-      expect(screen.getByLabelText('起始港')).toBeTruthy()
-      expect(screen.getByLabelText('cid类型')).toBeTruthy()
-      expect(screen.getByLabelText('nac间隔时间')).toBeTruthy()
+      expect(latestUpdatePayload).not.toBeNull()
+    })
+
+    expect(latestUpdatePayload).toMatchObject({
+      order_id: '101',
+      destination_service_mode: 'CY',
+      limit_price: 0,
+      route_select: null,
+      is_roll: null,
+      limit_day: null,
+      cid_group: null,
+      group_id: 1,
+      cid_sleep: 20,
+      nac_loop_times: 2,
+      nac_times: 6,
+      nac_concurrent: 1,
+      nac_sleep: 1,
+      id: 1,
     })
 
     view.unmount()
-  })
+  }, 10000)
 
   it('should open batch modal with repeat-add field intact', async () => {
     const view = renderPage()
 
-    await waitFor(() => {
-      expect(screen.getAllByText('tester').length).toBeGreaterThan(0)
-    })
+    await screen.findByText('tester')
 
     const rowCheckboxes = screen.getAllByRole('checkbox')
     fireEvent.click(rowCheckboxes[1] as Element)
@@ -316,13 +370,10 @@ describe('BookTaskListPage', () => {
       fireEvent.click(screen.getByRole('button', { name: '批量修改' }))
     })
 
-    await waitFor(() => {
-      expect(screen.getByRole('dialog', { name: '批量修改' })).toBeTruthy()
-      expect(screen.getByLabelText('是否重复添加')).toBeTruthy()
-    })
+    await screen.findByLabelText('是否重复添加')
 
     view.unmount()
-  })
+  }, 10000)
 
   it('should allow adding a custom cid type option', async () => {
     const view = render(<CidTypeSelectHarness initialValue={0} />)

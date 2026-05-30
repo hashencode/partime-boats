@@ -2,7 +2,13 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from '@rstest/co
 import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
 import { apiClient } from '../../../infrastructure/http/api-client'
-import { buildBookTaskSavePayload, fetchAllBookTaskIds, fetchBookTaskList, fetchStartPortOptions } from './api'
+import {
+  buildBookTaskSavePayload,
+  buildBookTaskUpdatePayload,
+  fetchAllBookTaskIds,
+  fetchBookTaskList,
+  fetchStartPortOptions,
+} from './api'
 
 let requestPages: number[] = []
 let latestStartPortRequestUrl: string | null = null
@@ -95,5 +101,48 @@ describe('book task api', () => {
     })
 
     expect(payload.cid_type).toBeUndefined()
+  })
+
+  it('should keep the legacy update payload shape for nullable fields', () => {
+    const payload = buildBookTaskUpdatePayload({
+      order_id: 12210,
+      quantity: 1,
+      destination_service_mode: 'CY',
+      limit_price: '0',
+      is_USA: 1,
+      is_order: 0,
+      is_plan: 0,
+      is_cid: 0,
+      cid_type: 0,
+      cid_loop_times: 12,
+      get_cid_times: 1,
+      cid_concurrent: 1,
+      cid_sleep: '20',
+      nac_loop_times: '2',
+      nac_times: '6',
+      nac_concurrent: '1',
+      nac_sleep: '1',
+      route_select: undefined,
+      is_roll: undefined,
+      limit_day: undefined,
+      cid_group: undefined,
+      group_id: '1',
+    })
+
+    expect(payload).toMatchObject({
+      order_id: '12210',
+      destination_service_mode: 'CY',
+      limit_price: 0,
+      route_select: null,
+      is_roll: null,
+      limit_day: null,
+      cid_group: null,
+      group_id: 1,
+      cid_sleep: 20,
+      nac_loop_times: 2,
+      nac_times: 6,
+      nac_concurrent: 1,
+      nac_sleep: 1,
+    })
   })
 })

@@ -107,33 +107,33 @@ export type BookTaskListResponse = {
 }
 
 export type BookTaskSavePayload = {
-  order_id?: number
-  account_name?: string
-  quantity?: number
-  box_type?: string
-  origincity_name?: string
-  destinationcity_name?: string
-  destination_service_mode?: string
-  order_date?: string
-  is_order?: number
-  limit_price?: string
-  is_USA?: number
-  is_plan?: number
-  is_roll?: number
-  is_cid?: number | string
-  limit_day?: string
+  order_id?: number | string | null
+  account_name?: string | null
+  quantity?: number | null
+  box_type?: string | null
+  origincity_name?: string | null
+  destinationcity_name?: string | null
+  destination_service_mode?: string | null
+  order_date?: string | null
+  is_order?: number | null
+  limit_price?: number | string | null
+  is_USA?: number | null
+  is_plan?: number | null
+  is_roll?: number | null
+  is_cid?: number | string | null
+  limit_day?: number | string | null
   cid_group?: number | null
-  group_id?: string
-  cid_type?: number
-  cid_loop_times?: number
-  get_cid_times?: number
-  cid_concurrent?: number
-  cid_sleep?: string
-  nac_loop_times?: string
-  nac_times?: string
-  nac_concurrent?: string
-  nac_sleep?: string
-  route_select?: string
+  group_id?: number | string | null
+  cid_type?: number | null
+  cid_loop_times?: number | null
+  get_cid_times?: number | null
+  cid_concurrent?: number | null
+  cid_sleep?: number | string | null
+  nac_loop_times?: number | string | null
+  nac_times?: number | string | null
+  nac_concurrent?: number | string | null
+  nac_sleep?: number | string | null
+  route_select?: string | null
 }
 
 export type BookTaskBatchPayload = BookTaskSavePayload & {
@@ -150,6 +150,25 @@ const toNumber = (value: unknown) => {
 const toOptionalString = (value: unknown) => {
   if (value === '' || value === null || value === undefined) return undefined
   return String(value).trim()
+}
+
+const toNullableNumber = (value: unknown) => {
+  if (value === '' || value === null || value === undefined) return null
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : null
+}
+
+const toNullableString = (value: unknown) => {
+  if (value === '' || value === null || value === undefined) return null
+  const text = String(value).trim()
+  return text === '' ? null : text
+}
+
+const toNullableNumberOrString = (value: unknown) => {
+  const text = toNullableString(value)
+  if (text === null) return null
+  const parsed = Number(text)
+  return Number.isFinite(parsed) ? parsed : text
 }
 
 export const normalizeDateValue = (value: unknown) => {
@@ -289,6 +308,37 @@ export const buildBookTaskSavePayload = (values: Record<string, unknown>): BookT
   nac_concurrent: toOptionalString(values.nac_concurrent),
   nac_sleep: toOptionalString(values.nac_sleep),
   route_select: toOptionalString(values.route_select),
+})
+
+// 单条编辑接口对缺失字段很敏感，需维持旧页面的完整 payload 形状与 null 语义。
+export const buildBookTaskUpdatePayload = (values: Record<string, unknown>): BookTaskSavePayload => ({
+  order_id: toNullableString(values.order_id),
+  account_name: toNullableString(values.account_name),
+  quantity: toNullableNumber(values.quantity),
+  box_type: toNullableString(values.box_type),
+  origincity_name: toNullableString(values.origincity_name),
+  destinationcity_name: toNullableString(values.destinationcity_name),
+  destination_service_mode: toNullableString(values.destination_service_mode),
+  order_date: normalizeDateValue(values.order_date) ?? null,
+  is_order: toNullableNumber(values.is_order),
+  limit_price: toNullableNumber(values.limit_price),
+  is_USA: toNullableNumber(values.is_USA),
+  is_plan: toNullableNumber(values.is_plan),
+  is_roll: toNullableNumber(values.is_roll),
+  is_cid: toNullableNumber(values.is_cid),
+  limit_day: toNullableNumber(values.limit_day),
+  cid_group: toNullableNumber(values.cid_group),
+  group_id: toNullableNumberOrString(values.group_id),
+  cid_type: toNullableNumber(values.cid_type),
+  cid_loop_times: toNullableNumber(values.cid_loop_times),
+  get_cid_times: toNullableNumber(values.get_cid_times),
+  cid_concurrent: toNullableNumber(values.cid_concurrent),
+  cid_sleep: toNullableNumber(values.cid_sleep),
+  nac_loop_times: toNullableNumber(values.nac_loop_times),
+  nac_times: toNullableNumber(values.nac_times),
+  nac_concurrent: toNullableNumber(values.nac_concurrent),
+  nac_sleep: toNullableNumber(values.nac_sleep),
+  route_select: toNullableString(values.route_select),
 })
 
 export const buildBookTaskBatchPayload = (

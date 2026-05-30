@@ -37,7 +37,7 @@ import {
 import {
   batchUpdateBookTask,
   buildBookTaskBatchPayload,
-  buildBookTaskSavePayload,
+  buildBookTaskUpdatePayload,
   clearBookTaskRouter,
   closeBookTaskInitialization,
   fetchAllBookTaskIds,
@@ -632,7 +632,7 @@ export const BookTaskListPage = () => {
       try {
         setSaving(true)
         const values = await editForm.validateFields()
-        const payload: BookTaskSavePayload = buildBookTaskSavePayload(
+        const payload: BookTaskSavePayload = buildBookTaskUpdatePayload(
           values as Record<string, unknown>
         )
         await updateBookTask(record.id, payload)
