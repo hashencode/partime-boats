@@ -134,4 +134,30 @@ describe('OrderListPage', () => {
       expect(screen.getByText('请求失败，请稍后重试。')).toBeTruthy()
     })
   })
+
+  it('should render expired endtime with tertiary text color', async () => {
+    server.use(
+      http.post('*/book/check', () =>
+        HttpResponse.json({
+          data: [
+            {
+              id: 1,
+              username: 'demo_user',
+              earlytime: '2026-05-01',
+              arrive_time: '2026-05-08',
+              endtime: '2020-01-01 00:00:00',
+              is_book: 0,
+              price: 123,
+            },
+          ],
+          total_page: 1,
+        })
+      )
+    )
+
+    render(<ThemeProvider><OrderListPage /></ThemeProvider>)
+
+    const expiredText = await screen.findByText('2020-01-01 00:00:00')
+    expect(expiredText.className).toContain('text-[color:var(--ant-color-text-tertiary)]')
+  })
 })

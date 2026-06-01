@@ -106,7 +106,7 @@ describe('MskApiListPage', () => {
     render(<ThemeProvider><MskApiListPage /></ThemeProvider>)
 
     await waitFor(() => {
-      expect(screen.getByText('MSK API列表加载失败')).toBeTruthy()
+      expect(screen.getByText('Maersk API列表加载失败')).toBeTruthy()
       expect(screen.getByText('请求失败，请稍后重试。')).toBeTruthy()
     })
   })
@@ -212,7 +212,7 @@ describe('MskApiListPage', () => {
     render(<ThemeProvider><MskApiListPage /></ThemeProvider>)
 
     await waitFor(() => {
-      expect(screen.getByText('MSK API列表')).toBeTruthy()
+      expect(screen.getByText('Maersk API列表')).toBeTruthy()
     })
 
     const rowCheckboxes = screen.getAllByRole('checkbox')

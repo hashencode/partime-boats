@@ -13,3 +13,11 @@ export {
 export { useTemplateListFilters } from './use-template-list-filters'
 export { createPortFilterFields, createShippingLineFilterField } from './list-filter-field-factories'
 export { createCachedStringOptionsLoader, getCachedListMetadata } from './list-metadata-cache'
+export {
+  compareDateSortValue,
+  compareNumberSortValue,
+  compareTextSortValue,
+  createDateSorter,
+  createNumberSorter,
+  createTextSorter,
+} from './table-sorters'

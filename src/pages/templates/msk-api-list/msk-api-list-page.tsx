@@ -6,7 +6,10 @@ import { RemoteStringSelect } from '../../../shared/components/remote-string-sel
 import { normalizeApiError, type ApiError } from '../../../infrastructure/http/api-client'
 import {
   createPortFilterFields,
+  createDateSorter,
+  createNumberSorter,
   createShippingLineFilterField,
+  createTextSorter,
   getCachedListMetadata,
   StandardListPageRecipe,
   type StandardListPageSpec,
@@ -104,12 +107,6 @@ const TABLE_FILTER = ['id', 'tips', 'origincity_name', 'destinationcity_name', '
 // 操作列固定宽度：2 个链接按钮（订舱/修改）按 56*2=112，间距 13，余量 16，总计 141，取 150。
 const ACTION_COLUMN_WIDTH = 150
 const TOGGLE_CONFIRM_OVERLAY_STYLE = { maxWidth: 280 }
-
-const timeStamp = (value?: string) => {
-  if (!value) return 0
-  const parsed = dayjs(value).valueOf()
-  return Number.isNaN(parsed) ? 0 : parsed
-}
 
 const buildToggleConfirmTitle = (selectedCount: number, actionLabel: '开启' | '关闭') => {
   if (selectedCount === 0) {
@@ -212,8 +209,8 @@ export const MskApiListPage = () => {
     StandardListPageSpec<SearchValues, MskApiFilters, ListResponse, RowView, ApiError>
   >(
     () => ({
-      pageTitle: 'MSK API列表',
-      cardTitle: 'MSK API列表',
+      pageTitle: 'Maersk API列表',
+      cardTitle: 'Maersk API列表',
       tableId: 'msk-api-list',
       formRoute: '/msk-api-list/form',
       initialFilters: {},
@@ -278,7 +275,7 @@ export const MskApiListPage = () => {
 
                   const { default: ExportJsonExcel } = await import('js-export-excel')
                   const exporter = new ExportJsonExcel({
-                    fileName: 'MSK API列表',
+                    fileName: 'Maersk API列表',
                     datas: [
                       {
                         sheetData: tableData,
@@ -313,48 +310,52 @@ export const MskApiListPage = () => {
       buildColumns: ({ reload }) => {
         reloadRef.current = reload
         return [
-          { title: 'ID', dataIndex: 'id', key: 'id', sorter: (a, b) => a.id - b.id },
-          { title: '账号', dataIndex: 'tips', key: 'tips' },
-          { title: '起始港', dataIndex: 'origincity_name', key: 'origincity_name' },
+          { title: 'ID', dataIndex: 'id', key: 'id', sorter: createNumberSorter((record) => record.id) },
+          { title: '账号', dataIndex: 'tips', key: 'tips', sorter: createTextSorter((record) => record.tips) },
+          { title: '起始港', dataIndex: 'origincity_name', key: 'origincity_name', sorter: createTextSorter((record) => record.origincity_name) },
           {
             title: '目的港',
             dataIndex: 'destinationcity_name',
             key: 'destinationcity_name',
+            sorter: createTextSorter((record) => record.destinationcity_name),
           },
-          { title: '航线', dataIndex: 'host', key: 'host' },
-          { title: '箱型', dataIndex: 'box_type', key: 'box_type' },
+          { title: '航线', dataIndex: 'host', key: 'host', sorter: createTextSorter((record) => record.host) },
+          { title: '箱型', dataIndex: 'box_type', key: 'box_type', sorter: createTextSorter((record) => record.box_type) },
           {
             title: '延迟时间(秒)',
             dataIndex: 'delay_time_label',
             key: 'delay_time_label',
+            sorter: createNumberSorter((record) => record.delay_time),
           },
           {
             title: '是否开启',
             dataIndex: 'is_run_label',
             key: 'is_run_label',
+            sorter: createNumberSorter((record) => record.is_run),
             render: (value: string) => (
               <Tag color={value === '开启' ? 'success' : 'default'}>{value || '-'}</Tag>
             ),
           },
-          { title: '是否翻页', dataIndex: 'is_roll_label', key: 'is_roll_label' },
+          { title: '是否翻页', dataIndex: 'is_roll_label', key: 'is_roll_label', sorter: createNumberSorter((record) => record.is_roll) },
           {
             title: '开航时间',
             dataIndex: 'early_date',
             key: 'early_date',
-            sorter: (a, b) => timeStamp(a.early_date) - timeStamp(b.early_date),
+            sorter: createDateSorter((record) => record.early_date),
           },
           {
             title: '目的港类型',
             dataIndex: 'destination_service_mode',
             key: 'destination_service_mode',
+            sorter: createTextSorter((record) => record.destination_service_mode),
           },
           {
             title: '限价',
             dataIndex: 'limit_price',
             key: 'limit_price',
-            sorter: (a, b) => Number(a.limit_price ?? 0) - Number(b.limit_price ?? 0),
+            sorter: createNumberSorter((record) => record.limit_price),
           },
-          { title: '端口', dataIndex: 'port', key: 'port' },
+          { title: '端口', dataIndex: 'port', key: 'port', sorter: createTextSorter((record) => record.port) },
           {
             title: '操作',
             key: 'operation',
@@ -412,12 +413,12 @@ export const MskApiListPage = () => {
         )
       },
       stateCopy: {
-        loadingTitle: 'MSK API列表加载中',
+        loadingTitle: 'Maersk API列表加载中',
         loadingDescription: '正在获取查询数据，请稍候。',
         emptyTitle: '暂无查询数据',
         emptyDescription: '当前筛选条件下没有数据，请调整筛选后重试。',
         emptyActionText: '重置筛选',
-        errorTitle: 'MSK API列表加载失败',
+        errorTitle: 'Maersk API列表加载失败',
         errorDescription: '列表接口请求失败，请稍后重试。',
         errorActionText: '重新加载',
         partialTitle: '当前仅返回部分查询数据',

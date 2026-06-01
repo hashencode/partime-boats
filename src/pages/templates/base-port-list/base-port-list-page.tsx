@@ -7,6 +7,8 @@ import { normalizeApiError, type ApiError } from '../../../infrastructure/http/a
 import { useAuth } from '../../../infrastructure/auth/use-auth'
 import { LIST_REFRESH_CHANNEL, LIST_REFRESH_EVENT } from '../../../shared/constants/list-refresh-channel'
 import {
+  createNumberSorter,
+  createTextSorter,
   StandardListPageRecipe,
   type StandardListPageSpec,
 } from '../../../shared/template-kit/list'
@@ -89,18 +91,24 @@ export const BasePortListPage = () => {
       filterFields: [],
       buildColumns: ({ openFormPage }) =>
         [
-          { title: 'ID', dataIndex: 'id', key: 'id' },
-          { title: 'cityName', dataIndex: 'cityName', key: 'cityName' },
-          { title: 'countryCode', dataIndex: 'countryCode', key: 'countryCode' },
-          { title: 'countryGeoId', dataIndex: 'countryGeoId', key: 'countryGeoId' },
-          { title: 'countryName', dataIndex: 'countryName', key: 'countryName' },
-          { title: 'maerskGeoLocationId', dataIndex: 'maerskGeoLocationId', key: 'maerskGeoLocationId' },
-          { title: 'maerskRkstCode', dataIndex: 'maerskRkstCode', key: 'maerskRkstCode' },
-          { title: 'UNCode', dataIndex: 'UNCode', key: 'UNCode' },
+          { title: 'ID', dataIndex: 'id', key: 'id', sorter: createNumberSorter((record) => record.id) },
+          { title: 'cityName', dataIndex: 'cityName', key: 'cityName', sorter: createTextSorter((record) => record.cityName) },
+          { title: 'countryCode', dataIndex: 'countryCode', key: 'countryCode', sorter: createTextSorter((record) => record.countryCode) },
+          { title: 'countryGeoId', dataIndex: 'countryGeoId', key: 'countryGeoId', sorter: createTextSorter((record) => record.countryGeoId) },
+          { title: 'countryName', dataIndex: 'countryName', key: 'countryName', sorter: createTextSorter((record) => record.countryName) },
+          {
+            title: 'maerskGeoLocationId',
+            dataIndex: 'maerskGeoLocationId',
+            key: 'maerskGeoLocationId',
+            sorter: createTextSorter((record) => record.maerskGeoLocationId),
+          },
+          { title: 'maerskRkstCode', dataIndex: 'maerskRkstCode', key: 'maerskRkstCode', sorter: createTextSorter((record) => record.maerskRkstCode) },
+          { title: 'UNCode', dataIndex: 'UNCode', key: 'UNCode', sorter: createTextSorter((record) => record.UNCode) },
           {
             title: 'shippingline',
             dataIndex: 'shippingline',
             key: 'shippingline',
+            sorter: createTextSorter((record) => record.shippingline),
             render: (value: string) => value || '-',
           },
           {

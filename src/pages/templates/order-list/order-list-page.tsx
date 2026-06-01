@@ -6,6 +6,9 @@ import { normalizeApiError, type ApiError } from '../../../infrastructure/http/a
 import { ALL_DATA_PAGE_SIZE } from '../../../shared/hooks/use-standard-pagination'
 import {
   createPortFilterFields,
+  createDateSorter,
+  createNumberSorter,
+  createTextSorter,
   StandardListPageRecipe,
   type StandardListPageSpec,
   type TemplateListFilterField,
@@ -119,12 +122,6 @@ const toFilters = (values: OrderSearchValues): OrderListFilters => ({
 })
 
 const statusLabel = (value: OrderStatus) => ORDER_STATUS_OPTIONS.find((item) => item.value === value)?.label ?? '-'
-const toTimestamp = (value?: string) => {
-  if (!value) return 0
-  const time = dayjs(value).valueOf()
-  return Number.isNaN(time) ? 0 : time
-}
-
 const formatRecord = (item: OrderListItem): OrderListItem & { voyage_days: number | null } => {
   const earlytime = item.earlytime ? dayjs(item.earlytime).format('YYYY-MM-DD') : ''
   const arriveTime = item.arrive_time ? dayjs(item.arrive_time).format('YYYY-MM-DD') : ''
@@ -352,51 +349,71 @@ export const OrderListPage = () => {
             return null
           },
         },
-        { title: '账号', key: 'username', dataIndex: 'username' },
-        { title: '开航时间', key: 'earlytime', dataIndex: 'earlytime', sorter: (a, b) => toTimestamp(a.earlytime) - toTimestamp(b.earlytime) },
-        { title: '到港时间', key: 'arrive_time', dataIndex: 'arrive_time', sorter: (a, b) => toTimestamp(a.arrive_time) - toTimestamp(b.arrive_time) },
-        { title: '起始港', key: 'origin_location', dataIndex: 'origin_location' },
-        { title: '目的港', key: 'destination_location', dataIndex: 'destination_location' },
-        { title: '箱型', key: 'box_type', dataIndex: 'box_type' },
-        { title: '船名', key: 'vessel_name', dataIndex: 'vessel_name' },
-        { title: '航程（天）', key: 'voyage_days', dataIndex: 'voyage_days', sorter: (a, b) => (a.voyage_days ?? -1) - (b.voyage_days ?? -1) },
-        { title: '提单号', key: 'booking_number', dataIndex: 'booking_number' },
-        { title: '价格', key: 'price', dataIndex: 'price', sorter: (a, b) => (a.price ?? -1) - (b.price ?? -1) },
-        { title: 'is_roll', key: 'is_roll', dataIndex: 'is_roll' },
+        { title: '账号', key: 'username', dataIndex: 'username', sorter: createTextSorter((record) => record.username) },
+        { title: '开航时间', key: 'earlytime', dataIndex: 'earlytime', sorter: createDateSorter((record) => record.earlytime) },
+        { title: '到港时间', key: 'arrive_time', dataIndex: 'arrive_time', sorter: createDateSorter((record) => record.arrive_time) },
+        { title: '起始港', key: 'origin_location', dataIndex: 'origin_location', sorter: createTextSorter((record) => record.origin_location) },
+        { title: '目的港', key: 'destination_location', dataIndex: 'destination_location', sorter: createTextSorter((record) => record.destination_location) },
+        { title: '箱型', key: 'box_type', dataIndex: 'box_type', sorter: createTextSorter((record) => record.box_type) },
+        { title: '船名', key: 'vessel_name', dataIndex: 'vessel_name', sorter: createTextSorter((record) => record.vessel_name) },
+        { title: '航程（天）', key: 'voyage_days', dataIndex: 'voyage_days', sorter: createNumberSorter((record) => record.voyage_days) },
+        { title: '提单号', key: 'booking_number', dataIndex: 'booking_number', sorter: createTextSorter((record) => record.booking_number) },
+        { title: '价格', key: 'price', dataIndex: 'price', sorter: createNumberSorter((record) => record.price) },
+        { title: 'is_roll', key: 'is_roll', dataIndex: 'is_roll', sorter: createNumberSorter((record) => record.is_roll) },
         {
           title: '返回值2',
           key: 'capacity_hard_stop_indicator',
           dataIndex: 'capacity_hard_stop_indicator',
+          sorter: createNumberSorter((record) => record.capacity_hard_stop_indicator),
           render: (value) => {
             const isAbnormal = value !== 200 && value !== '200'
             return <span className={isAbnormal ? 'text-orange-500' : ''}>{value ?? '-'}</span>
           },
         },
-        { title: '下单时间', key: 'booktime', dataIndex: 'booktime', sorter: (a, b) => toTimestamp(a.booktime) - toTimestamp(b.booktime) },
+        { title: '下单时间', key: 'booktime', dataIndex: 'booktime', sorter: createDateSorter((record) => record.booktime) },
         {
           title: '截止提交时间',
           key: 'endtime',
           dataIndex: 'endtime',
-          sorter: (a, b) => toTimestamp(a.endtime) - toTimestamp(b.endtime),
+          sorter: createDateSorter((record) => record.endtime),
           render: (value?: string) => {
             if (!value) return '-'
             const endTs = dayjs(value).valueOf()
             if (Number.isNaN(endTs)) return value
             const remainingMs = endTs - Date.now()
+            const isExpired = remainingMs <= 0
             const isWarning = remainingMs > 0 && remainingMs <= 3 * 60 * 1000
-            return <span className={isWarning ? 'font-semibold text-red-500' : 'text-black'}>{value}</span>
+            return (
+              <span
+                className={
+                  isExpired
+                    ? 'text-[color:var(--ant-color-text-tertiary)]'
+                    : isWarning
+                      ? 'font-semibold text-red-500'
+                      : undefined
+                }
+              >
+                {value}
+              </span>
+            )
           },
         },
-        { title: '提交时间', key: 'update_time', dataIndex: 'update_time', sorter: (a, b) => toTimestamp(a.update_time) - toTimestamp(b.update_time) },
+        { title: '提交时间', key: 'update_time', dataIndex: 'update_time', sorter: createDateSorter((record) => record.update_time) },
         {
           title: '状态',
           key: 'is_book',
           dataIndex: 'is_book',
+          sorter: createNumberSorter((record) => record.is_book),
           render: (value: OrderStatus) => <Tag>{statusLabel(value)}</Tag>,
         },
-        { title: 'ID', key: 'id', dataIndex: 'id' },
-        { title: '返回值1', key: 'is_instant_confirmation', dataIndex: 'is_instant_confirmation' },
-        { title: '免用箱', key: 'free_day', dataIndex: 'free_day' },
+        { title: 'ID', key: 'id', dataIndex: 'id', sorter: createNumberSorter((record) => record.id) },
+        {
+          title: '返回值1',
+          key: 'is_instant_confirmation',
+          dataIndex: 'is_instant_confirmation',
+          sorter: createNumberSorter((record) => record.is_instant_confirmation),
+        },
+        { title: '免用箱', key: 'free_day', dataIndex: 'free_day', sorter: createNumberSorter((record) => record.free_day) },
       ],
       buildTableNode: ({ columns, dataSource, loading, tableSize, tableClassName, pagination, virtualScroll }) => {
         currentRowsRef.current = dataSource

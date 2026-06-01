@@ -36,12 +36,14 @@ describe('useTemplateListFilters', () => {
     })
 
     expect(result.current.filters).toEqual({ keyword: 'alpha' })
+    expect(result.current.queryVersion).toBe(1)
 
     act(() => {
       result.current.onSubmit({ name: 'beta' })
     })
 
     expect(result.current.filters).toEqual({ keyword: 'beta' })
+    expect(result.current.queryVersion).toBe(2)
     expect(resetPageCount).toBe(2)
   })
 
@@ -70,6 +72,7 @@ describe('useTemplateListFilters', () => {
     })
 
     expect(result.current.filters).toEqual({ keyword: 'alpha' })
+    expect(result.current.queryVersion).toBe(1)
   })
 
   it('resets form and filters', () => {
@@ -102,5 +105,6 @@ describe('useTemplateListFilters', () => {
 
     expect(resetFieldCount).toBe(1)
     expect(result.current.filters).toEqual({})
+    expect(result.current.queryVersion).toBe(2)
   })
 })

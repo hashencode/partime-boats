@@ -61,6 +61,7 @@ export const StandardListPageRecipe = <
 
   const {
     filters,
+    queryVersion,
     onSubmit: onSubmitFilters,
     onValuesChange: onValuesChangeFilters,
     onReset: onResetFilters,
@@ -84,7 +85,10 @@ export const StandardListPageRecipe = <
     },
     [buildRequestFilters, current, filters, pageSize, paginationMode]
   )
-  const requestFiltersKey = useMemo(() => JSON.stringify(nextRequestFilters), [nextRequestFilters])
+  const requestFiltersKey = useMemo(
+    () => `${JSON.stringify(nextRequestFilters)}::${queryVersion}`,
+    [nextRequestFilters, queryVersion]
+  )
   // Reuse the previous filters object when the serialized query params are unchanged,
   // so selection-only re-renders do not retrigger the initial list load effect.
   // eslint-disable-next-line react-hooks/exhaustive-deps

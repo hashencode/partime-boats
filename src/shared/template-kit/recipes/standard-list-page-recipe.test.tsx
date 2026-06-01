@@ -68,7 +68,7 @@ describe('StandardListPageRecipe', () => {
       </ThemeProvider>
     )
 
-  it('does not auto request on filter value change and only queries on submit', async () => {
+  it('does not auto request on filter value change and re-queries on every submit click', async () => {
     const requestCalls: RequestFilters[] = []
     const spec: StandardListPageSpec<FilterValues, RequestFilters, Response, { id: number; name: string }, Error> = {
       pageTitle: '测试列表',
@@ -143,6 +143,18 @@ describe('StandardListPageRecipe', () => {
       size: 10,
     })
     expect(screen.getByTestId('table-node').textContent).toBe('alpha')
+
+    fireEvent.click(screen.getByRole('button', { name: /查\s*询/ }))
+
+    await waitFor(() => {
+      expect(requestCalls).toHaveLength(3)
+    })
+
+    expect(requestCalls[2]).toEqual({
+      name: 'alpha',
+      current: 1,
+      size: 10,
+    })
   })
 
   it('resets to first page when page size changes', async () => {

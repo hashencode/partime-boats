@@ -99,7 +99,7 @@ export const templateRoutes: TemplateRoute[] = [
   {
     key: 'msk-query-list',
     path: '/msk-query-list',
-    title: 'MSK列表',
+    title: 'Maersk列表',
     icon: createElement(SearchOutlined),
     permission: 'list.read',
     inMenu: true,
@@ -114,7 +114,7 @@ export const templateRoutes: TemplateRoute[] = [
   {
     key: 'msk-api-list',
     path: '/msk-api-list',
-    title: 'MSK API列表',
+    title: 'Maersk API列表',
     icon: createElement(ApiOutlined),
     permission: 'list.read',
     inMenu: true,

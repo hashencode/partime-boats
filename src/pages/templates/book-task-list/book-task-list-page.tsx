@@ -142,7 +142,6 @@ const DESTINATION_SERVICE_OPTIONS = ['CY', 'SD'].map((value) => ({ label: value,
 // 操作列固定宽度：当前仅展示 1 个“修改”按钮，2 个汉字按 14px/字计算为 28，
 // 额外余量按 16，总计 44；考虑按钮点击热区与表格留白，向上固化为 60。
 const ACTION_COLUMN_WIDTH = 60
-const BATCH_OPEN_CONFIRM_OVERLAY_STYLE = { maxWidth: 280 }
 const EDIT_MODAL_WIDTH = 1040
 const EDIT_MODAL_STYLE = { top: 24 }
 const EDIT_MODAL_BODY_STYLE = {
@@ -350,13 +349,6 @@ const buildScopedIds = async (
   }
 
   return undefined
-}
-
-const buildBatchOpenConfirmTitle = (selectedCount: number) => {
-  if (selectedCount === 0) {
-    return '未勾选任何列表项，将会开启当前筛选结果中的所有项，是否确认？'
-  }
-  return '确认要开启选中的列表项吗？'
 }
 
 const buildCidTypeOption = (value: number) => {
@@ -847,17 +839,15 @@ export const BookTaskListPage = () => {
       filterFields,
       toolbarExtra: (
         <Space wrap>
-          <Popconfirm
-            title={buildBatchOpenConfirmTitle(selectedRowKeys.length)}
-            okText="是"
-            cancelText="否"
-            overlayStyle={BATCH_OPEN_CONFIRM_OVERLAY_STYLE}
-            onConfirm={() => handleBatchOpen()}
+          <Button
+            loading={batchQueueTask.progress.status === 'running'}
+            disabled={!canWrite}
+            onClick={() => {
+              void handleBatchOpen()
+            }}
           >
-            <Button loading={batchQueueTask.progress.status === 'running'} disabled={!canWrite}>
-              批量打开
-            </Button>
-          </Popconfirm>
+            批量打开
+          </Button>
           <Popconfirm
             title="确认关闭初始化吗？"
             okText="是"

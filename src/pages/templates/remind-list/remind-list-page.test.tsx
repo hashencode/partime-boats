@@ -156,16 +156,15 @@ describe('RemindListPage', () => {
   it('should render remind rows when request succeeds', async () => {
     renderPage()
 
-    await waitFor(() => {
-      expect(screen.getAllByText('提醒列表').length).toBeGreaterThan(0)
-      expect(screen.getAllByText('NINGBO').length).toBeGreaterThan(0)
-      expect(latestPerPage).toBe('10')
-      expect(screen.getByRole('button', { name: '刷新' })).toBeTruthy()
-      expect(screen.getByRole('button', { name: '密度' })).toBeTruthy()
-      expect(screen.getByRole('button', { name: '列设置' })).toBeTruthy()
-      expect(screen.getByText('已作废')).toBeTruthy()
-      expect(screen.getAllByText('未作废').length).toBeGreaterThan(0)
-    })
+    await screen.findAllByText('NINGBO')
+
+    expect(screen.getAllByText('提醒列表').length).toBeGreaterThan(0)
+    expect(latestPerPage).toBe('10')
+    expect(screen.getByRole('button', { name: '刷新' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: '密度' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: '列设置' })).toBeTruthy()
+    expect(screen.getByText('已作废')).toBeTruthy()
+    expect(screen.getAllByText('未作废').length).toBeGreaterThan(0)
 
     expect(screen.queryByText('是')).toBeNull()
     expect(screen.queryByText('否')).toBeNull()
@@ -236,14 +235,21 @@ describe('RemindListPage', () => {
   it('should invalidate selected rows when batch action confirmed', async () => {
     renderPage()
 
-    await waitFor(() => {
-      expect(screen.getAllByText('NINGBO').length).toBeGreaterThan(0)
-    })
+    await screen.findAllByText('NINGBO')
 
     const table = screen.getByRole('table')
     const checkbox = within(table).getAllByRole('checkbox')[1]
-    fireEvent.click(checkbox)
-    fireEvent.click(screen.getByRole('button', { name: '批量作废' }))
+    await act(async () => {
+      fireEvent.click(checkbox)
+    })
+
+    await waitFor(() => {
+      expect(screen.getByText('已选 1 项')).toBeTruthy()
+    })
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: '批量作废' }))
+    })
     fireEvent.click(await screen.findByRole('button', { name: '是' }))
 
     await waitFor(() => {

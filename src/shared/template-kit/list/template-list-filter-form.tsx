@@ -239,12 +239,12 @@ const TemplateListSelectFilterFieldNode = <
       {...field.formItemProps}
     >
       <Select
-        allowClear
         className="!w-full"
         disabled={disabled}
         options={options}
         popupMatchSelectWidth={popupMatchSelectWidth}
         {...field.selectProps}
+        allowClear
       />
     </Form.Item>
   )
@@ -308,9 +308,9 @@ const TemplateListFilterFieldNode = <TValues extends Record<string, unknown>>({
       {...field.formItemProps}
     >
       {field.type === 'input' ? (
-        <Input allowClear className="!w-full" disabled={disabled} {...field.inputProps} />
+        <Input className="!w-full" disabled={disabled} {...field.inputProps} allowClear />
       ) : (
-        <DatePicker className="!w-full" disabled={disabled} {...field.datePickerProps} />
+        <DatePicker className="!w-full" disabled={disabled} {...field.datePickerProps} allowClear />
       )}
     </Form.Item>
   )

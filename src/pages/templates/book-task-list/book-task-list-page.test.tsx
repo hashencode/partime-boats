@@ -403,9 +403,6 @@ describe('BookTaskListPage', () => {
     })
 
     fireEvent.click(screen.getByRole('button', { name: '批量打开' }))
-    const confirmText = await screen.findByText('未勾选任何列表项，将会开启当前筛选结果中的所有项，是否确认？')
-    expect(confirmText.closest('.ant-popover')?.getAttribute('style')).toContain('max-width: 280px')
-    fireEvent.click(await screen.findByRole('button', { name: '是' }))
 
     await waitFor(() => {
       expect(batchOpenPayloads).toHaveLength(2)

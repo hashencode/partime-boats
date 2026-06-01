@@ -4,6 +4,9 @@ import dayjs from 'dayjs'
 import React, { useMemo } from 'react'
 import { normalizeApiError, type ApiError } from '../../../infrastructure/http/api-client'
 import {
+  createDateSorter,
+  createNumberSorter,
+  createTextSorter,
   StandardListPageRecipe,
   type StandardListPageSpec,
   type TemplateListFilterField,
@@ -116,25 +119,28 @@ export const BookAccountListPage = () => {
             dataIndex: 'account',
             key: 'account',
             align: 'center',
+            sorter: createTextSorter((record) => record.account),
           },
           {
             title: '客户代码',
             dataIndex: 'customer_code',
             key: 'customer_code',
             align: 'center',
+            sorter: createTextSorter((record) => record.customer_code),
           },
           {
             title: '是否刷新使用',
             dataIndex: 'is_refresh_use_label',
             key: 'is_refresh_use_label',
             align: 'center',
+            sorter: createNumberSorter((record) => record.is_refresh_use),
           },
           {
             title: '更新时间',
             dataIndex: 'update_time',
             key: 'update_time',
             align: 'center',
-            sorter: (a, b) => dayjs(a.update_time).valueOf() - dayjs(b.update_time).valueOf(),
+            sorter: createDateSorter((record) => record.update_time),
           },
         ] satisfies ColumnsType<BookAccountRow>,
       buildTableNode: ({ columns, dataSource, loading, tableClassName, pagination, tableSize, virtualScroll }) => {

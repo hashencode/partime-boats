@@ -2,6 +2,7 @@ import React from 'react'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it } from '@rstest/core'
 import { Button, Form } from 'antd'
+import dayjs from 'dayjs'
 import type { TemplateListFilterField } from './template-list-filter-form'
 import {
   DEFAULT_TEMPLATE_LIST_FILTER_ROW_GUTTER,
@@ -152,6 +153,59 @@ describe('TemplateListFilterForm', () => {
     expect(container.querySelector('.flex.shrink-0.items-end')).toBeTruthy()
     expect(container.querySelector('.ant-form-item-label')?.getAttribute('style')).toContain('flex: 0 0 auto')
     expect(container.querySelector('.ant-form-item-control')?.getAttribute('style')).toContain('flex: 0 0 220px')
+  })
+
+  it('keeps clear capability enabled for input, select, and date fields', async () => {
+    const Demo = () => {
+      const [form] = Form.useForm<DemoValues>()
+      const fields: TemplateListFilterField<DemoValues>[] = [
+        {
+          type: 'input',
+          name: 'name',
+          label: '名称',
+          inputProps: { allowClear: false },
+        },
+        {
+          type: 'select',
+          name: 'status',
+          label: '状态',
+          options: [{ label: '开启', value: 1 }],
+          selectProps: { allowClear: false },
+        },
+        {
+          type: 'date',
+          name: 'updatedAt',
+          label: '更新时间',
+          datePickerProps: { allowClear: false },
+        },
+      ]
+
+      React.useEffect(() => {
+        form.setFieldsValue({
+          name: 'demo',
+          status: 1,
+          updatedAt: dayjs('2026-06-01'),
+        } as unknown as DemoValues)
+      }, [form])
+
+      return (
+        <TemplateListFilterForm<DemoValues>
+          form={form}
+          fields={fields}
+          onSubmit={() => undefined}
+          onReset={() => undefined}
+          {...baseLayoutProps}
+        />
+      )
+    }
+
+    const { container } = render(<Demo />)
+
+    await waitFor(() => {
+      expect(container.querySelector('.ant-input-clear-icon')).toBeTruthy()
+      expect(container.querySelector('.ant-select-clear')).toBeTruthy()
+      expect(container.querySelector('.ant-picker-clear')).toBeTruthy()
+    })
   })
 
   it('renders conditional field only when visibleWhen is satisfied', async () => {

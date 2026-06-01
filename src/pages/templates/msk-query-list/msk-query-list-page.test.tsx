@@ -157,7 +157,7 @@ describe('MskQueryListPage', () => {
     render(<ThemeProvider><MskQueryListPage /></ThemeProvider>)
 
     await waitFor(() => {
-      expect(screen.getByText('MSK列表加载失败')).toBeTruthy()
+      expect(screen.getByText('Maersk列表加载失败')).toBeTruthy()
       expect(screen.getByText('请求失败，请稍后重试。')).toBeTruthy()
     })
   })
@@ -330,7 +330,7 @@ describe('MskQueryListPage', () => {
     render(<ThemeProvider><MskQueryListPage /></ThemeProvider>)
 
     await waitFor(() => {
-      expect(screen.getByText('查询列表')).toBeTruthy()
+      expect(screen.getByText('Maersk列表')).toBeTruthy()
     })
 
     const rowCheckboxes = screen.getAllByRole('checkbox')
@@ -341,7 +341,7 @@ describe('MskQueryListPage', () => {
       expect(screen.getByText('已选 1 项')).toBeTruthy()
     })
 
-    expect(screen.queryByText('查询列表')).toBeNull()
+    expect(screen.getAllByText('Maersk列表')).toHaveLength(1)
     expect(screen.queryByText('已选择')).toBeNull()
   })
 })

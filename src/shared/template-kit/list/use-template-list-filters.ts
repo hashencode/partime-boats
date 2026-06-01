@@ -17,6 +17,7 @@ type UseTemplateListFiltersResult<
   TFilters,
 > = {
   filters: TFilters
+  queryVersion: number
   setFilters: React.Dispatch<React.SetStateAction<TFilters>>
   onSubmit: (values: TValues) => void
   onValuesChange: (values: TValues) => void
@@ -37,10 +38,12 @@ export const useTemplateListFilters = <
   TFilters
 >): UseTemplateListFiltersResult<TValues, TFilters> => {
   const [filters, setFilters] = useState<TFilters>(initialFilters)
+  const [queryVersion, setQueryVersion] = useState(0)
 
   const applyFilters = useCallback(
     (values: TValues) => {
       setFilters(toFilters(values))
+      setQueryVersion((current) => current + 1)
       onResetPage?.()
     },
     [onResetPage, toFilters]
@@ -67,11 +70,13 @@ export const useTemplateListFilters = <
   const onReset = useCallback(() => {
     form.resetFields()
     setFilters(initialFilters)
+    setQueryVersion((current) => current + 1)
     onResetPage?.()
   }, [form, initialFilters, onResetPage])
 
   return {
     filters,
+    queryVersion,
     setFilters,
     onSubmit,
     onValuesChange,

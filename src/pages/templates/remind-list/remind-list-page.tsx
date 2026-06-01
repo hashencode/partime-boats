@@ -9,7 +9,10 @@ import { ListRowActions } from '../../../shared/components/list-row-actions'
 import { normalizeApiError, type ApiError } from '../../../infrastructure/http/api-client'
 import {
   createPortFilterFields,
+  createDateSorter,
+  createNumberSorter,
   createShippingLineFilterField,
+  createTextSorter,
   StandardListPageRecipe,
   type StandardListPageSpec,
   type TemplateListFilterField,
@@ -76,26 +79,11 @@ const toFilters = (values: RemindSearchValues): RemindListFilters => ({
     : undefined,
 })
 
-const toNumber = (value?: number | string) => {
-  if (typeof value === 'number') return value
-  if (typeof value === 'string' && value.trim()) {
-    const parsed = Number(value)
-    return Number.isNaN(parsed) ? undefined : parsed
-  }
-  return undefined
-}
-
-const toTimestamp = (value?: string) => {
-  if (!value) return 0
-  const parsed = dayjs(value).valueOf()
-  return Number.isNaN(parsed) ? 0 : parsed
-}
-
 const mapRow = (item: RemindListItem): RemindRow => ({
   ...item,
   key: item.id,
   ship_name: resolveHostByDestination(item.portofdischarge) ?? '',
-  is_use_label: item.is_use === 1 ? '已作废' : item.is_use === 0 ? '未作废' : '-',
+  is_use_label: item.is_use === 0 ? '未作废' : item.is_use === 1 ? '已作废' : '-',
 })
 
 const buildExportRows = (rows: RemindRow[]) =>
@@ -285,54 +273,61 @@ export const RemindListPage = () => {
             title: '启运港',
             dataIndex: 'portofloading',
             key: 'portofloading',
+            sorter: createTextSorter((record) => record.portofloading),
           },
           {
             title: '目的港',
             dataIndex: 'portofdischarge',
             key: 'portofdischarge',
+            sorter: createTextSorter((record) => record.portofdischarge),
           },
           {
             title: '航线',
             dataIndex: 'ship_name',
             key: 'ship_name',
+            sorter: createTextSorter((record) => record.ship_name),
           },
           {
             title: '箱型',
             dataIndex: 'boxcode',
             key: 'boxcode',
+            sorter: createTextSorter((record) => record.boxcode),
           },
           {
             title: '开航时间',
             dataIndex: 'departuredate',
             key: 'departuredate',
-            sorter: (left, right) => toTimestamp(left.departuredate) - toTimestamp(right.departuredate),
+            sorter: createDateSorter((record) => record.departuredate),
           },
           {
             title: '基础运价',
             dataIndex: 'oceanfreightamount',
             key: 'oceanfreightamount',
-            sorter: (left, right) => (toNumber(left.oceanfreightamount) ?? 0) - (toNumber(right.oceanfreightamount) ?? 0),
+            sorter: createNumberSorter((record) => record.oceanfreightamount),
           },
           {
             title: '总价',
             dataIndex: 'total_amount',
             key: 'total_amount',
-            sorter: (left, right) => (toNumber(left.total_amount) ?? 0) - (toNumber(right.total_amount) ?? 0),
+            sorter: createNumberSorter((record) => record.total_amount),
           },
           {
             title: '来源',
             dataIndex: 'source',
             key: 'source',
+            sorter: createTextSorter((record) => record.source),
           },
           {
             title: '查询时间',
             dataIndex: 'insert_datetime',
             key: 'insert_datetime',
+            sorter: createDateSorter((record) => record.insert_datetime),
           },
           {
             title: '是否作废',
             dataIndex: 'is_use_label',
             key: 'is_use_label',
+            sorter: createNumberSorter((record) => record.is_use),
             render: (value: RemindRow['is_use_label']) => {
               if (value === '已作废') {
                 return <Tag color="error">{value}</Tag>
@@ -349,11 +344,13 @@ export const RemindListPage = () => {
             title: '船名航次',
             dataIndex: 'ship_info',
             key: 'ship_info',
+            sorter: createTextSorter((record) => record.ship_info),
           },
           {
             title: 'price_id',
             dataIndex: 'price_id',
             key: 'price_id',
+            sorter: createNumberSorter((record) => record.price_id),
           },
           {
             title: '操作',
