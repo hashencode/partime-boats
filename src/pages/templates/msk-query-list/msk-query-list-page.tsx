@@ -116,15 +116,6 @@ const TABLE_FILTER = ['id', 'origincity_name', 'destinationcity_name', 'host', '
 // 操作列固定宽度：1 个按钮“修改”按 2 字计算为 28，
 // 额外余量 16，总计 44，向上取整为 60。
 const ACTION_COLUMN_WIDTH = 60
-const TOGGLE_CONFIRM_OVERLAY_STYLE = { maxWidth: 280 }
-
-const buildToggleConfirmTitle = (selectedCount: number, actionLabel: '开启' | '关闭') => {
-  if (selectedCount === 0) {
-    return `当前没有勾选任何列表项，将会${actionLabel}当前筛选结果中的所有项，是否确认？`
-  }
-  return `确认要${actionLabel}选中的列表项吗？`
-}
-
 const buildSingleTogglePayload = (record: RowView, nextStatus: 0 | -1): MskQueryItem => ({
   id: record.id,
   origincity_name: record.origincity_name,
@@ -257,24 +248,8 @@ export const MskQueryListPage = () => {
       filterFields,
       toolbarExtra: (
         <Space wrap>
-          <Popconfirm
-            title={buildToggleConfirmTitle(selectedCount, '开启')}
-            okText="是"
-            cancelText="否"
-            overlayStyle={TOGGLE_CONFIRM_OVERLAY_STYLE}
-            onConfirm={() => handleToggleAll(0)}
-          >
-            <Button>开启所有</Button>
-          </Popconfirm>
-          <Popconfirm
-            title={buildToggleConfirmTitle(selectedCount, '关闭')}
-            okText="是"
-            cancelText="否"
-            overlayStyle={TOGGLE_CONFIRM_OVERLAY_STYLE}
-            onConfirm={() => handleToggleAll(-1)}
-          >
-            <Button>关闭所有</Button>
-          </Popconfirm>
+          <Button onClick={() => void handleToggleAll(0)}>开启所有</Button>
+          <Button onClick={() => void handleToggleAll(-1)}>关闭所有</Button>
         </Space>
       ),
       renderBeforeFilter: (
@@ -364,18 +339,15 @@ export const MskQueryListPage = () => {
             dataIndex: 'is_run_label',
             key: 'is_run_label',
             render: (value: string, record) => (
-              <Popconfirm
-                title={`确认${record.is_run === 0 ? '关闭' : '开启'}当前任务吗？`}
-                okText="是"
-                cancelText="否"
-                onConfirm={() => {
+              <Button
+                type="link"
+                className="!px-0"
+                onClick={() => {
                   void handleToggleSingle(record)
                 }}
               >
-                <Button type="link" className="!px-0">
-                  <Tag color={value === '开启' ? 'success' : 'default'}>{value || '-'}</Tag>
-                </Button>
-              </Popconfirm>
+                <Tag color={value === '开启' ? 'success' : 'default'}>{value || '-'}</Tag>
+              </Button>
             ),
           },
           {
@@ -474,7 +446,6 @@ export const MskQueryListPage = () => {
       handleToggleSingle,
       handleToggleAll,
       requestList,
-      selectedCount,
     ]
   )
 

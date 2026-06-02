@@ -8,7 +8,6 @@ import {
   Input,
   InputNumber,
   Modal,
-  Popconfirm,
   Progress,
   Row,
   Select,
@@ -848,11 +847,9 @@ export const BookTaskListPage = () => {
           >
             批量打开
           </Button>
-          <Popconfirm
-            title="确认关闭初始化吗？"
-            okText="是"
-            cancelText="否"
-            onConfirm={async () => {
+          <Button
+            disabled={!canWrite}
+            onClick={async () => {
               const ids = await buildScopedIds(
                 latestFiltersRef.current,
                 currentRowsRef.current,
@@ -863,13 +860,11 @@ export const BookTaskListPage = () => {
               await reloadRef.current()
             }}
           >
-            <Button disabled={!canWrite}>关闭初始化</Button>
-          </Popconfirm>
-          <Popconfirm
-            title="确认清除路由吗？"
-            okText="是"
-            cancelText="否"
-            onConfirm={async () => {
+            关闭初始化
+          </Button>
+          <Button
+            disabled={!canWrite}
+            onClick={async () => {
               const ids = await buildScopedIds(
                 latestFiltersRef.current,
                 currentRowsRef.current,
@@ -880,8 +875,8 @@ export const BookTaskListPage = () => {
               await reloadRef.current()
             }}
           >
-            <Button disabled={!canWrite}>清除路由</Button>
-          </Popconfirm>
+            清除路由
+          </Button>
         </Space>
       ),
       buildColumns: ({ reload }) => {
@@ -962,18 +957,16 @@ export const BookTaskListPage = () => {
             render: (value, record) => {
               const label = numberLabel(OPEN_CLOSE_OPTIONS, value)
               return (
-                <Popconfirm
-                  title={`确认${record.is_order === 1 ? '关闭' : '开启'}当前任务吗？`}
-                  okText="是"
-                  cancelText="否"
-                  onConfirm={() => {
+                <Button
+                  type="link"
+                  className="!px-0"
+                  disabled={!canWrite}
+                  onClick={() => {
                     void handleToggleOrderStatus(record, reload)
                   }}
                 >
-                  <Button type="link" className="!px-0" disabled={!canWrite}>
-                    <Tag color={value === 1 ? 'success' : 'default'}>{label}</Tag>
-                  </Button>
-                </Popconfirm>
+                  <Tag color={value === 1 ? 'success' : 'default'}>{label}</Tag>
+                </Button>
               )
             },
           },

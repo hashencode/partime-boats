@@ -163,8 +163,8 @@ describe('RemindListPage', () => {
     expect(screen.getByRole('button', { name: '刷新' })).toBeTruthy()
     expect(screen.getByRole('button', { name: '密度' })).toBeTruthy()
     expect(screen.getByRole('button', { name: '列设置' })).toBeTruthy()
-    expect(screen.getByText('已作废')).toBeTruthy()
-    expect(screen.getAllByText('未作废').length).toBeGreaterThan(0)
+    expect(screen.getByText('未作废')).toBeTruthy()
+    expect(screen.getAllByText('已作废').length).toBeGreaterThan(0)
 
     expect(screen.queryByText('是')).toBeNull()
     expect(screen.queryByText('否')).toBeNull()

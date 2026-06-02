@@ -169,9 +169,6 @@ describe('MskApiListPage', () => {
     })
 
     fireEvent.click(screen.getByRole('button', { name: '开启所有' }))
-    const confirmText = await screen.findByText('当前没有勾选任何列表项，将会开启当前筛选结果中的所有项，是否确认？')
-    expect(confirmText.closest('.ant-popover')?.getAttribute('style')).toContain('max-width: 280px')
-    fireEvent.click(await screen.findByRole('button', { name: '是' }))
 
     await waitFor(() => {
       expect(latestToggleIds).toBe('1')
@@ -200,7 +197,6 @@ describe('MskApiListPage', () => {
     fireEvent.click(rowCheckboxes[1] as Element)
 
     fireEvent.click(screen.getByRole('button', { name: '关闭所有' }))
-    fireEvent.click(await screen.findByRole('button', { name: '是' }))
 
     await waitFor(() => {
       expect(latestToggleIds).toBe('1')

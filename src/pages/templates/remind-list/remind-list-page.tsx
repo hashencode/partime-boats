@@ -79,11 +79,13 @@ const toFilters = (values: RemindSearchValues): RemindListFilters => ({
     : undefined,
 })
 
+const isRemindInvalidated = (item: Pick<RemindListItem, 'is_use'>) => item.is_use === 0
+
 const mapRow = (item: RemindListItem): RemindRow => ({
   ...item,
   key: item.id,
   ship_name: resolveHostByDestination(item.portofdischarge) ?? '',
-  is_use_label: item.is_use === 0 ? '未作废' : item.is_use === 1 ? '已作废' : '-',
+  is_use_label: isRemindInvalidated(item) ? '已作废' : item.is_use === 1 ? '未作废' : '-',
 })
 
 const buildExportRows = (rows: RemindRow[]) =>
@@ -372,7 +374,7 @@ export const RemindListPage = () => {
                         cancelText: '否',
                       },
                       onClick: async () => {
-                        if (record.is_use === 1) {
+                        if (isRemindInvalidated(record)) {
                           message.error('请勿重复作废')
                           return
                         }
@@ -443,6 +445,7 @@ export const RemindListPage = () => {
               message.error('请选择要作废的数据')
               return
             }
+
             await handleInvalidate(selectedRowKeysRef.current.join(', '))
           }}
         >

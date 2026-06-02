@@ -106,15 +106,6 @@ const TABLE_FILTER = ['id', 'tips', 'origincity_name', 'destinationcity_name', '
 
 // 操作列固定宽度：2 个链接按钮（订舱/修改）按 56*2=112，间距 13，余量 16，总计 141，取 150。
 const ACTION_COLUMN_WIDTH = 150
-const TOGGLE_CONFIRM_OVERLAY_STYLE = { maxWidth: 280 }
-
-const buildToggleConfirmTitle = (selectedCount: number, actionLabel: '开启' | '关闭') => {
-  if (selectedCount === 0) {
-    return `当前没有勾选任何列表项，将会${actionLabel}当前筛选结果中的所有项，是否确认？`
-  }
-  return `确认要${actionLabel}选中的列表项吗？`
-}
-
 export const MskApiListPage = () => {
   const [selectedCount, setSelectedCount] = useState(0)
   const [accountNumText, setAccountNumText] = useState<string>('')
@@ -221,24 +212,8 @@ export const MskApiListPage = () => {
       filterFields,
       toolbarExtra: (
         <Space wrap>
-          <Popconfirm
-            title={buildToggleConfirmTitle(selectedCount, '开启')}
-            okText="是"
-            cancelText="否"
-            overlayStyle={TOGGLE_CONFIRM_OVERLAY_STYLE}
-            onConfirm={() => handleToggleAll(0)}
-          >
-            <Button>开启所有</Button>
-          </Popconfirm>
-          <Popconfirm
-            title={buildToggleConfirmTitle(selectedCount, '关闭')}
-            okText="是"
-            cancelText="否"
-            overlayStyle={TOGGLE_CONFIRM_OVERLAY_STYLE}
-            onConfirm={() => handleToggleAll(-1)}
-          >
-            <Button>关闭所有</Button>
-          </Popconfirm>
+          <Button onClick={() => void handleToggleAll(0)}>开启所有</Button>
+          <Button onClick={() => void handleToggleAll(-1)}>关闭所有</Button>
           <Button type="primary" onClick={() => setAddingVisible(true)}>
             新增一行
           </Button>
@@ -432,7 +407,6 @@ export const MskApiListPage = () => {
       filterFields,
       handleToggleAll,
       requestList,
-      selectedCount,
     ]
   )
 
