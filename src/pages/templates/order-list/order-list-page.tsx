@@ -160,7 +160,7 @@ const toOptionalNumber = (value?: string | number | null) => {
   return Number.isFinite(parsed) ? parsed : undefined
 }
 
-const resolveUnitPrice = (price?: string | number | null, boxNumber?: string | number | null) => {
+export const resolveUnitPrice = (price?: string | number | null, boxNumber?: string | number | null) => {
   const totalPrice = toOptionalNumber(price)
   const quantity = toOptionalNumber(boxNumber)
 

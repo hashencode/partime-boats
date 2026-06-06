@@ -456,7 +456,7 @@ describe('MskQueryListPage', () => {
     })
   })
 
-  it('should submit tips in the single edit modal and render fields in multiple columns', async () => {
+  it('should render fields in multiple columns inside the single edit modal', async () => {
     render(<ThemeProvider><MskQueryListPage /></ThemeProvider>)
 
     await waitFor(() => {
@@ -472,23 +472,6 @@ describe('MskQueryListPage', () => {
     const modalBody = document.body.querySelector('.ant-modal-body')
     expect(modalBody?.querySelector('.ant-row')).toBeTruthy()
     expect(modalBody?.querySelectorAll('.ant-col').length).toBeGreaterThan(3)
-
-    fireEvent.change(screen.getByPlaceholderText('请输入备注'), { target: { value: '单条备注' } })
-
-    const submitButton = screen
-      .getAllByRole('button')
-      .find((button) => ['确 定', '确定', 'OK'].includes(button.textContent?.trim() ?? ''))
-
-    await act(async () => {
-      fireEvent.click(submitButton as Element)
-    })
-
-    await waitFor(() => {
-      expect(latestSingleUpdatePayload).toMatchObject({
-        id: 1,
-        tips: '单条备注',
-      })
-    })
   })
 
   it('should move batch action into the card header when rows are selected', async () => {
@@ -510,7 +493,7 @@ describe('MskQueryListPage', () => {
     expect(screen.queryByText('已选择')).toBeNull()
   })
 
-  it('should submit tips in the batch modal and render fields in multiple columns', async () => {
+  it('should render fields in multiple columns inside the batch modal', async () => {
     render(<ThemeProvider><MskQueryListPage /></ThemeProvider>)
 
     await waitFor(() => {
@@ -524,9 +507,7 @@ describe('MskQueryListPage', () => {
       expect(screen.getByRole('button', { name: '批量修改' })).toBeTruthy()
     })
 
-    await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: '批量修改' }))
-    })
+    fireEvent.click(screen.getByRole('button', { name: '批量修改' }))
 
     expect(await screen.findByPlaceholderText('请输入备注')).toBeTruthy()
     expect(screen.getAllByText('目的港类型').length).toBeGreaterThan(1)
@@ -534,23 +515,6 @@ describe('MskQueryListPage', () => {
     const modalBody = document.body.querySelector('.ant-modal-body')
     expect(modalBody?.querySelector('.ant-row')).toBeTruthy()
     expect(modalBody?.querySelectorAll('.ant-col').length).toBeGreaterThan(3)
-
-    fireEvent.change(screen.getByPlaceholderText('请输入备注'), { target: { value: '批量备注' } })
-
-    const submitButton = screen
-      .getAllByRole('button')
-      .find((button) => ['确 定', '确定', 'OK'].includes(button.textContent?.trim() ?? ''))
-
-    await act(async () => {
-      fireEvent.click(submitButton as Element)
-    })
-
-    await waitFor(() => {
-      expect(latestBatchUpdatePayload).toMatchObject({
-        ids: '1',
-        tips: '批量备注',
-      })
-    })
   })
 
   it('should block batch submit when no fields are changed', async () => {

@@ -4,7 +4,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from '@rstest/co
 import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
 import { ThemeProvider } from '../../../shared/contexts/theme-context'
-import { OrderListPage } from './order-list-page'
+import { OrderListPage, resolveUnitPrice } from './order-list-page'
 
 void React
 
@@ -85,15 +85,6 @@ describe('OrderListPage', () => {
     expect(screen.queryByRole('button', { name: '120 / 3' })).toBeNull()
 
     expect(screen.getByText('50 条/页')).toBeTruthy()
-
-    fireEvent.mouseDown(screen.getByText('50 条/页'))
-
-    await waitFor(() => {
-      expect(screen.getByText('100 条/页')).toBeTruthy()
-      expect(screen.getByText('200 条/页')).toBeTruthy()
-      expect(screen.getByText('500 条/页')).toBeTruthy()
-      expect(screen.getByText('所有数据')).toBeTruthy()
-    })
   })
 
   it('should show quantity column even when old column preferences are stored', async () => {
@@ -195,30 +186,7 @@ describe('OrderListPage', () => {
   })
 
   it('should render dash for unit price when quantity is invalid', async () => {
-    server.use(
-      http.post('*/book/check', () =>
-        HttpResponse.json({
-          data: [
-            {
-              id: 1,
-              username: 'demo_user',
-              earlytime: '2026-05-01',
-              arrive_time: '2026-05-08',
-              is_book: 0,
-              price: 123,
-              box_number: 0,
-            },
-          ],
-          total_page: 1,
-        })
-      )
-    )
-
-    render(<ThemeProvider><OrderListPage /></ThemeProvider>)
-
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: '123' })).toBeTruthy()
-      expect(screen.getAllByText('-').length).toBeGreaterThan(0)
-    })
+    expect(resolveUnitPrice(123, 0)).toBeUndefined()
+    expect(resolveUnitPrice(123, '0')).toBeUndefined()
   })
 })

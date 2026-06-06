@@ -29,7 +29,7 @@ export const unwrapLegacyEnvelopeOr = <T>(
     }
     return envelope.data ?? fallback
   }
-  return raw ?? fallback
+  return (raw ?? fallback) as T
 }
 
 export const toArrayOrEmpty = <T>(value: T[] | null | undefined): T[] => {

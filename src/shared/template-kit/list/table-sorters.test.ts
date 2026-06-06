@@ -1,4 +1,5 @@
 import { describe, expect, it } from '@rstest/core'
+import type { ColumnGroupType, ColumnType } from 'antd/es/table'
 import {
   compareDateSortValue,
   compareNumberSortValue,
@@ -6,6 +7,12 @@ import {
   createNumberSorter,
   enableMultipleColumnSorting,
 } from './table-sorters'
+
+const isColumnGroup = <TItem,>(
+  column: ColumnType<TItem> | ColumnGroupType<TItem>
+): column is ColumnGroupType<TItem> => {
+  return 'children' in column
+}
 
 describe('table-sorters', () => {
   it('should sort text values with numeric-aware comparison', () => {
@@ -61,8 +68,8 @@ describe('table-sorters', () => {
       },
     ])
 
-    const firstHeaderCell = column.onHeaderCell?.(column)
-    const secondHeaderCell = column.onHeaderCell?.(column)
+    const firstHeaderCell = column.onHeaderCell?.(column as never)
+    const secondHeaderCell = column.onHeaderCell?.(column as never)
 
     expect(firstHeaderCell).not.toBe(sharedHeaderCellProps)
     expect(secondHeaderCell).not.toBe(sharedHeaderCellProps)
@@ -90,7 +97,7 @@ describe('table-sorters', () => {
       },
     ])
 
-    expect(groupColumn.children?.[0]?.sorter).toMatchObject({
+    expect(isColumnGroup(groupColumn) ? groupColumn.children[0]?.sorter : undefined).toMatchObject({
       multiple: 3,
     })
   })

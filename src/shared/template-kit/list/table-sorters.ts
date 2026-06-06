@@ -1,5 +1,5 @@
 import dayjs from 'dayjs'
-import type { ColumnsType, ColumnType } from 'antd/es/table'
+import type { ColumnsType, ColumnType, ColumnGroupType } from 'antd/es/table'
 
 const normalizeTextValue = (value?: string | number | null) => {
   if (value === null || value === undefined || value === '') {
@@ -125,19 +125,34 @@ const cloneHeaderCellProps = <TItem>(onHeaderCell?: ColumnType<TItem>['onHeaderC
   }
 }
 
+const isColumnGroup = <TItem>(column: ColumnType<TItem> | ColumnGroupType<TItem>): column is ColumnGroupType<TItem> => {
+  return 'children' in column
+}
+
 export const enableMultipleColumnSorting = <TItem>(columns: ColumnsType<TItem>): ColumnsType<TItem> => {
   return columns.map((column) => {
-    const nextChildren = column.children ? enableMultipleColumnSorting(column.children) : column.children
+    if (isColumnGroup(column)) {
+      const nextChildren = enableMultipleColumnSorting(column.children)
+
+      if (nextChildren === column.children) {
+        return column
+      }
+
+      return {
+        ...column,
+        children: nextChildren,
+      }
+    }
+
     const nextSorter = toMultipleSorterConfig(column.sorter)
     const nextOnHeaderCell = column.sorter ? cloneHeaderCellProps(column.onHeaderCell) : column.onHeaderCell
 
-    if (nextChildren === column.children && nextSorter === column.sorter && nextOnHeaderCell === column.onHeaderCell) {
+    if (nextSorter === column.sorter && nextOnHeaderCell === column.onHeaderCell) {
       return column
     }
 
     return {
       ...column,
-      children: nextChildren,
       sorter: nextSorter,
       onHeaderCell: nextOnHeaderCell,
     }

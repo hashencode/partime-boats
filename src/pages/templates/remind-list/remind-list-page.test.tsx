@@ -237,7 +237,7 @@ describe('RemindListPage', () => {
 
     const table = screen.getByRole('table')
     const checkbox = within(table).getAllByRole('checkbox')[1]
-    await act(async () => {
+    act(() => {
       fireEvent.click(checkbox)
     })
 
@@ -248,7 +248,7 @@ describe('RemindListPage', () => {
     expect(screen.getByRole('button', { name: '批量作废' }).closest('.list-card-header-left')).toBeTruthy()
     expect(view.container.querySelector('.list-card-header-center')?.textContent).not.toContain('批量作废')
 
-    await act(async () => {
+    act(() => {
       fireEvent.click(screen.getByRole('button', { name: '批量作废' }))
     })
 
@@ -262,7 +262,7 @@ describe('RemindListPage', () => {
 
     await screen.findAllByText('NINGBO')
 
-    await act(async () => {
+    act(() => {
       fireEvent.click(screen.getByRole('button', { name: '批量作废' }))
     })
 

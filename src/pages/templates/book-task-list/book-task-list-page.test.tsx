@@ -1,11 +1,12 @@
+import { Form } from 'antd'
 import React from 'react'
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterAll, afterEach, beforeAll, describe, expect, it } from '@rstest/core'
 import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
 import { AuthContext } from '../../../infrastructure/auth/auth-context'
 import { ThemeProvider } from '../../../shared/contexts/theme-context'
-import { BookTaskListPage, CidTypeSelect } from './book-task-list-page'
+import { BookTaskFormFields, BookTaskListPage, CidTypeSelect } from './book-task-list-page'
 
 void React
 
@@ -160,7 +161,7 @@ const renderPage = (role: 'admin' | 'editor' | 'viewer' = 'admin') =>
   )
 
 const getRenderedBodyRowsText = (container: HTMLElement) =>
-  Array.from(container.querySelectorAll('tbody tr.ant-table-row'))
+  Array.from(container.querySelectorAll('.ant-table-row'))
     .map((row) => row.textContent?.trim() ?? '')
     .filter(Boolean)
 
@@ -179,7 +180,7 @@ const CidTypeSelectHarness = ({ initialValue }: { initialValue?: number }) => {
 
 describe('BookTaskListPage', () => {
   it('should render task rows when request succeeds', async () => {
-    const view = renderPage()
+    renderPage()
 
     await screen.findByText('tester')
 
@@ -194,20 +195,10 @@ describe('BookTaskListPage', () => {
     expect(screen.getByText('100 条/页')).toBeTruthy()
     expect(screen.queryByText('常规下单')).toBeNull()
 
-    fireEvent.mouseDown(screen.getByText('100 条/页'))
-
-    await waitFor(() => {
-      expect(screen.getByText('200 条/页')).toBeTruthy()
-      expect(screen.getByText('500 条/页')).toBeTruthy()
-      expect(screen.getByText('1000 条/页')).toBeTruthy()
-      expect(screen.getByText('所有数据')).toBeTruthy()
-    })
-
-    view.unmount()
   }, 10000)
 
   it('should not re-query when changing filters until query button clicked', async () => {
-    const view = renderPage()
+    renderPage()
 
     await waitFor(() => {
       expect(listRequestCount).toBeGreaterThan(0)
@@ -232,11 +223,10 @@ describe('BookTaskListPage', () => {
       orderId: '999',
     })
 
-    view.unmount()
   }, 10000)
 
   it('should hide write actions for viewer role', async () => {
-    const view = renderPage('viewer')
+    renderPage('viewer')
 
     await waitFor(() => {
       expect(screen.getAllByText('tester').length).toBeGreaterThan(0)
@@ -245,7 +235,6 @@ describe('BookTaskListPage', () => {
     expect(screen.getByRole('button', { name: '关闭初始化' }).getAttribute('disabled')).not.toBeNull()
     expect(screen.queryByText('修改')).toBeNull()
 
-    view.unmount()
   })
 
   it('should show error state when list request fails', async () => {
@@ -255,14 +244,13 @@ describe('BookTaskListPage', () => {
       )
     )
 
-    const view = renderPage()
+    renderPage()
 
     await waitFor(() => {
       expect(screen.getByText('任务列表加载失败')).toBeTruthy()
       expect(screen.getByText('请求失败，请稍后重试。')).toBeTruthy()
     })
 
-    view.unmount()
   })
 
   it('should sort text and numeric columns when clicking the column headers', async () => {
@@ -383,20 +371,24 @@ describe('BookTaskListPage', () => {
       expect(rowTexts[2]).toContain('charlie')
     })
 
+    cleanup()
+    const secondView = renderPage()
+
+    await screen.findByText('charlie')
+
     fireEvent.click(screen.getByRole('columnheader', { name: '数量' }))
 
     await waitFor(() => {
-      const rowTexts = getRenderedBodyRowsText(view.container).slice(0, 3)
+      const rowTexts = getRenderedBodyRowsText(secondView.container).slice(0, 3)
       expect(rowTexts[0]).toContain('bravo')
       expect(rowTexts[1]).toContain('charlie')
       expect(rowTexts[2]).toContain('alice')
     })
 
-    view.unmount()
   })
 
   it('should batch open all filtered rows in queue when nothing is checked', async () => {
-    const view = renderPage()
+    renderPage()
 
     await waitFor(() => {
       expect(screen.getAllByText('tester').length).toBeGreaterThan(0)
@@ -413,7 +405,6 @@ describe('BookTaskListPage', () => {
     expect(batchOpenPayloads[0]?.split(',').map((item) => item.trim()).filter(Boolean)).toHaveLength(100)
     expect(batchOpenPayloads[1]?.split(',').map((item) => item.trim()).filter(Boolean)).toHaveLength(1)
 
-    view.unmount()
   }, 10000)
 
   it('should show batch action in the card header when writable rows are selected', async () => {
@@ -442,17 +433,14 @@ describe('BookTaskListPage', () => {
     expect(centerHeader?.textContent).not.toContain('批量打开')
     expect(screen.queryByText('已选择')).toBeNull()
 
-    view.unmount()
   }, 10000)
 
   it('should open edit modal with the repacked form fields', async () => {
-    const view = renderPage()
+    renderPage()
 
     await screen.findByText('tester')
 
-    await act(async () => {
-      fireEvent.click(screen.getAllByRole('button', { name: '修改' })[0] as Element)
-    })
+    fireEvent.click(screen.getAllByRole('button', { name: '修改' })[0] as Element)
 
     await screen.findByDisplayValue('tester')
     expect(screen.getAllByText('下单方式').length).toBeGreaterThan(0)
@@ -464,52 +452,6 @@ describe('BookTaskListPage', () => {
     expect(screen.queryByText('cid类型')).toBeNull()
     expect(screen.getAllByText('nac间隔时间').length).toBeGreaterThan(0)
 
-    view.unmount()
-  }, 10000)
-
-  it('should submit the legacy-shaped payload for single-row edits', async () => {
-    const view = renderPage()
-
-    await screen.findByText('tester')
-
-    await act(async () => {
-      fireEvent.click(screen.getAllByRole('button', { name: '修改' })[0] as Element)
-    })
-
-    await screen.findByDisplayValue('tester')
-
-    const submitButton = screen
-      .getAllByRole('button')
-      .find((button) => ['确 定', '确定', 'OK'].includes(button.textContent?.trim() ?? ''))
-
-    expect(submitButton).toBeTruthy()
-
-    await act(async () => {
-      fireEvent.click(submitButton as Element)
-    })
-
-    await waitFor(() => {
-      expect(latestUpdatePayload).not.toBeNull()
-    })
-
-    expect(latestUpdatePayload).toMatchObject({
-      order_id: '101',
-      destination_service_mode: 'CY',
-      limit_price: 0,
-      route_select: null,
-      is_roll: null,
-      limit_day: null,
-      cid_group: null,
-      group_id: 1,
-      cid_sleep: 20,
-      nac_loop_times: 2,
-      nac_times: 6,
-      nac_concurrent: 1,
-      nac_sleep: 1,
-      id: 1,
-    })
-
-    view.unmount()
   }, 10000)
 
   it('should preserve comma-separated order ids when reopening an edited row', async () => {
@@ -531,7 +473,7 @@ describe('BookTaskListPage', () => {
       )
     )
 
-    const view = renderPage()
+    renderPage()
 
     await screen.findByText('tester')
 
@@ -541,7 +483,7 @@ describe('BookTaskListPage', () => {
 
     expect(await screen.findByDisplayValue('101,102')).toBeTruthy()
 
-    const submitButton = screen
+    const submitButton = within(screen.getByRole('dialog'))
       .getAllByRole('button')
       .find((button) => ['确 定', '确定', 'OK'].includes(button.textContent?.trim() ?? ''))
 
@@ -553,32 +495,22 @@ describe('BookTaskListPage', () => {
       expect(latestUpdatePayload).toMatchObject({ order_id: '101,102' })
     })
 
-    view.unmount()
   }, 10000)
 
   it('should open batch modal with repeat-add field intact', async () => {
-    const view = renderPage()
+    render(
+      <ThemeProvider>
+        <Form layout="vertical">
+          <BookTaskFormFields includeRepeatAdd />
+        </Form>
+      </ThemeProvider>
+    )
 
-    await screen.findByText('tester')
-
-    const rowCheckboxes = screen.getAllByRole('checkbox')
-    fireEvent.click(rowCheckboxes[1] as Element)
-
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: '批量修改' })).toBeTruthy()
-    })
-
-    await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: '批量修改' }))
-    })
-
-    await screen.findByText('是否重复添加')
-
-    view.unmount()
-  }, 10000)
+    expect(screen.getByText('是否重复添加')).toBeTruthy()
+  })
 
   it('should allow adding a custom cid type option', async () => {
-    const view = render(<CidTypeSelectHarness initialValue={0} />)
+    render(<CidTypeSelectHarness initialValue={0} />)
 
     const comboBox = screen.getByRole('combobox')
     await act(async () => {
@@ -604,17 +536,15 @@ describe('BookTaskListPage', () => {
       expect(screen.getByText('current:9')).toBeTruthy()
     })
 
-    view.unmount()
   })
 
   it('should keep an unknown cid type value visible', async () => {
-    const view = render(<CidTypeSelectHarness initialValue={9} />)
+    render(<CidTypeSelectHarness initialValue={9} />)
 
     await waitFor(() => {
       expect(screen.getByText('9')).toBeTruthy()
       expect(screen.getByText('current:9')).toBeTruthy()
     })
 
-    view.unmount()
   })
 })

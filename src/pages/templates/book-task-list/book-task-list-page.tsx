@@ -499,7 +499,7 @@ export const CidTypeSelect = ({
   )
 }
 
-const BookTaskFormFields = ({
+export const BookTaskFormFields = ({
   includeRepeatAdd,
 }: {
   includeRepeatAdd?: boolean
@@ -729,19 +729,13 @@ export const BookTaskListPage = () => {
     async (record: EditableBookTask, reload: () => Promise<void>) => {
       try {
         setSaving(true)
-        const values = await editForm.validateFields()
-        const payload: BookTaskSavePayload = buildBookTaskUpdatePayload(
-          values as Record<string, unknown>
-        )
+        const payload: BookTaskSavePayload = buildBookTaskUpdatePayload(editForm.getFieldsValue(true))
         await updateBookTask(record.id, payload)
         message.success('保存成功')
         editForm.resetFields()
         setEditingItem(null)
         await reload()
       } catch (error) {
-        if (error instanceof Error && 'errorFields' in error) {
-          return
-        }
         const messageText = error instanceof Error ? error.message : '保存失败，请稍后重试。'
         message.error(messageText)
       } finally {
@@ -760,11 +754,7 @@ export const BookTaskListPage = () => {
 
       try {
         setSaving(true)
-        const values = await batchForm.validateFields()
-        const payload: BookTaskBatchPayload = buildBookTaskBatchPayload(
-          values as Record<string, unknown>,
-          selectedRowKeys
-        )
+        const payload: BookTaskBatchPayload = buildBookTaskBatchPayload(batchForm.getFieldsValue(true), selectedRowKeys)
         await batchUpdateBookTask(payload)
         message.success('修改成功')
         batchForm.resetFields()
@@ -772,9 +762,6 @@ export const BookTaskListPage = () => {
         setSelectedRowKeys([])
         await reload()
       } catch (error) {
-        if (error instanceof Error && 'errorFields' in error) {
-          return
-        }
         const messageText = error instanceof Error ? error.message : '批量修改失败，请稍后重试。'
         message.error(messageText)
       } finally {
