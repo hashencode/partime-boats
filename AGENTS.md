@@ -95,9 +95,10 @@ Behavior expectations:
 2. `docs/ai/business-map.yaml`
 3. `docs/ai/page-recipes.yaml`
 4. `docs/ai/component-catalog.yaml`
-5. `docs/testing-standards.md`
-6. `src/routes/routes.config.ts`
-7. `src/infrastructure/auth/permissions.ts`
+5. `docs/ai/list-column-width-rules.md`
+6. `docs/testing-standards.md`
+7. `src/routes/routes.config.ts`
+8. `src/infrastructure/auth/permissions.ts`
 
 ## Execution Protocol
 - Do not write code immediately.
@@ -116,6 +117,7 @@ Behavior expectations:
 ## Hard Constraints
 - Default to form readonly reuse for detail display; no standalone detail page unless special-case criteria are met.
 - Avoid hardcoded styles; keep `light/dark/system` compatibility.
+- 非操作列宽度必须按 `docs/ai/list-column-width-rules.md` 执行真实页面测量：以前 20 条数据为样本、覆盖至少 90% 情况、显式计入左右 padding 与额外 16px 安全余量、上限 220px；操作列继续使用独立固定宽度规则。
 - Any violation of `docs/ai/ai-rules.md` means the plan is invalid and must be regenerated.
 
 ## BaseData Defaults (Learned Preferences)

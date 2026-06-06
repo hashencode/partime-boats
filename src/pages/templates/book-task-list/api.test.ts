@@ -72,6 +72,26 @@ describe('book task api', () => {
     expect(response.data[0]?.id).toBe(11)
   })
 
+  it('should treat null data as an empty task list', async () => {
+    server.use(
+      http.get('http://124.70.141.127:9111/maersk/book/task', () =>
+        HttpResponse.json({
+          data: null,
+          pagination: {
+            total: 0,
+            page: 1,
+            per_page: 10,
+          },
+        })
+      )
+    )
+
+    const response = await fetchBookTaskList({ page: 1, per_page: 10 })
+
+    expect(response.data).toEqual([])
+    expect(response.total).toBe(0)
+  })
+
   it('should aggregate ids only when full scoped ids are needed', async () => {
     const ids = await fetchAllBookTaskIds({ origincity_name: '上海' })
 

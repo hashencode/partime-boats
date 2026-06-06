@@ -6,6 +6,7 @@ import { StandardListPageRecipe } from './standard-list-page-recipe'
 import type { StandardListPageSpec } from '../specs/standard-list-page-spec'
 import { RouteTitleProvider } from '../../contexts/route-title-context'
 import { SEARCH_COMPACT_LAYOUT_STORAGE_KEY, ThemeProvider } from '../../contexts/theme-context'
+import { ALL_DATA_PAGE_SIZE } from '../../hooks/use-standard-pagination'
 
 void React
 
@@ -303,6 +304,61 @@ describe('StandardListPageRecipe', () => {
     })
   })
 
+  it('should enable virtual scroll on first render when default page size is all data', async () => {
+    let latestVirtualScroll: VirtualScrollSnapshot | null = null
+    const spec: StandardListPageSpec<FilterValues, RequestFilters, Response, { id: number; name: string }, Error> = {
+      pageTitle: '测试列表',
+      cardTitle: '测试数据',
+      tableId: 'recipe-test-list-default-all-data',
+      formRoute: '/test/form',
+      initialFilters: {},
+      pagination: {
+        defaultPageSize: ALL_DATA_PAGE_SIZE,
+      },
+      toFilters: (values) => ({
+        name: values.name?.trim() || undefined,
+      }),
+      buildRequestFilters: ({ filters, current, pageSize }) => ({
+        ...filters,
+        current,
+        size: pageSize,
+      }),
+      request: async (filters) => ({
+        data: [{ id: 1, name: 'demo' }],
+        current: filters.current ?? 1,
+        size: filters.size ?? ALL_DATA_PAGE_SIZE,
+        total: 1,
+      }),
+      selectItems: (response) => response?.data ?? [],
+      filterFields: [],
+      buildColumns: () =>
+        [
+          {
+            key: 'name',
+            title: '名称',
+            dataIndex: 'name',
+            width: 180,
+          },
+        ] satisfies ColumnsType<{ id: number; name: string }>,
+      buildTableNode: ({ virtualScroll }) => {
+        latestVirtualScroll = virtualScroll
+        return <div>virtual-table</div>
+      },
+    }
+
+    renderWithTheme(<StandardListPageRecipe spec={spec} />)
+
+    await waitFor(() => {
+      expect(latestVirtualScroll).toEqual({
+        enabled: true,
+        scroll: {
+          x: 1200,
+          y: 700,
+        },
+      })
+    })
+  })
+
   it('should pass compact search layout preference to filter form', async () => {
     window.localStorage.setItem(SEARCH_COMPACT_LAYOUT_STORAGE_KEY, 'true')
 
@@ -562,5 +618,61 @@ describe('StandardListPageRecipe', () => {
     expect(requestCalls).toHaveLength(1)
     expect(screen.getByText('已选 1 项')).toBeTruthy()
     expect(screen.getByTestId('selection-table-node').textContent).toBe('demo')
+  })
+
+  it('places selection info on the left, action area in the center, and view controls on the right', async () => {
+    const spec: StandardListPageSpec<FilterValues, RequestFilters, Response, { id: number; name: string }, Error> = {
+      pageTitle: '测试列表',
+      cardTitle: '测试数据',
+      tableId: 'recipe-test-header-layout',
+      formRoute: '/test/form',
+      initialFilters: {},
+      toFilters: () => ({}),
+      request: async () => ({
+        data: [{ id: 1, name: 'demo' }],
+        current: 1,
+        size: 10,
+        total: 1,
+      }),
+      selectItems: (response) => response?.data ?? [],
+      filterFields: [],
+      createAction: {
+        label: '新增规则',
+      },
+      toolbarExtra: <button type="button">批量操作</button>,
+      buildColumns: () =>
+        [
+          {
+            key: 'name',
+            title: '名称',
+            dataIndex: 'name',
+          },
+        ] satisfies ColumnsType<{ id: number; name: string }>,
+      buildTableNode: ({ dataSource }) => <div>{dataSource[0]?.name ?? 'empty'}</div>,
+    }
+
+    const { container } = renderWithTheme(
+      <StandardListPageRecipe spec={spec} cardTitleOverride={<span>已选 2 项</span>} />
+    )
+
+    await waitFor(() => {
+      expect(screen.getByText('demo')).toBeTruthy()
+    })
+
+    const left = container.querySelector('.list-card-header-left')
+    const center = container.querySelector('.list-card-header-center')
+    const right = container.querySelector('.list-card-header-right')
+
+    expect(left?.textContent).toContain('已选 2 项')
+    const refreshButton = screen.getByRole('button', { name: '刷新' })
+    const createButton = screen.getByRole('button', { name: '新增规则' })
+    const customButton = screen.getByRole('button', { name: '批量操作' })
+
+    expect(refreshButton.closest('.list-card-header-center')).toBe(center)
+    expect(createButton.closest('.list-card-header-center')).toBe(center)
+    expect(customButton.closest('.list-card-header-center')).toBe(center)
+    expect(customButton.compareDocumentPosition(refreshButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(screen.getByRole('button', { name: '密度' }).closest('.list-card-header-right')).toBe(right)
+    expect(screen.getByRole('button', { name: '列设置' }).closest('.list-card-header-right')).toBe(right)
   })
 })

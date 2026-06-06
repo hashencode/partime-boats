@@ -1,4 +1,10 @@
 import { apiClient } from '../../../infrastructure/http/api-client'
+import {
+  type LegacyEnvelope,
+  toArrayOrEmpty,
+  unwrapLegacyEnvelope,
+  unwrapLegacyEnvelopeOr,
+} from '../../../infrastructure/http/legacy-envelope'
 
 export type OrderStatus = 0 | 1 | 2 | 3 | 4
 
@@ -40,7 +46,7 @@ export type OrderListFilters = {
 }
 
 export type OrderListResponse = {
-  data: OrderListItem[]
+  data?: OrderListItem[] | null
   total_page?: number
 }
 
@@ -51,43 +57,27 @@ export type SubmitOrderResponse = {
   data?: string
 }
 
-type LegacyEnvelope<T> = {
-  bool_status?: boolean
-  msg?: string
-  data?: T
-}
-
-const unwrapLegacyEnvelope = <T>(raw: T | LegacyEnvelope<T>): T => {
-  const envelope = raw as LegacyEnvelope<T>
-  if (typeof envelope.bool_status === 'boolean') {
-    if (!envelope.bool_status) {
-      throw new Error(envelope.msg || '请求失败，请稍后重试。')
-    }
-    if (envelope.data === undefined) {
-      throw new Error('接口返回缺少 data 字段。')
-    }
-    return envelope.data as T
-  }
-  return raw as T
-}
-
 export const fetchOrderList = async (filters: OrderListFilters): Promise<OrderListResponse> => {
   const response = await apiClient.post<OrderListResponse | LegacyEnvelope<OrderListResponse>>('/book/check', filters)
-  return unwrapLegacyEnvelope<OrderListResponse>(response.data)
+  const payload = unwrapLegacyEnvelopeOr<OrderListResponse>(response.data, { data: [], total_page: 0 })
+  return {
+    ...payload,
+    data: toArrayOrEmpty(payload.data),
+  }
 }
 
 export const fetchStartPortOptions = async (location = 1): Promise<PortOptionResponse> => {
   const response = await apiClient.get<PortOptionResponse | LegacyEnvelope<PortOptionResponse>>(
     `/startport?location=${location}`
   )
-  return unwrapLegacyEnvelope<PortOptionResponse>(response.data)
+  return toArrayOrEmpty(unwrapLegacyEnvelopeOr<PortOptionResponse>(response.data, []))
 }
 
 export const fetchEndPortOptions = async (location = 1): Promise<PortOptionResponse> => {
   const response = await apiClient.get<PortOptionResponse | LegacyEnvelope<PortOptionResponse>>(
     `/endport?location=${location}`
   )
-  return unwrapLegacyEnvelope<PortOptionResponse>(response.data)
+  return toArrayOrEmpty(unwrapLegacyEnvelopeOr<PortOptionResponse>(response.data, []))
 }
 
 export const submitOrder = async (id: number): Promise<SubmitOrderResponse> => {

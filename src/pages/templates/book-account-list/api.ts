@@ -1,24 +1,5 @@
 import { apiClient } from '../../../infrastructure/http/api-client'
-
-type LegacyEnvelope<T> = {
-  bool_status?: boolean
-  msg?: string
-  data?: T
-}
-
-const unwrapLegacyEnvelope = <T>(raw: T | LegacyEnvelope<T>): T => {
-  const envelope = raw as LegacyEnvelope<T>
-  if (typeof envelope.bool_status === 'boolean') {
-    if (!envelope.bool_status) {
-      throw new Error(envelope.msg || '请求失败，请稍后重试。')
-    }
-    if (envelope.data === undefined) {
-      throw new Error('接口返回缺少 data 字段。')
-    }
-    return envelope.data
-  }
-  return raw as T
-}
+import { type LegacyEnvelope, toArrayOrEmpty, unwrapLegacyEnvelopeOr } from '../../../infrastructure/http/legacy-envelope'
 
 export type BookAccountItem = {
   account?: string | null
@@ -34,7 +15,7 @@ export type BookAccountListFilters = {
 }
 
 export type BookAccountListResponse = {
-  data: BookAccountItem[]
+  data?: BookAccountItem[] | null
   pagination?: {
     total?: number
   }
@@ -48,5 +29,9 @@ export const fetchBookAccountList = async (filters: BookAccountListFilters): Pro
     }
   )
 
-  return unwrapLegacyEnvelope(response.data)
+  const payload = unwrapLegacyEnvelopeOr<BookAccountListResponse>(response.data, { data: [], pagination: { total: 0 } })
+  return {
+    ...payload,
+    data: toArrayOrEmpty(payload.data),
+  }
 }

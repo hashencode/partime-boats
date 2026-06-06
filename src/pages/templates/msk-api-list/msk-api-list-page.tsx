@@ -375,6 +375,7 @@ export const MskApiListPage = () => {
             loading={loading}
             size={tableSize}
             pagination={pagination}
+            virtual={virtualScroll.enabled}
             rowSelection={{
               selectedRowKeys: selectedRowsRef.current.map((item) => item.id),
               onChange: (_, rows) => {
@@ -383,7 +384,7 @@ export const MskApiListPage = () => {
               },
               columnWidth: 50,
             }}
-            scroll={virtualScroll.enabled ? { x: 'max-content', y: virtualScroll.scroll.y } : { x: 'max-content' }}
+            scroll={virtualScroll.enabled ? virtualScroll.scroll : { x: 'max-content' }}
           />
         )
       },

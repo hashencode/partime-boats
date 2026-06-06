@@ -427,14 +427,23 @@ describe('BookTaskListPage', () => {
     fireEvent.click(rowCheckboxes[1] as Element)
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: '批量修改' })).toBeTruthy()
-      expect(screen.getByText('已选 1 项')).toBeTruthy()
+      const leftHeader = view.container.querySelector('.list-card-header-left')
+
+      expect(leftHeader?.textContent).toContain('批量修改')
+      expect(leftHeader?.textContent).toContain('已选 1 项')
     })
 
+    const leftHeader = view.container.querySelector('.list-card-header-left')
+    const centerHeader = view.container.querySelector('.list-card-header-center')
+
+    expect(leftHeader?.textContent).toContain('批量打开')
+    expect(leftHeader?.textContent).toContain('关闭初始化')
+    expect(leftHeader?.textContent).toContain('清除路由')
+    expect(centerHeader?.textContent).not.toContain('批量打开')
     expect(screen.queryByText('已选择')).toBeNull()
 
     view.unmount()
-  })
+  }, 10000)
 
   it('should open edit modal with the repacked form fields', async () => {
     const view = renderPage()

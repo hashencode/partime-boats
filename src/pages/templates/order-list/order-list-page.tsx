@@ -3,6 +3,7 @@ import dayjs, { type Dayjs } from 'dayjs'
 import React, { useCallback, useMemo, useRef, useState } from 'react'
 import ExportJsonExcel from 'js-export-excel'
 import { normalizeApiError, type ApiError } from '../../../infrastructure/http/api-client'
+import { toArrayOrEmpty } from '../../../infrastructure/http/legacy-envelope'
 import { ALL_DATA_PAGE_SIZE } from '../../../shared/hooks/use-standard-pagination'
 import {
   createPortFilterFields,
@@ -43,6 +44,36 @@ const BOX_TYPE_OPTIONS = ['20 Dry Standard', '40 Dry High', '40 Reefer High', '4
 // 1 个间距 13，加余量 16，总计 141，按易读性上调到 150。
 const ACTION_COLUMN_WIDTH = 150
 const EXPORT_ALL_PAGE_SIZE = 10000
+// 非操作列固定宽度已按项目级规则校准：
+// 1. 以当前列表前 20 条数据的 90 分位内容宽度为样本，并同时校验表头单行显示；
+// 2. 最终宽度显式计入左右 padding 与额外 16px 安全余量；
+// 3. 单列宽度上限 220px，操作列继续使用独立固定宽度规则。
+const ORDER_TABLE_COLUMN_WIDTHS = {
+  username: 120,
+  earlytime: 104,
+  arriveTime: 104,
+  originLocation: 88,
+  destinationLocation: 88,
+  boxType: 120,
+  vesselName: 168,
+  voyageDays: 104,
+  bookingNumber: 104,
+  price: 88,
+  isRoll: 88,
+  responseValue2: 88,
+  booktime: 176,
+  endtime: 184,
+  updateTime: 176,
+  status: 104,
+  id: 80,
+  responseValue1: 88,
+  freeDay: 88,
+} as const
+const NO_WRAP_HEADER_CELL_PROPS = {
+  style: {
+    whiteSpace: 'nowrap' as const,
+  },
+}
 
 const TABLE_TITLE = [
   '账号',
@@ -246,9 +277,10 @@ export const OrderListPage = () => {
       request: async (filters) => {
         latestRequestFiltersRef.current = filters
         const response = await fetchOrderList(filters)
-        const total = response.total_page ?? response.data.length
+        const rows = toArrayOrEmpty(response.data)
+        const total = response.total_page ?? rows.length
         return {
-          data: response.data.map(formatRecord),
+          data: rows.map(formatRecord),
           total,
           current: filters.page ?? 1,
           size: filters.per_page ?? 100,
@@ -277,7 +309,7 @@ export const OrderListPage = () => {
                   page: 1,
                   per_page: EXPORT_ALL_PAGE_SIZE,
                 })
-                exportExcel(allResponse.data.map(formatRecord))
+                exportExcel(toArrayOrEmpty(allResponse.data).map(formatRecord))
               } finally {
                 setExporting(false)
               }
@@ -349,32 +381,120 @@ export const OrderListPage = () => {
             return null
           },
         },
-        { title: '账号', key: 'username', dataIndex: 'username', sorter: createTextSorter((record) => record.username) },
-        { title: '开航时间', key: 'earlytime', dataIndex: 'earlytime', sorter: createDateSorter((record) => record.earlytime) },
-        { title: '到港时间', key: 'arrive_time', dataIndex: 'arrive_time', sorter: createDateSorter((record) => record.arrive_time) },
-        { title: '起始港', key: 'origin_location', dataIndex: 'origin_location', sorter: createTextSorter((record) => record.origin_location) },
-        { title: '目的港', key: 'destination_location', dataIndex: 'destination_location', sorter: createTextSorter((record) => record.destination_location) },
-        { title: '箱型', key: 'box_type', dataIndex: 'box_type', sorter: createTextSorter((record) => record.box_type) },
-        { title: '船名', key: 'vessel_name', dataIndex: 'vessel_name', sorter: createTextSorter((record) => record.vessel_name) },
-        { title: '航程（天）', key: 'voyage_days', dataIndex: 'voyage_days', sorter: createNumberSorter((record) => record.voyage_days) },
-        { title: '提单号', key: 'booking_number', dataIndex: 'booking_number', sorter: createTextSorter((record) => record.booking_number) },
-        { title: '价格', key: 'price', dataIndex: 'price', sorter: createNumberSorter((record) => record.price) },
-        { title: 'is_roll', key: 'is_roll', dataIndex: 'is_roll', sorter: createNumberSorter((record) => record.is_roll) },
+        {
+          title: '账号',
+          key: 'username',
+          dataIndex: 'username',
+          width: ORDER_TABLE_COLUMN_WIDTHS.username,
+          onHeaderCell: () => NO_WRAP_HEADER_CELL_PROPS,
+          sorter: createTextSorter((record) => record.username),
+        },
+        {
+          title: '开航时间',
+          key: 'earlytime',
+          dataIndex: 'earlytime',
+          width: ORDER_TABLE_COLUMN_WIDTHS.earlytime,
+          onHeaderCell: () => NO_WRAP_HEADER_CELL_PROPS,
+          sorter: createDateSorter((record) => record.earlytime),
+        },
+        {
+          title: '到港时间',
+          key: 'arrive_time',
+          dataIndex: 'arrive_time',
+          width: ORDER_TABLE_COLUMN_WIDTHS.arriveTime,
+          onHeaderCell: () => NO_WRAP_HEADER_CELL_PROPS,
+          sorter: createDateSorter((record) => record.arrive_time),
+        },
+        {
+          title: '起始港',
+          key: 'origin_location',
+          dataIndex: 'origin_location',
+          width: ORDER_TABLE_COLUMN_WIDTHS.originLocation,
+          onHeaderCell: () => NO_WRAP_HEADER_CELL_PROPS,
+          sorter: createTextSorter((record) => record.origin_location),
+        },
+        {
+          title: '目的港',
+          key: 'destination_location',
+          dataIndex: 'destination_location',
+          width: ORDER_TABLE_COLUMN_WIDTHS.destinationLocation,
+          onHeaderCell: () => NO_WRAP_HEADER_CELL_PROPS,
+          sorter: createTextSorter((record) => record.destination_location),
+        },
+        {
+          title: '箱型',
+          key: 'box_type',
+          dataIndex: 'box_type',
+          width: ORDER_TABLE_COLUMN_WIDTHS.boxType,
+          onHeaderCell: () => NO_WRAP_HEADER_CELL_PROPS,
+          sorter: createTextSorter((record) => record.box_type),
+        },
+        {
+          title: '船名',
+          key: 'vessel_name',
+          dataIndex: 'vessel_name',
+          width: ORDER_TABLE_COLUMN_WIDTHS.vesselName,
+          onHeaderCell: () => NO_WRAP_HEADER_CELL_PROPS,
+          sorter: createTextSorter((record) => record.vessel_name),
+        },
+        {
+          title: '航程（天）',
+          key: 'voyage_days',
+          dataIndex: 'voyage_days',
+          width: ORDER_TABLE_COLUMN_WIDTHS.voyageDays,
+          onHeaderCell: () => NO_WRAP_HEADER_CELL_PROPS,
+          sorter: createNumberSorter((record) => record.voyage_days),
+        },
+        {
+          title: '提单号',
+          key: 'booking_number',
+          dataIndex: 'booking_number',
+          width: ORDER_TABLE_COLUMN_WIDTHS.bookingNumber,
+          onHeaderCell: () => NO_WRAP_HEADER_CELL_PROPS,
+          sorter: createTextSorter((record) => record.booking_number),
+        },
+        {
+          title: '价格',
+          key: 'price',
+          dataIndex: 'price',
+          width: ORDER_TABLE_COLUMN_WIDTHS.price,
+          onHeaderCell: () => NO_WRAP_HEADER_CELL_PROPS,
+          sorter: createNumberSorter((record) => record.price),
+        },
+        {
+          title: 'is_roll',
+          key: 'is_roll',
+          dataIndex: 'is_roll',
+          width: ORDER_TABLE_COLUMN_WIDTHS.isRoll,
+          onHeaderCell: () => NO_WRAP_HEADER_CELL_PROPS,
+          sorter: createNumberSorter((record) => record.is_roll),
+        },
         {
           title: '返回值2',
           key: 'capacity_hard_stop_indicator',
           dataIndex: 'capacity_hard_stop_indicator',
+          width: ORDER_TABLE_COLUMN_WIDTHS.responseValue2,
+          onHeaderCell: () => NO_WRAP_HEADER_CELL_PROPS,
           sorter: createNumberSorter((record) => record.capacity_hard_stop_indicator),
           render: (value) => {
             const isAbnormal = value !== 200 && value !== '200'
             return <span className={isAbnormal ? 'text-orange-500' : ''}>{value ?? '-'}</span>
           },
         },
-        { title: '下单时间', key: 'booktime', dataIndex: 'booktime', sorter: createDateSorter((record) => record.booktime) },
+        {
+          title: '下单时间',
+          key: 'booktime',
+          dataIndex: 'booktime',
+          width: ORDER_TABLE_COLUMN_WIDTHS.booktime,
+          onHeaderCell: () => NO_WRAP_HEADER_CELL_PROPS,
+          sorter: createDateSorter((record) => record.booktime),
+        },
         {
           title: '截止提交时间',
           key: 'endtime',
           dataIndex: 'endtime',
+          width: ORDER_TABLE_COLUMN_WIDTHS.endtime,
+          onHeaderCell: () => NO_WRAP_HEADER_CELL_PROPS,
           sorter: createDateSorter((record) => record.endtime),
           render: (value?: string) => {
             if (!value) return '-'
@@ -398,22 +518,47 @@ export const OrderListPage = () => {
             )
           },
         },
-        { title: '提交时间', key: 'update_time', dataIndex: 'update_time', sorter: createDateSorter((record) => record.update_time) },
+        {
+          title: '提交时间',
+          key: 'update_time',
+          dataIndex: 'update_time',
+          width: ORDER_TABLE_COLUMN_WIDTHS.updateTime,
+          onHeaderCell: () => NO_WRAP_HEADER_CELL_PROPS,
+          sorter: createDateSorter((record) => record.update_time),
+        },
         {
           title: '状态',
           key: 'is_book',
           dataIndex: 'is_book',
+          width: ORDER_TABLE_COLUMN_WIDTHS.status,
+          onHeaderCell: () => NO_WRAP_HEADER_CELL_PROPS,
           sorter: createNumberSorter((record) => record.is_book),
           render: (value: OrderStatus) => <Tag>{statusLabel(value)}</Tag>,
         },
-        { title: 'ID', key: 'id', dataIndex: 'id', sorter: createNumberSorter((record) => record.id) },
+        {
+          title: 'ID',
+          key: 'id',
+          dataIndex: 'id',
+          width: ORDER_TABLE_COLUMN_WIDTHS.id,
+          onHeaderCell: () => NO_WRAP_HEADER_CELL_PROPS,
+          sorter: createNumberSorter((record) => record.id),
+        },
         {
           title: '返回值1',
           key: 'is_instant_confirmation',
           dataIndex: 'is_instant_confirmation',
+          width: ORDER_TABLE_COLUMN_WIDTHS.responseValue1,
+          onHeaderCell: () => NO_WRAP_HEADER_CELL_PROPS,
           sorter: createNumberSorter((record) => record.is_instant_confirmation),
         },
-        { title: '免用箱', key: 'free_day', dataIndex: 'free_day', sorter: createNumberSorter((record) => record.free_day) },
+        {
+          title: '免用箱',
+          key: 'free_day',
+          dataIndex: 'free_day',
+          width: ORDER_TABLE_COLUMN_WIDTHS.freeDay,
+          onHeaderCell: () => NO_WRAP_HEADER_CELL_PROPS,
+          sorter: createNumberSorter((record) => record.free_day),
+        },
       ],
       buildTableNode: ({ columns, dataSource, loading, tableSize, tableClassName, pagination, virtualScroll }) => {
         currentRowsRef.current = dataSource
@@ -425,7 +570,8 @@ export const OrderListPage = () => {
             dataSource={dataSource}
             size={tableSize}
             loading={loading}
-            scroll={virtualScroll.enabled ? { x: 'max-content', y: virtualScroll.scroll.y } : { x: 'max-content' }}
+            virtual={virtualScroll.enabled}
+            scroll={virtualScroll.enabled ? virtualScroll.scroll : { x: 'max-content' }}
             pagination={pagination}
           />
         )

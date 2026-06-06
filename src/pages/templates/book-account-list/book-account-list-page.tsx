@@ -3,6 +3,7 @@ import type { ColumnsType } from 'antd/es/table'
 import dayjs from 'dayjs'
 import React, { useMemo } from 'react'
 import { normalizeApiError, type ApiError } from '../../../infrastructure/http/api-client'
+import { toArrayOrEmpty } from '../../../infrastructure/http/legacy-envelope'
 import {
   createDateSorter,
   createNumberSorter,
@@ -89,7 +90,7 @@ export const BookAccountListPage = () => {
       }),
       request: async (filters) => {
         const response = await fetchBookAccountList(filters)
-        const rows = response.data.map(formatRow)
+        const rows = toArrayOrEmpty(response.data).map(formatRow)
         return {
           data: rows,
           total: response.pagination?.total ?? rows.length,
@@ -153,7 +154,8 @@ export const BookAccountListPage = () => {
             loading={loading}
             pagination={pagination}
             size={tableSize}
-            scroll={virtualScroll.enabled ? { x: 'max-content', y: virtualScroll.scroll.y } : { x: 'max-content' }}
+            virtual={virtualScroll.enabled}
+            scroll={virtualScroll.enabled ? virtualScroll.scroll : { x: 'max-content' }}
           />
         )
       },

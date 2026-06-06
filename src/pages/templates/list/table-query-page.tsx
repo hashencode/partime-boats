@@ -285,6 +285,7 @@ export const TableQueryPage = () => {
             size={tableSize}
             pagination={pagination}
             loading={loading}
+            virtual={virtualScroll.enabled}
             scroll={virtualScroll.enabled ? virtualScroll.scroll : undefined}
             rowSelection={{
               onChange: (_, rows) => setSelectedRows(rows),

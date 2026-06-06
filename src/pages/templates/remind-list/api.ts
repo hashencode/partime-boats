@@ -1,24 +1,5 @@
 import { apiClient } from '../../../infrastructure/http/api-client'
-
-type LegacyEnvelope<T> = {
-  bool_status?: boolean
-  msg?: string
-  data?: T
-}
-
-const unwrapLegacyEnvelope = <T>(raw: T | LegacyEnvelope<T>): T => {
-  const envelope = raw as LegacyEnvelope<T>
-  if (typeof envelope.bool_status === 'boolean') {
-    if (!envelope.bool_status) {
-      throw new Error(envelope.msg || '请求失败，请稍后重试。')
-    }
-    if (envelope.data === undefined) {
-      throw new Error('接口返回缺少 data 字段。')
-    }
-    return envelope.data
-  }
-  return raw as T
-}
+import { type LegacyEnvelope, toArrayOrEmpty, unwrapLegacyEnvelopeOr } from '../../../infrastructure/http/legacy-envelope'
 
 export type RemindListItem = {
   id: number
@@ -46,7 +27,7 @@ export type RemindListFilters = {
 }
 
 export type RemindListResponse = {
-  data: RemindListItem[]
+  data?: RemindListItem[] | null
   total?: number
 }
 
@@ -58,7 +39,11 @@ export const fetchRemindList = async (filters: RemindListFilters): Promise<Remin
   const response = await apiClient.get<RemindListResponse | LegacyEnvelope<RemindListResponse>>('/maersk/remind/list', {
     params: filters,
   })
-  return unwrapLegacyEnvelope(response.data)
+  const payload = unwrapLegacyEnvelopeOr<RemindListResponse>(response.data, { data: [], total: 0 })
+  return {
+    ...payload,
+    data: toArrayOrEmpty(payload.data),
+  }
 }
 
 export const invalidateRemindList = async (payload: RemindInvalidatePayload): Promise<void> => {
@@ -67,5 +52,5 @@ export const invalidateRemindList = async (payload: RemindInvalidatePayload): Pr
 
 export const fetchShippingLineOptions = async (): Promise<string[]> => {
   const response = await apiClient.get<string[] | LegacyEnvelope<string[]>>('shippingLine')
-  return unwrapLegacyEnvelope(response.data)
+  return toArrayOrEmpty(unwrapLegacyEnvelopeOr<string[]>(response.data, []))
 }

@@ -21,3 +21,5 @@
 - 2026-05-30（接口对照）：`docs/api/api.md` 当前为空文件，按 AGENTS 流程读取时拿不到任何接口契约 -> 涉及迁移/联调需求时不能把该文件当成有效来源，应回退到已接通页面实现或旧项目源码做接口对照。
 - 2026-05-30（antd表格排序测试）：给列表列加 `sorter` 后，测试里原先用 `getByLabelText/getByText` 选筛选项或弹窗字段，容易和可排序表头同名节点冲突而误报 -> 列表页测试优先改用 `placeholder/role=columnheader/findByDisplayValue`，表格顺序断言优先读 `tbody tr.ant-table-row` 的真实数据行。 #promote
 - 2026-05-30（生产打包）：`bun run build:production` 会先跑 `tsc -b`，因此 `src/**/*.test.tsx` 的类型错误也会直接拦住打包；本次报错为 `remind-list-page.test.tsx` 中闭包变量 `capturedForm` 经非空判断后仍被推断异常，修复方式是收口到返回明确类型的 helper，再调用 `setFieldValue`。同时仓库需保留标准 `build` 脚本，避免 `npm run build` 直接报 `Missing script: "build"`。
+- 2026-06-06（标准列表 virtual 改造）：当前仓库跑定向 `bunx eslint` 时，会被 `src/pages/templates/book-task-list/book-task-list-page.tsx:374` 的既有 `react-hooks/set-state-in-effect` 错误拦住；跑 `bunx tsc -b --pretty false` 时，会被 `src/infrastructure/http/legacy-envelope.ts:32` 的既有泛型返回类型错误拦住 -> 本次列表虚拟滚动改造应以“定向 rstest 通过”作为主验证，静态检查需将这两处历史问题与当前改动分开判断。
+- 2026-06-06（列表列宽测量）：Codex in-app browser 的只读 `evaluate` 环境缺少 `document.createElement` / `createRange` / `canvas` 等能力，无法做精确文本测宽 -> 列宽测量应改用真实 Playwright 页面上下文，通过 `canvas.measureText(...)` 结合页面真实字体、padding 和虚拟表滚动采样完成。 #promote

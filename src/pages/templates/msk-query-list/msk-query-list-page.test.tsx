@@ -38,13 +38,15 @@ if (!window.ResizeObserver) {
 let latestToggleIds = ''
 let latestToggleStatus = ''
 let latestSingleUpdatePayload: Record<string, unknown> | null = null
+let latestCheckShowShippingLine = ''
 type CapturedFilterForm = {
   setFieldValue: (name: string, value: unknown) => void
 }
 
 const server = setupServer(
-  http.get('*/check/show', () =>
-    HttpResponse.json([
+  http.get('*/check/show', ({ request }) => {
+    latestCheckShowShippingLine = new URL(request.url).searchParams.get('shipping_line') ?? ''
+    return HttpResponse.json([
       {
         id: 1,
         origincity_name: 'NINGBO',
@@ -62,7 +64,7 @@ const server = setupServer(
         tips: 'ok',
       },
     ])
-  ),
+  }),
   http.get('*/shippingLine', () => HttpResponse.json(['MSK', 'CMA'])),
   http.get('*/startport', () => HttpResponse.json(['NINGBO', 'SHA'])),
   http.get('*/endport', () => HttpResponse.json(['GDANSK', 'HAMBURG'])),
@@ -89,6 +91,7 @@ afterEach(() => {
   latestToggleIds = ''
   latestToggleStatus = ''
   latestSingleUpdatePayload = null
+  latestCheckShowShippingLine = ''
   server.resetHandlers()
 })
 
@@ -132,7 +135,7 @@ describe('MskQueryListPage', () => {
       )
     )
 
-    render(<ThemeProvider><MskQueryListPage /></ThemeProvider>)
+    const { container } = render(<ThemeProvider><MskQueryListPage /></ThemeProvider>)
 
     await waitFor(() => {
       expect(screen.getByText('PORT-1')).toBeTruthy()
@@ -140,6 +143,7 @@ describe('MskQueryListPage', () => {
     })
 
     expect(screen.getByText('所有数据')).toBeTruthy()
+    expect(container.querySelector('.ant-table-virtual')).toBeTruthy()
 
     fireEvent.mouseDown(screen.getByText('所有数据'))
 
@@ -159,6 +163,39 @@ describe('MskQueryListPage', () => {
     await waitFor(() => {
       expect(screen.getByText('Maersk列表加载失败')).toBeTruthy()
       expect(screen.getByText('请求失败，请稍后重试。')).toBeTruthy()
+    })
+  })
+
+  it('should treat null data in legacy envelope as empty state', async () => {
+    server.use(
+      http.get('*/check/show', () =>
+        HttpResponse.json({
+          bool_status: true,
+          data: null,
+        })
+      )
+    )
+
+    render(<ThemeProvider><MskQueryListPage /></ThemeProvider>)
+
+    await waitFor(() => {
+      expect(screen.getByText('当前筛选条件没有结果，请调整后重试。')).toBeTruthy()
+    })
+  })
+
+  it('should treat missing data in legacy envelope as empty state', async () => {
+    server.use(
+      http.get('*/check/show', () =>
+        HttpResponse.json({
+          bool_status: true,
+        })
+      )
+    )
+
+    render(<ThemeProvider><MskQueryListPage /></ThemeProvider>)
+
+    await waitFor(() => {
+      expect(screen.getByText('当前筛选条件没有结果，请调整后重试。')).toBeTruthy()
     })
   })
 
@@ -210,6 +247,39 @@ describe('MskQueryListPage', () => {
       Form.useForm = originalUseForm
     }
   }, 10000)
+
+  it('should send shipping_line when querying by shipping line', async () => {
+    const originalUseForm = Form.useForm
+    let capturedForm: CapturedFilterForm | null = null
+    Form.useForm = ((...args: Parameters<typeof originalUseForm>) => {
+      const formTuple = originalUseForm(...args)
+      capturedForm = formTuple[0] as CapturedFilterForm
+      return formTuple
+    }) as typeof Form.useForm
+
+    try {
+      render(<ThemeProvider><MskQueryListPage /></ThemeProvider>)
+
+      await waitFor(() => {
+        expect(screen.getByText('NINGBO')).toBeTruthy()
+      })
+
+      expect(capturedForm).toBeTruthy()
+      if (!capturedForm) {
+        throw new Error('filter form was not created')
+      }
+
+      const filterForm = capturedForm as CapturedFilterForm
+      filterForm.setFieldValue('shipping_line', 'MSK')
+      fireEvent.click(screen.getByRole('button', { name: /查\s*询/ }))
+
+      await waitFor(() => {
+        expect(latestCheckShowShippingLine).toBe('MSK')
+      })
+    } finally {
+      Form.useForm = originalUseForm
+    }
+  })
 
   it('should toggle all visible rows when nothing is checked', async () => {
     render(<ThemeProvider><MskQueryListPage /></ThemeProvider>)
@@ -299,6 +369,72 @@ describe('MskQueryListPage', () => {
         is_roll: 1,
       })
       expect(requestCount).toBe(initialCount + 1)
+    })
+  })
+
+  it('should sort rows by numeric is_run when clicking the status column header', async () => {
+    server.use(
+      http.get('*/check/show', () =>
+        HttpResponse.json([
+          {
+            id: 1,
+            origincity_name: 'NINGBO',
+            destinationcity_name: 'GDANSK',
+            host: 'MSK',
+            box_type: '40',
+            delay_time: 30,
+            is_run: 0,
+            is_roll: 1,
+            early_date: '2026-05-01',
+            destination_service_mode: 'CY',
+            limit_price: 1200,
+            port: 'A1',
+            log: 'lineA',
+            tips: 'enabled',
+          },
+          {
+            id: 2,
+            origincity_name: 'SHA',
+            destinationcity_name: 'HAMBURG',
+            host: 'MSK',
+            box_type: '20',
+            delay_time: 0,
+            is_run: -1,
+            is_roll: 1,
+            early_date: '2026-05-02',
+            destination_service_mode: 'SD',
+            limit_price: 1000,
+            port: 'B1',
+            log: 'lineB',
+            tips: 'disabled',
+          },
+        ])
+      )
+    )
+
+    const { container } = render(<ThemeProvider><MskQueryListPage /></ThemeProvider>)
+
+    await waitFor(() => {
+      expect(screen.getByText('NINGBO')).toBeTruthy()
+      expect(screen.getByText('SHA')).toBeTruthy()
+    })
+
+    const statusHeader = Array.from(container.querySelectorAll('thead th')).find((cell) =>
+      cell.textContent?.includes('是否开启')
+    ) as HTMLElement | undefined
+
+    expect(statusHeader).toBeTruthy()
+    fireEvent.click(statusHeader as HTMLElement)
+
+    await waitFor(() => {
+      const tableBodyText =
+        container.querySelector('.ant-table-tbody-virtual-holder')?.textContent ??
+        container.querySelector('.ant-table-tbody')?.textContent ??
+        ''
+
+      expect(tableBodyText.indexOf('SHA')).toBeGreaterThanOrEqual(0)
+      expect(tableBodyText.indexOf('NINGBO')).toBeGreaterThanOrEqual(0)
+      expect(tableBodyText.indexOf('SHA')).toBeLessThan(tableBodyText.indexOf('NINGBO'))
     })
   })
 

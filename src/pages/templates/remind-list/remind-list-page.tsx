@@ -1,4 +1,4 @@
-import { Button, Dropdown, Popconfirm, Space, Table, Tag, Typography, message } from 'antd'
+import { Button, Dropdown, Space, Table, Tag, Typography, message } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import dayjs, { type Dayjs } from 'dayjs'
 import ExportJsonExcel from 'js-export-excel'
@@ -213,6 +213,25 @@ export const RemindListPage = () => {
     }
   }, [])
 
+  const handleBatchInvalidate = useCallback(async () => {
+    const targetIds =
+      selectedRowKeysRef.current.length > 0
+        ? selectedRowKeysRef.current
+        : currentRowsRef.current.map((item) => item.id)
+
+    if (targetIds.length === 0) {
+      message.error('当前列表暂无可作废的数据')
+      return
+    }
+
+    await handleInvalidate(targetIds.join(', '))
+  }, [handleInvalidate])
+
+  const batchInvalidateButton = useMemo(
+    () => (canWrite ? <Button onClick={() => void handleBatchInvalidate()}>批量作废</Button> : null),
+    [canWrite, handleBatchInvalidate]
+  )
+
   useEffect(() => {
     const timerId = window.setInterval(() => {
       void reloadRef.current()
@@ -247,25 +266,28 @@ export const RemindListPage = () => {
       mapError: normalizeApiError,
       filterFields,
       toolbarExtra: (
-        <Dropdown
-          menu={{
-            items: [
-              { key: 'current', label: '导出当前页' },
-              { key: 'all', label: exportAllLoading ? '正在导出' : '导出全部页', disabled: exportAllLoading },
-            ],
-            onClick: ({ key }) => {
-              if (key === 'current') {
-                exportExcel(currentRowsRef.current)
-                return
-              }
-              void handleExportAll()
-            },
-          }}
-        >
-          <Button>
-            <Space>Excel导出</Space>
-          </Button>
-        </Dropdown>
+        <>
+          {selectedRowKeys.length === 0 ? batchInvalidateButton : null}
+          <Dropdown
+            menu={{
+              items: [
+                { key: 'current', label: '导出当前页' },
+                { key: 'all', label: exportAllLoading ? '正在导出' : '导出全部页', disabled: exportAllLoading },
+              ],
+              onClick: ({ key }) => {
+                if (key === 'current') {
+                  exportExcel(currentRowsRef.current)
+                  return
+                }
+                void handleExportAll()
+              },
+            }}
+          >
+            <Button>
+              <Space>Excel导出</Space>
+            </Button>
+          </Dropdown>
+        </>
       ),
       buildColumns: ({ reload }) => {
         reloadRef.current = reload
@@ -399,6 +421,7 @@ export const RemindListPage = () => {
             loading={loading}
             size={tableSize}
             pagination={pagination}
+            virtual={virtualScroll.enabled}
             rowSelection={
               canWrite
                 ? {
@@ -412,7 +435,7 @@ export const RemindListPage = () => {
                   }
                 : undefined
             }
-            scroll={virtualScroll.enabled ? { x: 'max-content', y: virtualScroll.scroll.y } : { x: 'max-content' }}
+            scroll={virtualScroll.enabled ? virtualScroll.scroll : { x: 'max-content' }}
           />
         )
       },
@@ -429,28 +452,23 @@ export const RemindListPage = () => {
         partialActionLabel: '重载完整数据',
       },
     }),
-    [canWrite, exportAllLoading, filterFields, handleExportAll, handleInvalidate, requestList]
+    [
+      canWrite,
+      exportAllLoading,
+      filterFields,
+      batchInvalidateButton,
+      handleExportAll,
+      handleInvalidate,
+      requestList,
+      selectedRowKeys.length,
+    ]
   )
 
   const cardTitleOverride =
-    canWrite && selectedRowKeys.length > 0 ? (
+    selectedRowKeys.length > 0 ? (
       <div className="flex flex-wrap items-center gap-3">
         <Typography.Text>已选 {selectedRowKeys.length} 项</Typography.Text>
-        <Popconfirm
-          title="确认要批量作废吗？"
-          okText="是"
-          cancelText="否"
-          onConfirm={async () => {
-            if (selectedRowKeysRef.current.length === 0) {
-              message.error('请选择要作废的数据')
-              return
-            }
-
-            await handleInvalidate(selectedRowKeysRef.current.join(', '))
-          }}
-        >
-          <Button>批量作废</Button>
-        </Popconfirm>
+        {batchInvalidateButton}
       </div>
     ) : undefined
 

@@ -39,6 +39,7 @@ export const buildListToolbarColumnSettingOptions = <TItem,>(
 type ListToolbarActionsProps = {
   tableSize: 'small' | 'middle' | 'large'
   densityItems?: MenuProps['items']
+  showReload?: boolean
   onTableSizeChange: (size: 'small' | 'middle' | 'large') => void
   onClearColumnSort?: () => void
   clearColumnSortDisabled?: boolean
@@ -95,6 +96,7 @@ const SortableColumnSettingRow = ({ checked, option, onCheckedChange }: Sortable
 export const ListToolbarActions = ({
   tableSize,
   densityItems = DEFAULT_TABLE_DENSITY_ITEMS,
+  showReload = true,
   onTableSizeChange,
   onClearColumnSort,
   clearColumnSortDisabled = true,
@@ -143,9 +145,11 @@ export const ListToolbarActions = ({
 
   return (
     <div className="inline-flex items-center gap-2">
-      <Tooltip title="刷新">
-        <Button icon={<ReloadOutlined />} aria-label="刷新" onClick={onReload} />
-      </Tooltip>
+      {showReload ? (
+        <Tooltip title="刷新">
+          <Button icon={<ReloadOutlined />} aria-label="刷新" onClick={onReload} />
+        </Tooltip>
+      ) : null}
       <Dropdown
         menu={{
           selectedKeys: [tableSize],

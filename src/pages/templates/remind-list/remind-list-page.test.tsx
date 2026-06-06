@@ -163,11 +163,9 @@ describe('RemindListPage', () => {
     expect(screen.getByRole('button', { name: '刷新' })).toBeTruthy()
     expect(screen.getByRole('button', { name: '密度' })).toBeTruthy()
     expect(screen.getByRole('button', { name: '列设置' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: '批量作废' })).toBeTruthy()
     expect(screen.getByText('未作废')).toBeTruthy()
     expect(screen.getAllByText('已作废').length).toBeGreaterThan(0)
-
-    expect(screen.queryByText('是')).toBeNull()
-    expect(screen.queryByText('否')).toBeNull()
   })
 
   it('should not re-query when changing filters until query button clicked', async () => {
@@ -232,8 +230,8 @@ describe('RemindListPage', () => {
     expect(screen.getByRole('button', { name: '刷新' })).toBeTruthy()
   })
 
-  it('should invalidate selected rows when batch action confirmed', async () => {
-    renderPage()
+  it('should invalidate selected rows when batch action clicked', async () => {
+    const view = renderPage()
 
     await screen.findAllByText('NINGBO')
 
@@ -247,13 +245,29 @@ describe('RemindListPage', () => {
       expect(screen.getByText('已选 1 项')).toBeTruthy()
     })
 
+    expect(screen.getByRole('button', { name: '批量作废' }).closest('.list-card-header-left')).toBeTruthy()
+    expect(view.container.querySelector('.list-card-header-center')?.textContent).not.toContain('批量作废')
+
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: '批量作废' }))
     })
-    fireEvent.click(await screen.findByRole('button', { name: '是' }))
 
     await waitFor(() => {
       expect(invalidatePayload).toEqual({ ids: '1' })
+    })
+  })
+
+  it('should invalidate current page rows when batch action clicked without selection', async () => {
+    renderPage()
+
+    await screen.findAllByText('NINGBO')
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: '批量作废' }))
+    })
+
+    await waitFor(() => {
+      expect(invalidatePayload).toEqual({ ids: '1, 2, 3, 4, 5, 6, 7, 8, 9, 10' })
     })
   })
 
@@ -273,7 +287,7 @@ describe('RemindListPage', () => {
     })
   })
 
-  it('should move the batch action into the card header when rows are selected', async () => {
+  it('should keep the batch action in the card header when rows are selected', async () => {
     renderPage()
 
     await waitFor(() => {

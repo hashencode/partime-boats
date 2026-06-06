@@ -11,9 +11,10 @@
 2. `docs/ai/page-recipes.yaml`
 3. `docs/ai/page-guardrail-recipes.md`
 4. `docs/ai/component-catalog.yaml`
-5. `docs/testing-standards.md`
-6. `src/routes/routes.config.ts`
-7. `src/infrastructure/auth/permissions.ts`
+5. `docs/ai/list-column-width-rules.md`
+6. `docs/testing-standards.md`
+7. `src/routes/routes.config.ts`
+8. `src/infrastructure/auth/permissions.ts`
 
 ## 3. Engineering Constraints
 - 路由、菜单、权限都走已有 route contract。
@@ -30,6 +31,7 @@
 - 新建任意测试文件前，必须先读取 `docs/testing-standards.md`，并按其中分层、命名和最小覆盖清单执行。
 - 尽量少写死样式值（颜色、背景、边框、阴影）；优先使用主题 token、组件变量或语义 class，以适配 `light/dark/system`。
 - 操作列宽度禁止运行时动态推算，必须在开发阶段按“可同时出现”的按钮组合一次性计算后写成固定值，并在代码注释说明计算过程。
+- 非操作列宽度校准必须遵循 `docs/ai/list-column-width-rules.md`：按当前列表前 20 条数据的 90 分位内容宽度测量，显式计入左右 padding 与额外 16px 安全余量，并以 220px 作为上限；若列表无数据，必须显式告知用户无法执行测量。
 - 列表中的危险操作必须使用 `Popconfirm` 去实现二次确认。
 - 动态表单中“上移/下移/删除/编号”操作必须复用统一组件 `sort-action-group`，禁止页面内重复散装实现。
 - 复杂字段（如 `Cascader/Tree/Upload/SearchSelect`）默认同构复用，禁止无依据降级为 `Input/普通Select`。
@@ -59,6 +61,7 @@
 - 若出现临时硬编码样式，必须在 `TODOS.md` 记录迁移任务。
 - 可访问性基线：键盘焦点顺序与视觉顺序一致，状态文案可被屏幕阅读器清晰理解。
 - 操作列“更多聚合”场景必须在开发阶段完成宽度重算并固化常量，不得以运行时测量结果控制列宽。
+- 非操作列不允许按“刚好放下文本”的临界宽度收口；应保证表头单行，并尽量适配当前列表前 20 条数据中至少 90% 的情况。
 - 反馈语义必须分层：轻量结果用 `message`，高风险/强确认写操作用 `modal`（如删除、发布、不可撤销操作）；同类行为在同页面保持一致。
 - 二级及更深层级页面必须展示“标题 + 返回 icon”统一头部，交互与样式以 `PageHeaderWithBack` 为基线。
 

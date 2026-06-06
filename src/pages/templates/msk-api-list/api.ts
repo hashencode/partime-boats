@@ -1,24 +1,10 @@
 import { apiClient } from '../../../infrastructure/http/api-client'
-
-export type LegacyEnvelope<T> = {
-  bool_status?: boolean
-  msg?: string
-  data?: T
-}
-
-const unwrapLegacyEnvelope = <T>(raw: T | LegacyEnvelope<T>): T => {
-  const envelope = raw as LegacyEnvelope<T>
-  if (typeof envelope.bool_status === 'boolean') {
-    if (!envelope.bool_status) {
-      throw new Error(envelope.msg || '请求失败，请稍后重试。')
-    }
-    if (envelope.data === undefined) {
-      throw new Error('接口返回缺少 data 字段。')
-    }
-    return envelope.data
-  }
-  return raw as T
-}
+import {
+  type LegacyEnvelope,
+  toArrayOrEmpty,
+  unwrapLegacyEnvelope,
+  unwrapLegacyEnvelopeOr,
+} from '../../../infrastructure/http/legacy-envelope'
 
 export type MskApiQueryItem = {
   id: number
@@ -82,22 +68,22 @@ export const fetchMskApiList = async (filters: MskApiFilters): Promise<MskApiQue
   const response = await apiClient.get<MskApiQueryItem[] | LegacyEnvelope<MskApiQueryItem[]>>('/check/show?type_name=4', {
     params: filters,
   })
-  return unwrapLegacyEnvelope(response.data)
+  return toArrayOrEmpty(unwrapLegacyEnvelopeOr<MskApiQueryItem[]>(response.data, []))
 }
 
 export const fetchShippingLineOptions = async (): Promise<string[]> => {
   const response = await apiClient.get<string[] | LegacyEnvelope<string[]>>('shippingLine')
-  return unwrapLegacyEnvelope(response.data)
+  return toArrayOrEmpty(unwrapLegacyEnvelopeOr<string[]>(response.data, []))
 }
 
 export const fetchStartPortOptions = async (location = 1): Promise<string[]> => {
   const response = await apiClient.get<string[] | LegacyEnvelope<string[]>>(`/startport?location=${location}`)
-  return unwrapLegacyEnvelope(response.data)
+  return toArrayOrEmpty(unwrapLegacyEnvelopeOr<string[]>(response.data, []))
 }
 
 export const fetchEndPortOptions = async (location = 1): Promise<string[]> => {
   const response = await apiClient.get<string[] | LegacyEnvelope<string[]>>(`/endport?location=${location}`)
-  return unwrapLegacyEnvelope(response.data)
+  return toArrayOrEmpty(unwrapLegacyEnvelopeOr<string[]>(response.data, []))
 }
 
 export const fetchAccountNum = async (): Promise<AccountNumPayload> => {

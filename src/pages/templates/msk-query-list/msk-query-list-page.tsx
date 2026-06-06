@@ -39,7 +39,7 @@ type SearchValues = {
   origincity_name?: string
   destinationcity_name?: string
   type_name?: QueryType
-  host?: string
+  shipping_line?: string
 }
 
 type RowView = MskQueryItem & {
@@ -107,7 +107,7 @@ const parseFilter = (values: SearchValues): MskQueryFilters => ({
   origincity_name: values.origincity_name,
   destinationcity_name: values.destinationcity_name,
   type_name: values.type_name,
-  host: values.host,
+  shipping_line: values.shipping_line,
 })
 
 const TABLE_HEADER = ['ID', '起始港', '目的港', '航线', '箱型', '延迟时间(秒)', '是否开启', '是否翻页', '开航时间', '目的港类型', '限价', '端口', '备注']
@@ -190,7 +190,7 @@ export const MskQueryListPage = () => {
       }),
       { type: 'select', name: 'type_name', label: '查询类型', options: TYPE_NAME_OPTIONS },
       createShippingLineFilterField<SearchValues>({
-        name: 'host',
+        name: 'shipping_line',
         cacheKey: 'shippingLine',
         fetchOptions: fetchShippingLineOptions,
         allowClear: false,
@@ -219,7 +219,7 @@ export const MskQueryListPage = () => {
       }
     })
 
-    const filteredByHost = filters.host ? list.filter((item) => item.host === filters.host) : list
+    const filteredByHost = filters.shipping_line ? list.filter((item) => item.host === filters.shipping_line) : list
 
     return {
       data: filteredByHost,
@@ -338,6 +338,7 @@ export const MskQueryListPage = () => {
             title: '是否开启',
             dataIndex: 'is_run_label',
             key: 'is_run_label',
+            sorter: createNumberSorter((record) => record.is_run),
             render: (value: string, record) => (
               <Button
                 type="link"
@@ -413,6 +414,7 @@ export const MskQueryListPage = () => {
             loading={loading}
             size={tableSize}
             pagination={pagination}
+            virtual={virtualScroll.enabled}
             rowSelection={{
               selectedRowKeys: selectedRowsRef.current.map((item) => item.id),
               onChange: (_, rows) => {
@@ -421,7 +423,7 @@ export const MskQueryListPage = () => {
               },
               columnWidth: 50,
             }}
-            scroll={virtualScroll.enabled ? { x: 'max-content', y: virtualScroll.scroll.y } : { x: 'max-content' }}
+            scroll={virtualScroll.enabled ? virtualScroll.scroll : { x: 'max-content' }}
           />
         )
       },

@@ -139,4 +139,37 @@ describe('BookAccountListPage', () => {
       expect(screen.getByRole('button', { name: '重置筛选' })).toBeTruthy()
     })
   })
+
+  it('should treat missing data field as empty state', async () => {
+    server.use(
+      http.get('*/maersk/book/list', () =>
+        HttpResponse.json({
+          pagination: { total: 0 },
+        })
+      )
+    )
+
+    render(<ThemeProvider><BookAccountListPage /></ThemeProvider>)
+
+    await waitFor(() => {
+      expect(screen.getByText('可以重置筛选后重新查询。')).toBeTruthy()
+    })
+  })
+
+  it('should treat null data field as empty state', async () => {
+    server.use(
+      http.get('*/maersk/book/list', () =>
+        HttpResponse.json({
+          data: null,
+          pagination: { total: 0 },
+        })
+      )
+    )
+
+    render(<ThemeProvider><BookAccountListPage /></ThemeProvider>)
+
+    await waitFor(() => {
+      expect(screen.getByText('可以重置筛选后重新查询。')).toBeTruthy()
+    })
+  })
 })

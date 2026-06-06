@@ -167,4 +167,22 @@ describe('list-toolbar-actions', () => {
 
     expect(callSequence).toEqual(['clear-column', 'reload'])
   })
+
+  it('hides the reload button when configured for right-side controls only', () => {
+    render(
+      <ListToolbarActions
+        showReload={false}
+        tableSize="small"
+        onTableSizeChange={() => undefined}
+        onReload={() => undefined}
+        columnSettingOptions={[]}
+        selectedColumnKeys={[]}
+        onSelectedColumnKeysChange={() => undefined}
+      />
+    )
+
+    expect(screen.queryByRole('button', { name: '刷新' })).toBeNull()
+    expect(screen.getByRole('button', { name: '密度' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: '列设置' })).toBeTruthy()
+  })
 })

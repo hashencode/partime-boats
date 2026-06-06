@@ -1,7 +1,11 @@
 import {
+  ReloadOutlined,
+} from '@ant-design/icons'
+import {
   Button,
   Card,
   Form,
+  Tooltip,
   type TableColumnsType,
   Typography,
 } from 'antd'
@@ -241,6 +245,9 @@ export const StandardListPageRecipe = <
       ? responseItems.slice((current - 1) * pageSize, current * pageSize)
       : responseItems
   const responseTotal = paginationMode === 'local' ? responseItems.length : (response as { total?: number } | null)?.total ?? 0
+  const handleReload = useCallback(() => {
+    void load({ showSuccess: true })
+  }, [load])
 
   const tableNode = spec.buildTableNode({
     columns: visibleColumns,
@@ -298,32 +305,38 @@ export const StandardListPageRecipe = <
       {spec.renderBetweenFilterAndContent ?? null}
       <Card
         variant="borderless"
-        title={resolvedCardTitle}
-        extra={
-          <div className="flex flex-wrap items-center justify-end gap-2">
+      >
+        <div className="list-card-header mb-4 flex flex-wrap items-start justify-between gap-3">
+          <div className="list-card-header-left min-w-0 shrink-0">
+            {resolvedCardTitle ? <div className="flex min-w-0 flex-wrap items-center gap-3">{resolvedCardTitle}</div> : null}
+          </div>
+          <div className="list-card-header-center flex grow flex-wrap items-center justify-center gap-2">
             {spec.createAction ? (
               <Button type="primary" icon={spec.createAction.icon} onClick={() => openFormPage('add')}>
                 {spec.createAction.label}
               </Button>
             ) : null}
             {spec.toolbarExtra}
+            <Tooltip title="刷新">
+              <Button icon={<ReloadOutlined />} aria-label="刷新" onClick={handleReload} />
+            </Tooltip>
+          </div>
+          <div className="list-card-header-right ml-auto flex shrink-0 items-center justify-end gap-2">
             <ListToolbarActions
+              showReload={false}
               tableSize={tableSize}
               densityItems={spec.densityItems}
               onTableSizeChange={setTableSize}
               onClearColumnSort={clearColumnOrder}
               clearColumnSortDisabled={!hasCustomColumnOrder}
-              onReload={() => {
-                void load({ showSuccess: true })
-              }}
+              onReload={handleReload}
               columnSettingOptions={buildListToolbarColumnSettingOptions(orderedColumns)}
               selectedColumnKeys={selectedColumnKeys}
               onSelectedColumnKeysChange={setSelectedColumnKeys}
               onColumnSettingOrderChange={setColumnOrder}
             />
           </div>
-        }
-      >
+        </div>
         <TemplateListContent
           showInitialLoading={showInitialLoading}
           showError={showError}

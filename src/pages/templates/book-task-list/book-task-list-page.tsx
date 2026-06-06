@@ -805,6 +805,53 @@ export const BookTaskListPage = () => {
         )
       : 0
 
+  const batchScopeActionButtons = useMemo(
+    () => (
+      <>
+        <Button
+          loading={batchQueueTask.progress.status === 'running'}
+          disabled={!canWrite}
+          onClick={() => {
+            void handleBatchOpen()
+          }}
+        >
+          批量打开
+        </Button>
+        <Button
+          disabled={!canWrite}
+          onClick={async () => {
+            const ids = await buildScopedIds(
+              latestFiltersRef.current,
+              currentRowsRef.current,
+              selectedRowKeys
+            )
+            await closeBookTaskInitialization(ids)
+            message.success('关闭初始化成功')
+            await reloadRef.current()
+          }}
+        >
+          关闭初始化
+        </Button>
+        <Button
+          disabled={!canWrite}
+          onClick={async () => {
+            const ids = await buildScopedIds(
+              latestFiltersRef.current,
+              currentRowsRef.current,
+              selectedRowKeys
+            )
+            await clearBookTaskRouter(ids)
+            message.success('清除路由成功')
+            await reloadRef.current()
+          }}
+        >
+          清除路由
+        </Button>
+      </>
+    ),
+    [batchQueueTask.progress.status, canWrite, handleBatchOpen, selectedRowKeys]
+  )
+
   const spec = useMemo<
     StandardListPageSpec<
       BookTaskFilterValues,
@@ -838,45 +885,7 @@ export const BookTaskListPage = () => {
       filterFields,
       toolbarExtra: (
         <Space wrap>
-          <Button
-            loading={batchQueueTask.progress.status === 'running'}
-            disabled={!canWrite}
-            onClick={() => {
-              void handleBatchOpen()
-            }}
-          >
-            批量打开
-          </Button>
-          <Button
-            disabled={!canWrite}
-            onClick={async () => {
-              const ids = await buildScopedIds(
-                latestFiltersRef.current,
-                currentRowsRef.current,
-                selectedRowKeys
-              )
-              await closeBookTaskInitialization(ids)
-              message.success('关闭初始化成功')
-              await reloadRef.current()
-            }}
-          >
-            关闭初始化
-          </Button>
-          <Button
-            disabled={!canWrite}
-            onClick={async () => {
-              const ids = await buildScopedIds(
-                latestFiltersRef.current,
-                currentRowsRef.current,
-                selectedRowKeys
-              )
-              await clearBookTaskRouter(ids)
-              message.success('清除路由成功')
-              await reloadRef.current()
-            }}
-          >
-            清除路由
-          </Button>
+          {canWrite && selectedRowKeys.length > 0 ? null : batchScopeActionButtons}
         </Space>
       ),
       buildColumns: ({ reload }) => {
@@ -1134,16 +1143,13 @@ export const BookTaskListPage = () => {
             loading={loading}
             size={tableSize}
             pagination={pagination}
+            virtual={virtualScroll.enabled}
             rowSelection={{
               selectedRowKeys,
               onChange: (keys) => setSelectedRowKeys(keys as number[]),
               columnWidth: 50,
             }}
-            scroll={
-              virtualScroll.enabled
-                ? { x: 'max-content', y: virtualScroll.scroll.y }
-                : { x: 'max-content' }
-            }
+            scroll={virtualScroll.enabled ? virtualScroll.scroll : { x: 'max-content' }}
           />
         )
       },
@@ -1161,11 +1167,10 @@ export const BookTaskListPage = () => {
       },
     }),
     [
-      batchQueueTask.progress.status,
+      batchScopeActionButtons,
       canWrite,
       editForm,
       filterFields,
-      handleBatchOpen,
       handleToggleOrderStatus,
       selectedRowKeys,
     ]
@@ -1176,6 +1181,7 @@ export const BookTaskListPage = () => {
       <div className="flex flex-wrap items-center gap-3">
         <Typography.Text>已选 {selectedRowKeys.length} 项</Typography.Text>
         <Button onClick={() => setBatchVisible(true)}>批量修改</Button>
+        {batchScopeActionButtons}
       </div>
     ) : undefined
 

@@ -145,7 +145,8 @@ export const BasePortListPage = () => {
           loading={loading}
           pagination={pagination}
           size={tableSize}
-          scroll={virtualScroll.enabled ? { x: 'max-content', y: virtualScroll.scroll.y } : { x: 'max-content' }}
+          virtual={virtualScroll.enabled}
+          scroll={virtualScroll.enabled ? virtualScroll.scroll : { x: 'max-content' }}
         />
       ),
       createAction: canWrite

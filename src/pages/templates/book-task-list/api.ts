@@ -1,13 +1,12 @@
 import dayjs from 'dayjs'
 import { apiClient } from '../../../infrastructure/http/api-client'
+import {
+  type LegacyEnvelope,
+  toArrayOrEmpty,
+  unwrapLegacyEnvelopeOr,
+} from '../../../infrastructure/http/legacy-envelope'
 
 const BOOK_TASK_API_URL = 'http://124.70.141.127:9111/maersk/book/task'
-
-type LegacyEnvelope<T> = {
-  bool_status?: boolean
-  msg?: string
-  data?: T
-}
 
 type LegacyPagination = {
   total?: number
@@ -16,27 +15,13 @@ type LegacyPagination = {
 }
 
 type LegacyListResponse<T> = {
-  data?: T[]
+  data?: T[] | null
   pagination?: LegacyPagination
 }
 
 type LegacyNestedListEnvelope<T> = {
-  data?: LegacyListResponse<T>
+  data?: LegacyListResponse<T> | null
   pagination?: LegacyPagination
-}
-
-const unwrapLegacyEnvelope = <T>(raw: T | LegacyEnvelope<T>): T => {
-  const envelope = raw as LegacyEnvelope<T>
-  if (typeof envelope.bool_status === 'boolean') {
-    if (!envelope.bool_status) {
-      throw new Error(envelope.msg || '请求失败，请稍后重试。')
-    }
-    if (envelope.data === undefined) {
-      throw new Error('接口返回缺少 data 字段。')
-    }
-    return envelope.data
-  }
-  return raw as T
 }
 
 const assertArrayResponse = <T>(value: unknown, apiName: string): T[] => {
@@ -186,7 +171,7 @@ const parseBookTaskListResponse = (
     '任务列表接口'
   )
   const listPayload = payload.data && !Array.isArray(payload.data) ? payload.data : payload
-  const items = listPayload.data === undefined ? [] : assertArrayResponse<BookTaskItem>(listPayload.data, '任务列表接口')
+  const items = listPayload.data == null ? [] : assertArrayResponse<BookTaskItem>(listPayload.data, '任务列表接口')
   const pagination = listPayload.pagination ?? payload.pagination ?? {}
 
   return {
@@ -248,14 +233,12 @@ export const fetchAllBookTaskIds = async (filters: BookTaskQueryFilters): Promis
 
 export const fetchStartPortOptions = async (location = 0): Promise<string[]> => {
   const response = await apiClient.get<string[] | LegacyEnvelope<string[]>>(`/startport?location=${location}`)
-  const payload = unwrapLegacyEnvelope(response.data)
-  return assertArrayResponse<string>(payload, '起始港接口')
+  return toArrayOrEmpty(unwrapLegacyEnvelopeOr<string[]>(response.data, []))
 }
 
 export const fetchEndPortOptions = async (location = 0): Promise<string[]> => {
   const response = await apiClient.get<string[] | LegacyEnvelope<string[]>>(`/endport?location=${location}`)
-  const payload = unwrapLegacyEnvelope(response.data)
-  return assertArrayResponse<string>(payload, '目的港接口')
+  return toArrayOrEmpty(unwrapLegacyEnvelopeOr<string[]>(response.data, []))
 }
 
 export const updateBookTask = async (id: number, payload: BookTaskSavePayload): Promise<void> => {
