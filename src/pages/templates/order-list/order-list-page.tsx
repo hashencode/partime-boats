@@ -59,6 +59,7 @@ const ORDER_TABLE_COLUMN_WIDTHS = {
   voyageDays: 104,
   bookingNumber: 104,
   price: 88,
+  quantity: 88,
   isRoll: 88,
   responseValue2: 88,
   booktime: 176,
@@ -86,6 +87,7 @@ const TABLE_TITLE = [
   '航程（天）',
   '提单号',
   '价格',
+  '数量',
   'is_roll',
   '返回值2',
   '下单时间',
@@ -108,6 +110,7 @@ const TABLE_FILTER = [
   'voyage_days',
   'booking_number',
   'price',
+  'box_number',
   'is_roll',
   'capacity_hard_stop_indicator',
   'booktime',
@@ -137,6 +140,44 @@ type OrderListPageResponse = {
   total: number
   current: number
   size: number
+}
+
+const toOptionalNumber = (value?: string | number | null) => {
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : undefined
+  }
+
+  if (typeof value !== 'string') {
+    return undefined
+  }
+
+  const trimmed = value.trim()
+  if (!trimmed) {
+    return undefined
+  }
+
+  const parsed = Number(trimmed)
+  return Number.isFinite(parsed) ? parsed : undefined
+}
+
+const resolveUnitPrice = (price?: string | number | null, boxNumber?: string | number | null) => {
+  const totalPrice = toOptionalNumber(price)
+  const quantity = toOptionalNumber(boxNumber)
+
+  if (totalPrice === undefined || quantity === undefined || quantity <= 0) {
+    return undefined
+  }
+
+  return Math.round((totalPrice / quantity) * 100) / 100
+}
+
+const formatNumericDisplay = (value?: string | number | null) => {
+  const parsed = toOptionalNumber(value)
+  if (parsed === undefined) {
+    return '-'
+  }
+
+  return Number.isInteger(parsed) ? String(parsed) : parsed.toFixed(2)
 }
 
 const toFilters = (values: OrderSearchValues): OrderListFilters => ({
@@ -191,6 +232,7 @@ export const OrderListPage = () => {
             voyage_days: item.voyage_days,
             booking_number: item.booking_number,
             price: item.price,
+            box_number: item.box_number,
             is_roll: item.is_roll,
             capacity_hard_stop_indicator: item.capacity_hard_stop_indicator,
             booktime: item.booktime,
@@ -264,7 +306,7 @@ export const OrderListPage = () => {
     () => ({
       pageTitle: '订单列表',
       cardTitle: '订单列表',
-      tableId: 'template-order-list',
+      tableId: 'template-order-list-v2',
       formRoute: '/template/list/order-list/form',
       initialFilters: {},
       pagination: {
@@ -326,6 +368,7 @@ export const OrderListPage = () => {
           key: 'actions',
           width: ACTION_COLUMN_WIDTH,
           align: 'center',
+          sorter: createNumberSorter((record) => record.price),
           render: (_, record) => {
             const disabled = disabledIds.includes(record.id)
             if (record.is_book === 0) {
@@ -347,7 +390,7 @@ export const OrderListPage = () => {
                   }}
                   disabled={disabled}
                 >
-                  {disabled ? '下单完成' : `${record.price ?? '-'} / ${record.box_number ?? ''}`}
+                  {disabled ? '下单完成' : formatNumericDisplay(record.price)}
                 </Button>
               )
             }
@@ -459,7 +502,17 @@ export const OrderListPage = () => {
           dataIndex: 'price',
           width: ORDER_TABLE_COLUMN_WIDTHS.price,
           onHeaderCell: () => NO_WRAP_HEADER_CELL_PROPS,
-          sorter: createNumberSorter((record) => record.price),
+          sorter: createNumberSorter((record) => resolveUnitPrice(record.price, record.box_number)),
+          render: (_, record) => formatNumericDisplay(resolveUnitPrice(record.price, record.box_number)),
+        },
+        {
+          title: '数量',
+          key: 'box_number',
+          dataIndex: 'box_number',
+          width: ORDER_TABLE_COLUMN_WIDTHS.quantity,
+          onHeaderCell: () => NO_WRAP_HEADER_CELL_PROPS,
+          sorter: createNumberSorter((record) => record.box_number),
+          render: (value?: string | number) => formatNumericDisplay(value),
         },
         {
           title: 'is_roll',

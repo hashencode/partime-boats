@@ -27,3 +27,5 @@
 - 2026-06-06: 大表格列表页测试头部按钮时，优先基于 `.list-card-header-*` 容器断言文本或局部节点，避免对整页使用全局 `getByRole/getByText` 导致超时（如 `book-task-list`）。
 - 2026-06-06: Antd `Table` 开启真实 `virtual` 时，`scroll.x` 和 `scroll.y` 都必须传数字；标准列表页不能继续沿用 `x: 'max-content'`，应在虚拟模式下直接复用 recipe 计算出的数值型 `virtualScroll.scroll`。 #promote
 - 2026-06-06: 非操作列宽度应按真实页面测量固化：先登录本地页面、进入目标列表、采集前 20 条数据（虚拟表需滚动 `.ant-table-tbody-virtual-holder` 并按 `data-row-key` 去重），再按“表头单行宽度 vs 正文 P90 宽度取大值 + 左右 padding + 16px 安全余量、上限 220px”收口；若当前页无数据必须明确告知无法测量。 #promote
+- 2026-06-06: Antd `Table` 的可排序列若通过 `onHeaderCell: () => 常量对象` 复用同一个返回值，排序注入会把 `aria/className/onClick` 串写到其他表头；共享层启用多列排序时必须先把 `onHeaderCell` 返回值克隆成每列独立对象。 #promote
+- 2026-06-06: `msk-query-list` 的“备注”字段前端口径是 `tips`，`log` 在该页承担航线/链接映射语义，不应混作备注提交字段。

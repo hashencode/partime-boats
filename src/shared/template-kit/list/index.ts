@@ -20,4 +20,5 @@ export {
   createDateSorter,
   createNumberSorter,
   createTextSorter,
+  enableMultipleColumnSorting,
 } from './table-sorters'

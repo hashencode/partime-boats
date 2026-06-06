@@ -17,6 +17,7 @@ import { useCrudFormNavigation } from '../hooks'
 import type { StandardListPageSpec } from '../specs/standard-list-page-spec'
 import { buildSearchGridProps } from '../list/build-search-grid-props'
 import { buildStandardListPagination, STANDARD_LIST_TABLE_CLASS_NAME } from '../list/standard-list-pagination'
+import { enableMultipleColumnSorting } from '../list/table-sorters'
 import { TemplateListContent } from '../list/template-list-content'
 import { TemplateListFilterForm } from '../list/template-list-filter-form'
 import { useTemplateListController } from '../list/use-template-list-controller'
@@ -162,12 +163,14 @@ export const StandardListPageRecipe = <
 
   const columns = useMemo(
     () =>
-      buildColumns({
-        openFormPage,
-        reload: async () => {
-          await load()
-        },
-      }),
+      enableMultipleColumnSorting(
+        buildColumns({
+          openFormPage,
+          reload: async () => {
+            await load()
+          },
+        })
+      ),
     [buildColumns, load, openFormPage]
   )
 

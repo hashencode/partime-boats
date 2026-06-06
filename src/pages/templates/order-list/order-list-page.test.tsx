@@ -46,7 +46,8 @@ const server = setupServer(
           earlytime: '2026-05-01',
           arrive_time: '2026-05-08',
           is_book: 0,
-          price: 123,
+          price: 120,
+          box_number: 3,
         },
       ],
       total_page: 1,
@@ -62,6 +63,7 @@ beforeAll(() => {
 
 afterEach(() => {
   server.resetHandlers()
+  window.localStorage.clear()
 })
 
 afterAll(() => {
@@ -77,6 +79,11 @@ describe('OrderListPage', () => {
       expect(screen.getByText('demo_user')).toBeTruthy()
     })
 
+    expect(screen.getByText('40')).toBeTruthy()
+    expect(screen.getByText('3')).toBeTruthy()
+    expect(screen.getByRole('button', { name: '120' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: '120 / 3' })).toBeNull()
+
     expect(screen.getByText('50 条/页')).toBeTruthy()
 
     fireEvent.mouseDown(screen.getByText('50 条/页'))
@@ -87,6 +94,31 @@ describe('OrderListPage', () => {
       expect(screen.getByText('500 条/页')).toBeTruthy()
       expect(screen.getByText('所有数据')).toBeTruthy()
     })
+  })
+
+  it('should show quantity column even when old column preferences are stored', async () => {
+    window.localStorage.setItem(
+      'list:table-view-preferences:v1:template-order-list',
+      JSON.stringify({
+        density: 'middle',
+        visibleColumnKeys: ['actions', 'username', 'price'],
+        columnOrder: ['actions', 'username', 'price'],
+      })
+    )
+
+    render(<ThemeProvider><OrderListPage /></ThemeProvider>)
+
+    await waitFor(() => {
+      expect(screen.getByRole('columnheader', { name: '数量' })).toBeTruthy()
+      expect(screen.getByText('3')).toBeTruthy()
+    })
+  })
+
+  it('should make action column sortable by total price', async () => {
+    render(<ThemeProvider><OrderListPage /></ThemeProvider>)
+
+    const actionHeader = await screen.findByRole('columnheader', { name: '下单' })
+    expect(actionHeader.getAttribute('aria-description')).toBe('sortable')
   })
 
   it('should not re-query when changing filters until query button clicked', async () => {
@@ -148,6 +180,7 @@ describe('OrderListPage', () => {
               endtime: '2020-01-01 00:00:00',
               is_book: 0,
               price: 123,
+              box_number: 0,
             },
           ],
           total_page: 1,
@@ -159,5 +192,33 @@ describe('OrderListPage', () => {
 
     const expiredText = await screen.findByText('2020-01-01 00:00:00')
     expect(expiredText.className).toContain('text-[color:var(--ant-color-text-tertiary)]')
+  })
+
+  it('should render dash for unit price when quantity is invalid', async () => {
+    server.use(
+      http.post('*/book/check', () =>
+        HttpResponse.json({
+          data: [
+            {
+              id: 1,
+              username: 'demo_user',
+              earlytime: '2026-05-01',
+              arrive_time: '2026-05-08',
+              is_book: 0,
+              price: 123,
+              box_number: 0,
+            },
+          ],
+          total_page: 1,
+        })
+      )
+    )
+
+    render(<ThemeProvider><OrderListPage /></ThemeProvider>)
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '123' })).toBeTruthy()
+      expect(screen.getAllByText('-').length).toBeGreaterThan(0)
+    })
   })
 })

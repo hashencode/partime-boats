@@ -18,7 +18,7 @@ export type OrderListItem = {
   box_type?: string
   vessel_name?: string
   booking_number?: string
-  price?: number
+  price?: number | string
   is_roll?: string
   capacity_hard_stop_indicator?: number | string
   booktime?: string

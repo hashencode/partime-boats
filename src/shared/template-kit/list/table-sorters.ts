@@ -1,4 +1,5 @@
 import dayjs from 'dayjs'
+import type { ColumnsType, ColumnType } from 'antd/es/table'
 
 const normalizeTextValue = (value?: string | number | null) => {
   if (value === null || value === undefined || value === '') {
@@ -85,3 +86,60 @@ export const createDateSorter =
   <TItem>(pickValue: (item: TItem) => string | number | null | undefined) =>
   (left: TItem, right: TItem) =>
     compareDateSortValue(pickValue(left), pickValue(right))
+
+const DEFAULT_MULTIPLE_SORT_PRIORITY = 1
+
+const toMultipleSorterConfig = <TItem>(sorter: ColumnType<TItem>['sorter']): ColumnType<TItem>['sorter'] => {
+  if (!sorter || sorter === true) {
+    return sorter
+  }
+
+  if (typeof sorter === 'function') {
+    return {
+      compare: sorter,
+      multiple: DEFAULT_MULTIPLE_SORT_PRIORITY,
+    }
+  }
+
+  return {
+    ...sorter,
+    multiple: sorter.multiple ?? DEFAULT_MULTIPLE_SORT_PRIORITY,
+  }
+}
+
+const cloneHeaderCellProps = <TItem>(onHeaderCell?: ColumnType<TItem>['onHeaderCell']): ColumnType<TItem>['onHeaderCell'] => {
+  if (!onHeaderCell) {
+    return onHeaderCell
+  }
+
+  return (column) => {
+    const cell = onHeaderCell(column)
+    if (!cell) {
+      return cell
+    }
+
+    return {
+      ...cell,
+      style: cell.style ? { ...cell.style } : cell.style,
+    }
+  }
+}
+
+export const enableMultipleColumnSorting = <TItem>(columns: ColumnsType<TItem>): ColumnsType<TItem> => {
+  return columns.map((column) => {
+    const nextChildren = column.children ? enableMultipleColumnSorting(column.children) : column.children
+    const nextSorter = toMultipleSorterConfig(column.sorter)
+    const nextOnHeaderCell = column.sorter ? cloneHeaderCellProps(column.onHeaderCell) : column.onHeaderCell
+
+    if (nextChildren === column.children && nextSorter === column.sorter && nextOnHeaderCell === column.onHeaderCell) {
+      return column
+    }
+
+    return {
+      ...column,
+      children: nextChildren,
+      sorter: nextSorter,
+      onHeaderCell: nextOnHeaderCell,
+    }
+  })
+}

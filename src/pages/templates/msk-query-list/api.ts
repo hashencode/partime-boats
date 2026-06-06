@@ -66,6 +66,7 @@ export type BatchUpdatePayload = {
   limit_price?: number
   is_run?: number
   is_roll?: number
+  tips?: string
 }
 
 export type UpdateSinglePayload = MskQueryItem

@@ -2,6 +2,7 @@ import React from 'react'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it } from '@rstest/core'
 import type { ColumnsType } from 'antd/es/table'
+import { createNumberSorter } from '../list/table-sorters'
 import { StandardListPageRecipe } from './standard-list-page-recipe'
 import type { StandardListPageSpec } from '../specs/standard-list-page-spec'
 import { RouteTitleProvider } from '../../contexts/route-title-context'
@@ -156,6 +157,62 @@ describe('StandardListPageRecipe', () => {
       current: 1,
       size: 10,
     })
+  })
+
+  it('should pass multiple sorter configs and isolated header cell props to the table node', async () => {
+    let receivedColumns: ColumnsType<{ id: number; name: string }> = []
+    const sharedHeaderCellProps = {
+      style: {
+        whiteSpace: 'nowrap' as const,
+      },
+    }
+    const compare = createNumberSorter<{ id: number; name: string }>((item) => item.id)
+    const spec: StandardListPageSpec<FilterValues, RequestFilters, Response, { id: number; name: string }, Error> = {
+      pageTitle: '测试列表',
+      cardTitle: '测试数据',
+      tableId: 'recipe-test-list-multi-sort',
+      formRoute: '/test/form',
+      initialFilters: {},
+      toFilters: () => ({}),
+      request: async () => ({
+        data: [{ id: 1, name: 'demo' }],
+        current: 1,
+        size: 10,
+        total: 1,
+      }),
+      selectItems: (response) => response?.data ?? [],
+      filterFields: [],
+      buildColumns: () =>
+        [
+          {
+            key: 'id',
+            title: 'ID',
+            dataIndex: 'id',
+            sorter: compare,
+            onHeaderCell: () => sharedHeaderCellProps,
+          },
+        ] satisfies ColumnsType<{ id: number; name: string }>,
+      buildTableNode: ({ columns }) => {
+        receivedColumns = columns
+        return <div data-testid="table-node">table</div>
+      },
+    }
+
+    renderWithTheme(<StandardListPageRecipe spec={spec} />)
+
+    await waitFor(() => {
+      expect(receivedColumns).toHaveLength(1)
+    })
+
+    expect(receivedColumns[0]?.sorter).toMatchObject({
+      compare,
+      multiple: 1,
+    })
+    const firstHeaderCell = receivedColumns[0]?.onHeaderCell?.(receivedColumns[0] as never)
+    const secondHeaderCell = receivedColumns[0]?.onHeaderCell?.(receivedColumns[0] as never)
+    expect(firstHeaderCell).not.toBe(sharedHeaderCellProps)
+    expect(secondHeaderCell).not.toBe(sharedHeaderCellProps)
+    expect(firstHeaderCell).not.toBe(secondHeaderCell)
   })
 
   it('resets to first page when page size changes', async () => {

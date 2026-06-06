@@ -1,6 +1,6 @@
 import React from 'react'
 import { Form } from 'antd'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterAll, afterEach, beforeAll, describe, expect, it } from '@rstest/core'
 import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
@@ -38,6 +38,7 @@ if (!window.ResizeObserver) {
 let latestToggleIds = ''
 let latestToggleStatus = ''
 let latestSingleUpdatePayload: Record<string, unknown> | null = null
+let latestBatchUpdatePayload: Record<string, unknown> | null = null
 let latestCheckShowShippingLine = ''
 type CapturedFilterForm = {
   setFieldValue: (name: string, value: unknown) => void
@@ -79,6 +80,10 @@ const server = setupServer(
   http.post('*/check/update', async ({ request }) => {
     latestSingleUpdatePayload = (await request.json()) as Record<string, unknown>
     return HttpResponse.json({ bool_status: true, data: true })
+  }),
+  http.post('*/check/update/group', async ({ request }) => {
+    latestBatchUpdatePayload = (await request.json()) as Record<string, unknown>
+    return HttpResponse.json({ bool_status: true, data: true })
   })
 )
 
@@ -91,6 +96,7 @@ afterEach(() => {
   latestToggleIds = ''
   latestToggleStatus = ''
   latestSingleUpdatePayload = null
+  latestBatchUpdatePayload = null
   latestCheckShowShippingLine = ''
   server.resetHandlers()
 })
@@ -450,6 +456,41 @@ describe('MskQueryListPage', () => {
     })
   })
 
+  it('should submit tips in the single edit modal and render fields in multiple columns', async () => {
+    render(<ThemeProvider><MskQueryListPage /></ThemeProvider>)
+
+    await waitFor(() => {
+      expect(screen.getByText('NINGBO')).toBeTruthy()
+    })
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: '修改' }))
+    })
+
+    expect(await screen.findByDisplayValue('ok')).toBeTruthy()
+
+    const modalBody = document.body.querySelector('.ant-modal-body')
+    expect(modalBody?.querySelector('.ant-row')).toBeTruthy()
+    expect(modalBody?.querySelectorAll('.ant-col').length).toBeGreaterThan(3)
+
+    fireEvent.change(screen.getByPlaceholderText('请输入备注'), { target: { value: '单条备注' } })
+
+    const submitButton = screen
+      .getAllByRole('button')
+      .find((button) => ['确 定', '确定', 'OK'].includes(button.textContent?.trim() ?? ''))
+
+    await act(async () => {
+      fireEvent.click(submitButton as Element)
+    })
+
+    await waitFor(() => {
+      expect(latestSingleUpdatePayload).toMatchObject({
+        id: 1,
+        tips: '单条备注',
+      })
+    })
+  })
+
   it('should move batch action into the card header when rows are selected', async () => {
     render(<ThemeProvider><MskQueryListPage /></ThemeProvider>)
 
@@ -467,5 +508,81 @@ describe('MskQueryListPage', () => {
 
     expect(screen.getAllByText('Maersk列表')).toHaveLength(1)
     expect(screen.queryByText('已选择')).toBeNull()
+  })
+
+  it('should submit tips in the batch modal and render fields in multiple columns', async () => {
+    render(<ThemeProvider><MskQueryListPage /></ThemeProvider>)
+
+    await waitFor(() => {
+      expect(screen.getByText('Maersk列表')).toBeTruthy()
+    })
+
+    const rowCheckboxes = screen.getAllByRole('checkbox')
+    fireEvent.click(rowCheckboxes[1] as Element)
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '批量修改' })).toBeTruthy()
+    })
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: '批量修改' }))
+    })
+
+    expect(await screen.findByPlaceholderText('请输入备注')).toBeTruthy()
+    expect(screen.getAllByText('目的港类型').length).toBeGreaterThan(1)
+
+    const modalBody = document.body.querySelector('.ant-modal-body')
+    expect(modalBody?.querySelector('.ant-row')).toBeTruthy()
+    expect(modalBody?.querySelectorAll('.ant-col').length).toBeGreaterThan(3)
+
+    fireEvent.change(screen.getByPlaceholderText('请输入备注'), { target: { value: '批量备注' } })
+
+    const submitButton = screen
+      .getAllByRole('button')
+      .find((button) => ['确 定', '确定', 'OK'].includes(button.textContent?.trim() ?? ''))
+
+    await act(async () => {
+      fireEvent.click(submitButton as Element)
+    })
+
+    await waitFor(() => {
+      expect(latestBatchUpdatePayload).toMatchObject({
+        ids: '1',
+        tips: '批量备注',
+      })
+    })
+  })
+
+  it('should block batch submit when no fields are changed', async () => {
+    render(<ThemeProvider><MskQueryListPage /></ThemeProvider>)
+
+    await waitFor(() => {
+      expect(screen.getByText('Maersk列表')).toBeTruthy()
+    })
+
+    const rowCheckboxes = screen.getAllByRole('checkbox')
+    fireEvent.click(rowCheckboxes[1] as Element)
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '批量修改' })).toBeTruthy()
+    })
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: '批量修改' }))
+    })
+
+    const submitButton = screen
+      .getAllByRole('button')
+      .find((button) => ['确 定', '确定', 'OK'].includes(button.textContent?.trim() ?? ''))
+
+    await act(async () => {
+      fireEvent.click(submitButton as Element)
+    })
+
+    await waitFor(() => {
+      expect(screen.getByText('请至少修改一个字段')).toBeTruthy()
+    })
+
+    expect(latestBatchUpdatePayload).toBeNull()
   })
 })
