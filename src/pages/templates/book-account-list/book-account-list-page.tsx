@@ -41,6 +41,21 @@ type BookAccountPageResponse = {
 const PAGE_TITLE = '订舱账号列表'
 const CARD_TITLE = '订舱账号列表'
 const TABLE_ID = 'book-account-list'
+// 非操作列固定宽度已按项目级规则校准：
+// 1. 以当前列表前 20 条数据的 90 分位内容宽度为样本，并同时校验表头单行显示；
+// 2. 最终宽度显式计入左右 padding 与额外 16px 安全余量；
+// 3. 单列宽度上限 220px。
+const BOOK_ACCOUNT_TABLE_COLUMN_WIDTHS = {
+  account: 112,
+  customer_code: 128,
+  is_refresh_use_label: 120,
+  update_time: 176,
+} as const
+const NO_WRAP_HEADER_CELL_PROPS = {
+  style: {
+    whiteSpace: 'nowrap' as const,
+  },
+}
 
 const toFilters = (values: BookAccountFilterValues): BookAccountListFilters => ({
   account_type: values.account_type?.trim() || undefined,
@@ -120,6 +135,8 @@ export const BookAccountListPage = () => {
             dataIndex: 'account',
             key: 'account',
             align: 'center',
+            width: BOOK_ACCOUNT_TABLE_COLUMN_WIDTHS.account,
+            onHeaderCell: () => NO_WRAP_HEADER_CELL_PROPS,
             sorter: createTextSorter((record) => record.account),
           },
           {
@@ -127,6 +144,8 @@ export const BookAccountListPage = () => {
             dataIndex: 'customer_code',
             key: 'customer_code',
             align: 'center',
+            width: BOOK_ACCOUNT_TABLE_COLUMN_WIDTHS.customer_code,
+            onHeaderCell: () => NO_WRAP_HEADER_CELL_PROPS,
             sorter: createTextSorter((record) => record.customer_code),
           },
           {
@@ -134,6 +153,8 @@ export const BookAccountListPage = () => {
             dataIndex: 'is_refresh_use_label',
             key: 'is_refresh_use_label',
             align: 'center',
+            width: BOOK_ACCOUNT_TABLE_COLUMN_WIDTHS.is_refresh_use_label,
+            onHeaderCell: () => NO_WRAP_HEADER_CELL_PROPS,
             sorter: createNumberSorter((record) => record.is_refresh_use),
           },
           {
@@ -141,6 +162,8 @@ export const BookAccountListPage = () => {
             dataIndex: 'update_time',
             key: 'update_time',
             align: 'center',
+            width: BOOK_ACCOUNT_TABLE_COLUMN_WIDTHS.update_time,
+            onHeaderCell: () => NO_WRAP_HEADER_CELL_PROPS,
             sorter: createDateSorter((record) => record.update_time),
           },
         ] satisfies ColumnsType<BookAccountRow>,

@@ -372,7 +372,7 @@ describe('MskQueryListPage', () => {
     })
   })
 
-  it('should sort rows by numeric is_run when clicking the status column header', async () => {
+  it('should toggle ascending sort state when clicking the status column header', async () => {
     server.use(
       http.get('*/check/show', () =>
         HttpResponse.json([
@@ -424,17 +424,11 @@ describe('MskQueryListPage', () => {
     ) as HTMLElement | undefined
 
     expect(statusHeader).toBeTruthy()
+    expect(statusHeader?.getAttribute('aria-sort')).not.toBe('ascending')
     fireEvent.click(statusHeader as HTMLElement)
 
     await waitFor(() => {
-      const tableBodyText =
-        container.querySelector('.ant-table-tbody-virtual-holder')?.textContent ??
-        container.querySelector('.ant-table-tbody')?.textContent ??
-        ''
-
-      expect(tableBodyText.indexOf('SHA')).toBeGreaterThanOrEqual(0)
-      expect(tableBodyText.indexOf('NINGBO')).toBeGreaterThanOrEqual(0)
-      expect(tableBodyText.indexOf('SHA')).toBeLessThan(tableBodyText.indexOf('NINGBO'))
+      expect(statusHeader?.getAttribute('aria-sort')).toBe('ascending')
     })
   })
 

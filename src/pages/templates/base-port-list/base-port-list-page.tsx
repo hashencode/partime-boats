@@ -41,6 +41,26 @@ const FORM_ROUTE = '/get_base_list/form'
 
 // 操作列固定宽度：查看 2 字 28px + Divider 13px + 修改 2 字 28px + 余量 16px = 85px，向上固化为 96px。
 const ACTION_COLUMN_WIDTH = 96
+// 非操作列固定宽度已按项目级规则校准：
+// 1. 以当前列表前 20 条数据的 90 分位内容宽度为样本，并同时校验表头单行显示；
+// 2. 最终宽度显式计入左右 padding 与额外 16px 安全余量；
+// 3. 单列宽度上限 220px，操作列继续使用独立固定宽度规则。
+const BASE_PORT_TABLE_COLUMN_WIDTHS = {
+  id: 64,
+  cityName: 128,
+  countryCode: 120,
+  countryGeoId: 152,
+  countryName: 128,
+  maerskGeoLocationId: 184,
+  maerskRkstCode: 152,
+  UNCode: 104,
+  shippingline: 120,
+} as const
+const NO_WRAP_HEADER_CELL_PROPS = {
+  style: {
+    whiteSpace: 'nowrap' as const,
+  },
+}
 
 const toBasePortRow = (item: BasePortItem): BasePortRow => ({
   ...item,
@@ -91,23 +111,76 @@ export const BasePortListPage = () => {
       filterFields: [],
       buildColumns: ({ openFormPage }) =>
         [
-          { title: 'ID', dataIndex: 'id', key: 'id', sorter: createNumberSorter((record) => record.id) },
-          { title: 'cityName', dataIndex: 'cityName', key: 'cityName', sorter: createTextSorter((record) => record.cityName) },
-          { title: 'countryCode', dataIndex: 'countryCode', key: 'countryCode', sorter: createTextSorter((record) => record.countryCode) },
-          { title: 'countryGeoId', dataIndex: 'countryGeoId', key: 'countryGeoId', sorter: createTextSorter((record) => record.countryGeoId) },
-          { title: 'countryName', dataIndex: 'countryName', key: 'countryName', sorter: createTextSorter((record) => record.countryName) },
+          {
+            title: 'ID',
+            dataIndex: 'id',
+            key: 'id',
+            width: BASE_PORT_TABLE_COLUMN_WIDTHS.id,
+            onHeaderCell: () => NO_WRAP_HEADER_CELL_PROPS,
+            sorter: createNumberSorter((record) => record.id),
+          },
+          {
+            title: 'cityName',
+            dataIndex: 'cityName',
+            key: 'cityName',
+            width: BASE_PORT_TABLE_COLUMN_WIDTHS.cityName,
+            onHeaderCell: () => NO_WRAP_HEADER_CELL_PROPS,
+            sorter: createTextSorter((record) => record.cityName),
+          },
+          {
+            title: 'countryCode',
+            dataIndex: 'countryCode',
+            key: 'countryCode',
+            width: BASE_PORT_TABLE_COLUMN_WIDTHS.countryCode,
+            onHeaderCell: () => NO_WRAP_HEADER_CELL_PROPS,
+            sorter: createTextSorter((record) => record.countryCode),
+          },
+          {
+            title: 'countryGeoId',
+            dataIndex: 'countryGeoId',
+            key: 'countryGeoId',
+            width: BASE_PORT_TABLE_COLUMN_WIDTHS.countryGeoId,
+            onHeaderCell: () => NO_WRAP_HEADER_CELL_PROPS,
+            sorter: createTextSorter((record) => record.countryGeoId),
+          },
+          {
+            title: 'countryName',
+            dataIndex: 'countryName',
+            key: 'countryName',
+            width: BASE_PORT_TABLE_COLUMN_WIDTHS.countryName,
+            onHeaderCell: () => NO_WRAP_HEADER_CELL_PROPS,
+            sorter: createTextSorter((record) => record.countryName),
+          },
           {
             title: 'maerskGeoLocationId',
             dataIndex: 'maerskGeoLocationId',
             key: 'maerskGeoLocationId',
+            width: BASE_PORT_TABLE_COLUMN_WIDTHS.maerskGeoLocationId,
+            onHeaderCell: () => NO_WRAP_HEADER_CELL_PROPS,
             sorter: createTextSorter((record) => record.maerskGeoLocationId),
           },
-          { title: 'maerskRkstCode', dataIndex: 'maerskRkstCode', key: 'maerskRkstCode', sorter: createTextSorter((record) => record.maerskRkstCode) },
-          { title: 'UNCode', dataIndex: 'UNCode', key: 'UNCode', sorter: createTextSorter((record) => record.UNCode) },
+          {
+            title: 'maerskRkstCode',
+            dataIndex: 'maerskRkstCode',
+            key: 'maerskRkstCode',
+            width: BASE_PORT_TABLE_COLUMN_WIDTHS.maerskRkstCode,
+            onHeaderCell: () => NO_WRAP_HEADER_CELL_PROPS,
+            sorter: createTextSorter((record) => record.maerskRkstCode),
+          },
+          {
+            title: 'UNCode',
+            dataIndex: 'UNCode',
+            key: 'UNCode',
+            width: BASE_PORT_TABLE_COLUMN_WIDTHS.UNCode,
+            onHeaderCell: () => NO_WRAP_HEADER_CELL_PROPS,
+            sorter: createTextSorter((record) => record.UNCode),
+          },
           {
             title: 'shippingline',
             dataIndex: 'shippingline',
             key: 'shippingline',
+            width: BASE_PORT_TABLE_COLUMN_WIDTHS.shippingline,
+            onHeaderCell: () => NO_WRAP_HEADER_CELL_PROPS,
             sorter: createTextSorter((record) => record.shippingline),
             render: (value: string) => value || '-',
           },

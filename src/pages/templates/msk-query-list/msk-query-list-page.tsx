@@ -116,6 +116,30 @@ const TABLE_FILTER = ['id', 'origincity_name', 'destinationcity_name', 'host', '
 // 操作列固定宽度：1 个按钮“修改”按 2 字计算为 28，
 // 额外余量 16，总计 44，向上取整为 60。
 const ACTION_COLUMN_WIDTH = 60
+// 非操作列固定宽度已按项目级规则校准：
+// 1. 以当前列表前 20 条数据的 90 分位内容宽度为样本，并同时校验表头单行显示；
+// 2. 最终宽度显式计入左右 padding 与额外 16px 安全余量；
+// 3. 单列宽度上限 220px，操作列继续使用独立固定宽度规则。
+const MSK_QUERY_TABLE_COLUMN_WIDTHS = {
+  id: 48,
+  origincity_name: 88,
+  destinationcity_name: 88,
+  host: 104,
+  box_type: 64,
+  delay_time_label: 120,
+  is_run_label: 88,
+  is_roll_label: 88,
+  early_date: 120,
+  destination_service_mode: 104,
+  limit_price: 64,
+  port: 96,
+  tips: 128,
+} as const
+const NO_WRAP_HEADER_CELL_PROPS = {
+  style: {
+    whiteSpace: 'nowrap' as const,
+  },
+}
 const buildSingleTogglePayload = (record: RowView, nextStatus: 0 | -1): MskQueryItem => ({
   id: record.id,
   origincity_name: record.origincity_name,
@@ -318,26 +342,60 @@ export const MskQueryListPage = () => {
       buildColumns: ({ reload }) => {
         reloadRef.current = reload
         return [
-          { title: 'ID', dataIndex: 'id', key: 'id', sorter: createNumberSorter((record) => record.id) },
-          { title: '起始港', dataIndex: 'origincity_name', key: 'origincity_name', sorter: createTextSorter((record) => record.origincity_name) },
+          {
+            title: 'ID',
+            dataIndex: 'id',
+            key: 'id',
+            width: MSK_QUERY_TABLE_COLUMN_WIDTHS.id,
+            onHeaderCell: () => NO_WRAP_HEADER_CELL_PROPS,
+            sorter: createNumberSorter((record) => record.id),
+          },
+          {
+            title: '起始港',
+            dataIndex: 'origincity_name',
+            key: 'origincity_name',
+            width: MSK_QUERY_TABLE_COLUMN_WIDTHS.origincity_name,
+            onHeaderCell: () => NO_WRAP_HEADER_CELL_PROPS,
+            sorter: createTextSorter((record) => record.origincity_name),
+          },
           {
             title: '目的港',
             dataIndex: 'destinationcity_name',
             key: 'destinationcity_name',
+            width: MSK_QUERY_TABLE_COLUMN_WIDTHS.destinationcity_name,
+            onHeaderCell: () => NO_WRAP_HEADER_CELL_PROPS,
             sorter: createTextSorter((record) => record.destinationcity_name),
           },
-          { title: '航线', dataIndex: 'host', key: 'host', sorter: createTextSorter((record) => record.host) },
-          { title: '箱型', dataIndex: 'box_type', key: 'box_type', sorter: createTextSorter((record) => record.box_type) },
+          {
+            title: '航线',
+            dataIndex: 'host',
+            key: 'host',
+            width: MSK_QUERY_TABLE_COLUMN_WIDTHS.host,
+            onHeaderCell: () => NO_WRAP_HEADER_CELL_PROPS,
+            sorter: createTextSorter((record) => record.host),
+          },
+          {
+            title: '箱型',
+            dataIndex: 'box_type',
+            key: 'box_type',
+            width: MSK_QUERY_TABLE_COLUMN_WIDTHS.box_type,
+            onHeaderCell: () => NO_WRAP_HEADER_CELL_PROPS,
+            sorter: createTextSorter((record) => record.box_type),
+          },
           {
             title: '延迟时间(秒)',
             dataIndex: 'delay_time_label',
             key: 'delay_time_label',
+            width: MSK_QUERY_TABLE_COLUMN_WIDTHS.delay_time_label,
+            onHeaderCell: () => NO_WRAP_HEADER_CELL_PROPS,
             sorter: createNumberSorter((record) => record.delay_time),
           },
           {
             title: '是否开启',
             dataIndex: 'is_run_label',
             key: 'is_run_label',
+            width: MSK_QUERY_TABLE_COLUMN_WIDTHS.is_run_label,
+            onHeaderCell: () => NO_WRAP_HEADER_CELL_PROPS,
             sorter: createNumberSorter((record) => record.is_run),
             render: (value: string, record) => (
               <Button
@@ -355,6 +413,8 @@ export const MskQueryListPage = () => {
             title: '是否翻页',
             dataIndex: 'is_roll_label',
             key: 'is_roll_label',
+            width: MSK_QUERY_TABLE_COLUMN_WIDTHS.is_roll_label,
+            onHeaderCell: () => NO_WRAP_HEADER_CELL_PROPS,
             sorter: createNumberSorter((record) => record.is_roll),
             render: (value: string) => value || '-',
           },
@@ -362,22 +422,42 @@ export const MskQueryListPage = () => {
             title: '开航时间',
             dataIndex: 'early_date',
             key: 'early_date',
+            width: MSK_QUERY_TABLE_COLUMN_WIDTHS.early_date,
+            onHeaderCell: () => NO_WRAP_HEADER_CELL_PROPS,
             sorter: createDateSorter((record) => record.early_date),
           },
           {
             title: '目的港类型',
             dataIndex: 'destination_service_mode',
             key: 'destination_service_mode',
+            width: MSK_QUERY_TABLE_COLUMN_WIDTHS.destination_service_mode,
+            onHeaderCell: () => NO_WRAP_HEADER_CELL_PROPS,
             sorter: createTextSorter((record) => record.destination_service_mode),
           },
           {
             title: '限价',
             dataIndex: 'limit_price',
             key: 'limit_price',
+            width: MSK_QUERY_TABLE_COLUMN_WIDTHS.limit_price,
+            onHeaderCell: () => NO_WRAP_HEADER_CELL_PROPS,
             sorter: createNumberSorter((record) => record.limit_price),
           },
-          { title: '端口', dataIndex: 'port', key: 'port', sorter: createTextSorter((record) => record.port) },
-          { title: '备注', dataIndex: 'tips', key: 'tips', sorter: createTextSorter((record) => record.tips) },
+          {
+            title: '端口',
+            dataIndex: 'port',
+            key: 'port',
+            width: MSK_QUERY_TABLE_COLUMN_WIDTHS.port,
+            onHeaderCell: () => NO_WRAP_HEADER_CELL_PROPS,
+            sorter: createTextSorter((record) => record.port),
+          },
+          {
+            title: '备注',
+            dataIndex: 'tips',
+            key: 'tips',
+            width: MSK_QUERY_TABLE_COLUMN_WIDTHS.tips,
+            onHeaderCell: () => NO_WRAP_HEADER_CELL_PROPS,
+            sorter: createTextSorter((record) => record.tips),
+          },
           {
             title: '操作',
             key: 'operation',

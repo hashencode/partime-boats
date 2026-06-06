@@ -68,6 +68,29 @@ const TABLE_FILTER = ['portofloading', 'portofdischarge', 'ship_name', 'boxcode'
 // 操作列固定宽度：单个“作废”按钮 2 个汉字按 28px 计算，
 // 无分隔与并列按钮，仅加默认余量 16px，总计 44px；结合表格单元格左右留白，固化为 60px。
 const ACTION_COLUMN_WIDTH = 60
+// 非操作列固定宽度已按项目级规则校准：
+// 1. 以当前列表前 20 条数据的 90 分位内容宽度为样本，并同时校验表头单行显示；
+// 2. 最终宽度显式计入左右 padding 与额外 16px 安全余量；
+// 3. 单列宽度上限 220px，操作列继续使用独立固定宽度规则。
+const REMIND_TABLE_COLUMN_WIDTHS = {
+  portofloading: 88,
+  portofdischarge: 112,
+  ship_name: 64,
+  boxcode: 88,
+  departuredate: 176,
+  oceanfreightamount: 88,
+  total_amount: 72,
+  source: 96,
+  insert_datetime: 176,
+  is_use_label: 88,
+  ship_info: 220,
+  price_id: 88,
+} as const
+const NO_WRAP_HEADER_CELL_PROPS = {
+  style: {
+    whiteSpace: 'nowrap' as const,
+  },
+}
 
 const toFilters = (values: RemindSearchValues): RemindListFilters => ({
   origincity_name: values.origincity_name,
@@ -297,60 +320,80 @@ export const RemindListPage = () => {
             title: '启运港',
             dataIndex: 'portofloading',
             key: 'portofloading',
+            width: REMIND_TABLE_COLUMN_WIDTHS.portofloading,
+            onHeaderCell: () => NO_WRAP_HEADER_CELL_PROPS,
             sorter: createTextSorter((record) => record.portofloading),
           },
           {
             title: '目的港',
             dataIndex: 'portofdischarge',
             key: 'portofdischarge',
+            width: REMIND_TABLE_COLUMN_WIDTHS.portofdischarge,
+            onHeaderCell: () => NO_WRAP_HEADER_CELL_PROPS,
             sorter: createTextSorter((record) => record.portofdischarge),
           },
           {
             title: '航线',
             dataIndex: 'ship_name',
             key: 'ship_name',
+            width: REMIND_TABLE_COLUMN_WIDTHS.ship_name,
+            onHeaderCell: () => NO_WRAP_HEADER_CELL_PROPS,
             sorter: createTextSorter((record) => record.ship_name),
           },
           {
             title: '箱型',
             dataIndex: 'boxcode',
             key: 'boxcode',
+            width: REMIND_TABLE_COLUMN_WIDTHS.boxcode,
+            onHeaderCell: () => NO_WRAP_HEADER_CELL_PROPS,
             sorter: createTextSorter((record) => record.boxcode),
           },
           {
             title: '开航时间',
             dataIndex: 'departuredate',
             key: 'departuredate',
+            width: REMIND_TABLE_COLUMN_WIDTHS.departuredate,
+            onHeaderCell: () => NO_WRAP_HEADER_CELL_PROPS,
             sorter: createDateSorter((record) => record.departuredate),
           },
           {
             title: '基础运价',
             dataIndex: 'oceanfreightamount',
             key: 'oceanfreightamount',
+            width: REMIND_TABLE_COLUMN_WIDTHS.oceanfreightamount,
+            onHeaderCell: () => NO_WRAP_HEADER_CELL_PROPS,
             sorter: createNumberSorter((record) => record.oceanfreightamount),
           },
           {
             title: '总价',
             dataIndex: 'total_amount',
             key: 'total_amount',
+            width: REMIND_TABLE_COLUMN_WIDTHS.total_amount,
+            onHeaderCell: () => NO_WRAP_HEADER_CELL_PROPS,
             sorter: createNumberSorter((record) => record.total_amount),
           },
           {
             title: '来源',
             dataIndex: 'source',
             key: 'source',
+            width: REMIND_TABLE_COLUMN_WIDTHS.source,
+            onHeaderCell: () => NO_WRAP_HEADER_CELL_PROPS,
             sorter: createTextSorter((record) => record.source),
           },
           {
             title: '查询时间',
             dataIndex: 'insert_datetime',
             key: 'insert_datetime',
+            width: REMIND_TABLE_COLUMN_WIDTHS.insert_datetime,
+            onHeaderCell: () => NO_WRAP_HEADER_CELL_PROPS,
             sorter: createDateSorter((record) => record.insert_datetime),
           },
           {
             title: '是否作废',
             dataIndex: 'is_use_label',
             key: 'is_use_label',
+            width: REMIND_TABLE_COLUMN_WIDTHS.is_use_label,
+            onHeaderCell: () => NO_WRAP_HEADER_CELL_PROPS,
             sorter: createNumberSorter((record) => record.is_use),
             render: (value: RemindRow['is_use_label']) => {
               if (value === '已作废') {
@@ -368,12 +411,16 @@ export const RemindListPage = () => {
             title: '船名航次',
             dataIndex: 'ship_info',
             key: 'ship_info',
+            width: REMIND_TABLE_COLUMN_WIDTHS.ship_info,
+            onHeaderCell: () => NO_WRAP_HEADER_CELL_PROPS,
             sorter: createTextSorter((record) => record.ship_info),
           },
           {
             title: 'price_id',
             dataIndex: 'price_id',
             key: 'price_id',
+            width: REMIND_TABLE_COLUMN_WIDTHS.price_id,
+            onHeaderCell: () => NO_WRAP_HEADER_CELL_PROPS,
             sorter: createNumberSorter((record) => record.price_id),
           },
           {
