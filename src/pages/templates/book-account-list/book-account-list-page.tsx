@@ -167,7 +167,7 @@ export const BookAccountListPage = () => {
             sorter: createDateSorter((record) => record.update_time),
           },
         ] satisfies ColumnsType<BookAccountRow>,
-      buildTableNode: ({ columns, dataSource, loading, tableClassName, pagination, tableSize, virtualScroll }) => {
+      buildTableNode: ({ columns, dataSource, loading, tableClassName, pagination, tableSize }) => {
         return (
           <Table<BookAccountRow>
             rowKey="key"
@@ -177,8 +177,7 @@ export const BookAccountListPage = () => {
             loading={loading}
             pagination={pagination}
             size={tableSize}
-            virtual={virtualScroll.enabled}
-            scroll={virtualScroll.enabled ? virtualScroll.scroll : { x: 'max-content' }}
+            scroll={{ x: 'max-content' }}
           />
         )
       },

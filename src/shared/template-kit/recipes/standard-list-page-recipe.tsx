@@ -12,7 +12,7 @@ import {
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { buildListToolbarColumnSettingOptions, ListToolbarActions } from '../../components/list-toolbar-actions'
 import { applyPersistedOrderToKeys, useListViewPreferences } from '../../hooks/use-list-view-preferences'
-import { ALL_DATA_PAGE_SIZE, useStandardPagination } from '../../hooks/use-standard-pagination'
+import { useStandardPagination } from '../../hooks/use-standard-pagination'
 import { useCrudFormNavigation } from '../hooks'
 import type { StandardListPageSpec } from '../specs/standard-list-page-spec'
 import { buildSearchGridProps } from '../list/build-search-grid-props'
@@ -26,18 +26,6 @@ import { useRouteTitle } from '../../contexts/route-title-context'
 import { useTheme } from '../../contexts/theme-context'
 
 void React
-
-const VIRTUAL_TABLE_HEIGHT = 700
-const DEFAULT_VIRTUAL_TABLE_WIDTH = 1200
-const VIRTUAL_SCROLL_PAGE_SIZE_THRESHOLD = 50
-
-const resolveVirtualScrollX = (columns: Array<{ width?: string | number }>) => {
-  const numericWidthSum = columns.reduce((sum, column) => {
-    return typeof column.width === 'number' ? sum + column.width : sum
-  }, 0)
-
-  return Math.max(numericWidthSum, DEFAULT_VIRTUAL_TABLE_WIDTH)
-}
 
 export const StandardListPageRecipe = <
   TFilterValues extends Record<string, unknown>,
@@ -215,17 +203,6 @@ export const StandardListPageRecipe = <
     [orderedColumns, selectedColumnKeys]
   )
 
-  const virtualScroll = useMemo(
-    () => ({
-      enabled: pageSize >= VIRTUAL_SCROLL_PAGE_SIZE_THRESHOLD || pageSize === ALL_DATA_PAGE_SIZE,
-      scroll: {
-        x: resolveVirtualScrollX(visibleColumns),
-        y: VIRTUAL_TABLE_HEIGHT,
-      },
-    }),
-    [pageSize, visibleColumns]
-  )
-
   const handleResetAll = () => {
     onResetFilters()
     resetPage()
@@ -268,7 +245,6 @@ export const StandardListPageRecipe = <
     onPageChange: (nextCurrent, nextPageSize) => {
       tablePagination.onChange?.(nextCurrent, nextPageSize)
     },
-    virtualScroll,
   })
 
   return (

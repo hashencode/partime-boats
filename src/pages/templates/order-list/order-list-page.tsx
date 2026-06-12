@@ -613,7 +613,7 @@ export const OrderListPage = () => {
           sorter: createNumberSorter((record) => record.free_day),
         },
       ],
-      buildTableNode: ({ columns, dataSource, loading, tableSize, tableClassName, pagination, virtualScroll }) => {
+      buildTableNode: ({ columns, dataSource, loading, tableSize, tableClassName, pagination }) => {
         currentRowsRef.current = dataSource
         return (
           <Table
@@ -623,8 +623,7 @@ export const OrderListPage = () => {
             dataSource={dataSource}
             size={tableSize}
             loading={loading}
-            virtual={virtualScroll.enabled}
-            scroll={virtualScroll.enabled ? virtualScroll.scroll : { x: 'max-content' }}
+            scroll={{ x: 'max-content' }}
             pagination={pagination}
           />
         )

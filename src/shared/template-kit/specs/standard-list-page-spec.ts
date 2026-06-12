@@ -54,13 +54,6 @@ export type StandardListPageSpec<
     tableClassName: string
     pagination: TablePaginationConfig
     onPageChange: (nextCurrent: number, nextPageSize: number) => void
-    virtualScroll: {
-      enabled: boolean
-      scroll: {
-        x: number
-        y: number
-      }
-    }
   }) => ReactNode
   createAction?: {
     label: string

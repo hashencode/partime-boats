@@ -149,7 +149,7 @@ describe('MskQueryListPage', () => {
     })
 
     expect(screen.getByText('所有数据')).toBeTruthy()
-    expect(container.querySelector('.ant-table-virtual')).toBeTruthy()
+    expect(container.querySelector('.ant-table-virtual')).toBeNull()
 
     fireEvent.mouseDown(screen.getByText('所有数据'))
 

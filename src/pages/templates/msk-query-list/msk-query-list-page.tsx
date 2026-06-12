@@ -572,7 +572,7 @@ export const MskQueryListPage = () => {
           },
         ]
       },
-      buildTableNode: ({ columns, dataSource, loading, tableSize, tableClassName, pagination, virtualScroll }) => {
+      buildTableNode: ({ columns, dataSource, loading, tableSize, tableClassName, pagination }) => {
         currentRowsRef.current = dataSource
         return (
           <Table<RowView>
@@ -583,7 +583,6 @@ export const MskQueryListPage = () => {
             loading={loading}
             size={tableSize}
             pagination={pagination}
-            virtual={virtualScroll.enabled}
             rowSelection={{
               selectedRowKeys: selectedRowsRef.current.map((item) => item.id),
               onChange: (_, rows) => {
@@ -592,7 +591,7 @@ export const MskQueryListPage = () => {
               },
               columnWidth: 50,
             }}
-            scroll={virtualScroll.enabled ? virtualScroll.scroll : { x: 'max-content' }}
+            scroll={{ x: 'max-content' }}
           />
         )
       },

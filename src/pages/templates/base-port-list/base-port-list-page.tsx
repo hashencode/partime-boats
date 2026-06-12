@@ -208,7 +208,7 @@ export const BasePortListPage = () => {
             ),
           },
         ] satisfies ColumnsType<BasePortRow>,
-      buildTableNode: ({ columns, dataSource, loading, tableClassName, pagination, tableSize, virtualScroll }) => (
+      buildTableNode: ({ columns, dataSource, loading, tableClassName, pagination, tableSize }) => (
         <Table<BasePortRow>
           className={tableClassName}
           rowKey="key"
@@ -218,8 +218,7 @@ export const BasePortListPage = () => {
           loading={loading}
           pagination={pagination}
           size={tableSize}
-          virtual={virtualScroll.enabled}
-          scroll={virtualScroll.enabled ? virtualScroll.scroll : { x: 'max-content' }}
+          scroll={{ x: 'max-content' }}
         />
       ),
       createAction: canWrite

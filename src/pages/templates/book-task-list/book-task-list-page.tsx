@@ -1225,7 +1225,6 @@ export const BookTaskListPage = () => {
         tableSize,
         tableClassName,
         pagination,
-        virtualScroll,
       }) => {
         currentRowsRef.current = dataSource
 
@@ -1238,13 +1237,12 @@ export const BookTaskListPage = () => {
             loading={loading}
             size={tableSize}
             pagination={pagination}
-            virtual={virtualScroll.enabled}
             rowSelection={{
               selectedRowKeys,
               onChange: (keys) => setSelectedRowKeys(keys as number[]),
               columnWidth: 50,
             }}
-            scroll={virtualScroll.enabled ? virtualScroll.scroll : { x: 'max-content' }}
+            scroll={{ x: 'max-content' }}
           />
         )
       },

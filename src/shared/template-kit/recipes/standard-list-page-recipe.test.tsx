@@ -54,14 +54,6 @@ type Response = {
   total: number
 }
 
-type VirtualScrollSnapshot = {
-  enabled: boolean
-  scroll: {
-    x: number
-    y: number
-  }
-}
-
 describe('StandardListPageRecipe', () => {
   const renderWithTheme = (node: React.ReactNode, routeTitle: string | null = null) =>
     render(
@@ -289,12 +281,12 @@ describe('StandardListPageRecipe', () => {
     })
   })
 
-  it('should enable virtual scroll when page size reaches the large-page threshold', async () => {
-    let latestVirtualScroll: VirtualScrollSnapshot | null = null
+  it('should not pass virtual scroll settings when page size reaches the previous large-page threshold', async () => {
+    let latestTableContext: Record<string, unknown> | null = null
     const spec: StandardListPageSpec<FilterValues, RequestFilters, Response, { id: number; name: string }, Error> = {
       pageTitle: '测试列表',
       cardTitle: '测试数据',
-      tableId: 'recipe-test-list-virtual-scroll',
+      tableId: 'recipe-test-list-no-virtual-scroll',
       formRoute: '/test/form',
       initialFilters: {},
       toFilters: (values) => ({
@@ -322,11 +314,11 @@ describe('StandardListPageRecipe', () => {
             width: 180,
           },
         ] satisfies ColumnsType<{ id: number; name: string }>,
-      buildTableNode: ({ onPageChange, virtualScroll }) => {
-        latestVirtualScroll = virtualScroll
+      buildTableNode: (context) => {
+        latestTableContext = context as unknown as Record<string, unknown>
         return (
           <div>
-            <button type="button" onClick={() => onPageChange(2, 100)}>
+            <button type="button" onClick={() => context.onPageChange(2, 100)}>
               change-page-size
             </button>
           </div>
@@ -337,32 +329,22 @@ describe('StandardListPageRecipe', () => {
     renderWithTheme(<StandardListPageRecipe spec={spec} />)
 
     await waitFor(() => {
-      expect(latestVirtualScroll).not.toBeNull()
+      expect(latestTableContext).not.toBeNull()
     })
 
-    expect(latestVirtualScroll).toEqual({
-      enabled: false,
-      scroll: {
-        x: 1200,
-        y: 700,
-      },
-    })
+    expect('virtualScroll' in latestTableContext!).toBe(false)
 
     fireEvent.click(screen.getByRole('button', { name: 'change-page-size' }))
 
     await waitFor(() => {
-      expect(latestVirtualScroll).toEqual({
-        enabled: true,
-        scroll: {
-          x: 1200,
-          y: 700,
-        },
-      })
+      expect(latestTableContext?.pageSize).toBe(100)
     })
+
+    expect('virtualScroll' in latestTableContext!).toBe(false)
   })
 
-  it('should enable virtual scroll on first render when default page size is all data', async () => {
-    let latestVirtualScroll: VirtualScrollSnapshot | null = null
+  it('should not pass virtual scroll settings on first render when default page size is all data', async () => {
+    let latestTableContext: Record<string, unknown> | null = null
     const spec: StandardListPageSpec<FilterValues, RequestFilters, Response, { id: number; name: string }, Error> = {
       pageTitle: '测试列表',
       cardTitle: '测试数据',
@@ -397,8 +379,8 @@ describe('StandardListPageRecipe', () => {
             width: 180,
           },
         ] satisfies ColumnsType<{ id: number; name: string }>,
-      buildTableNode: ({ virtualScroll }) => {
-        latestVirtualScroll = virtualScroll
+      buildTableNode: (context) => {
+        latestTableContext = context as unknown as Record<string, unknown>
         return <div>virtual-table</div>
       },
     }
@@ -406,14 +388,10 @@ describe('StandardListPageRecipe', () => {
     renderWithTheme(<StandardListPageRecipe spec={spec} />)
 
     await waitFor(() => {
-      expect(latestVirtualScroll).toEqual({
-        enabled: true,
-        scroll: {
-          x: 1200,
-          y: 700,
-        },
-      })
+      expect(latestTableContext?.pageSize).toBe(ALL_DATA_PAGE_SIZE)
     })
+
+    expect('virtualScroll' in latestTableContext!).toBe(false)
   })
 
   it('should pass compact search layout preference to filter form', async () => {

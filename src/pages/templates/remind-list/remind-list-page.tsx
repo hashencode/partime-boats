@@ -457,7 +457,7 @@ export const RemindListPage = () => {
           },
         ] as ColumnsType<RemindRow>
       },
-      buildTableNode: ({ columns, dataSource, loading, tableClassName, pagination, tableSize, virtualScroll }) => {
+      buildTableNode: ({ columns, dataSource, loading, tableClassName, pagination, tableSize }) => {
         currentRowsRef.current = dataSource
         return (
           <Table<RemindRow>
@@ -468,7 +468,6 @@ export const RemindListPage = () => {
             loading={loading}
             size={tableSize}
             pagination={pagination}
-            virtual={virtualScroll.enabled}
             rowSelection={
               canWrite
                 ? {
@@ -482,7 +481,7 @@ export const RemindListPage = () => {
                   }
                 : undefined
             }
-            scroll={virtualScroll.enabled ? virtualScroll.scroll : { x: 'max-content' }}
+            scroll={{ x: 'max-content' }}
           />
         )
       },
