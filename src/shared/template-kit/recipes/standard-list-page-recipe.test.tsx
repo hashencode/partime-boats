@@ -655,7 +655,8 @@ describe('StandardListPageRecipe', () => {
     expect(screen.getByTestId('selection-table-node').textContent).toBe('demo')
   })
 
-  it('places selection info on the left, action area in the center, and view controls on the right', async () => {
+  it('places actions and pagination in the center separated by a divider', async () => {
+    let receivedPagination: unknown = null
     const spec: StandardListPageSpec<FilterValues, RequestFilters, Response, { id: number; name: string }, Error> = {
       pageTitle: '测试列表',
       cardTitle: '测试数据',
@@ -683,7 +684,11 @@ describe('StandardListPageRecipe', () => {
             dataIndex: 'name',
           },
         ] satisfies ColumnsType<{ id: number; name: string }>,
-      buildTableNode: ({ dataSource }) => <div>{dataSource[0]?.name ?? 'empty'}</div>,
+      buildTableNode: ({ dataSource, pagination }) => {
+        receivedPagination = pagination
+
+        return <div>{dataSource[0]?.name ?? 'empty'}</div>
+      },
     }
 
     const { container } = renderWithTheme(
@@ -702,12 +707,78 @@ describe('StandardListPageRecipe', () => {
     const refreshButton = screen.getByRole('button', { name: '刷新' })
     const createButton = screen.getByRole('button', { name: '新增规则' })
     const customButton = screen.getByRole('button', { name: '批量操作' })
+    const centerPagination = container.querySelector('.list-card-header-center .ant-pagination')
+    const actionDivider = container.querySelector('.list-card-header-center .ant-divider.mx-8')
 
     expect(refreshButton.closest('.list-card-header-center')).toBe(center)
     expect(createButton.closest('.list-card-header-center')).toBe(center)
     expect(customButton.closest('.list-card-header-center')).toBe(center)
     expect(customButton.compareDocumentPosition(refreshButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(actionDivider).toBeTruthy()
+    expect(centerPagination).toBeTruthy()
+    expect(receivedPagination).toMatchObject({
+      placement: ['none'],
+    })
     expect(screen.getByRole('button', { name: '密度' }).closest('.list-card-header-right')).toBe(right)
     expect(screen.getByRole('button', { name: '列设置' }).closest('.list-card-header-right')).toBe(right)
+  })
+
+  it('uses the header pagination to request the next page', async () => {
+    const requestCalls: RequestFilters[] = []
+    const spec: StandardListPageSpec<FilterValues, RequestFilters, Response, { id: number; name: string }, Error> = {
+      pageTitle: '测试列表',
+      cardTitle: '测试数据',
+      tableId: 'recipe-test-header-pagination',
+      formRoute: '/test/form',
+      initialFilters: {},
+      toFilters: () => ({}),
+      buildRequestFilters: ({ filters, current, pageSize }) => ({
+        ...filters,
+        current,
+        size: pageSize,
+      }),
+      request: async (filters) => {
+        requestCalls.push(filters)
+
+        return {
+          data: [{ id: filters.current ?? 1, name: `page-${filters.current ?? 1}` }],
+          current: filters.current ?? 1,
+          size: filters.size ?? 10,
+          total: 30,
+        }
+      },
+      selectItems: (response) => response?.data ?? [],
+      filterFields: [],
+      buildColumns: () =>
+        [
+          {
+            key: 'name',
+            title: '名称',
+            dataIndex: 'name',
+          },
+        ] satisfies ColumnsType<{ id: number; name: string }>,
+      buildTableNode: ({ dataSource }) => <div data-testid="paged-table">{dataSource[0]?.name ?? 'empty'}</div>,
+    }
+
+    const { container } = renderWithTheme(<StandardListPageRecipe spec={spec} />)
+
+    await waitFor(() => {
+      expect(requestCalls).toHaveLength(1)
+    })
+
+    const pageTwoItem = container.querySelector('.list-card-header-center .ant-pagination-item-2') as HTMLElement | null
+    expect(pageTwoItem).toBeTruthy()
+
+    fireEvent.click(pageTwoItem!)
+
+    await waitFor(() => {
+      expect(requestCalls).toHaveLength(2)
+    })
+
+    expect(requestCalls[1]).toEqual({
+      current: 2,
+      size: 10,
+    })
+    expect(screen.getByTestId('paged-table').textContent).toBe('page-2')
   })
 })

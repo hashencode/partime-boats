@@ -4,9 +4,12 @@ import {
 import {
   Button,
   Card,
+  Divider,
   Form,
+  Pagination,
   Tooltip,
   type TableColumnsType,
+  type TablePaginationConfig,
   Typography,
 } from 'antd'
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
@@ -51,6 +54,21 @@ export const StandardListPageRecipe = <
     ...spec.pagination,
   })
   const tablePagination = useMemo(() => buildStandardListPagination(pagination), [pagination])
+  const hiddenTablePagination = useMemo<TablePaginationConfig>(
+    () => ({
+      ...tablePagination,
+      placement: ['none'],
+    }),
+    [tablePagination]
+  )
+  const headerPagination = useMemo(() => {
+    const { placement, position, ...paginationProps } = tablePagination
+
+    void placement
+    void position
+
+    return paginationProps
+  }, [tablePagination])
 
   const {
     filters,
@@ -241,7 +259,7 @@ export const StandardListPageRecipe = <
     pageSize,
     total: responseTotal,
     tableClassName: STANDARD_LIST_TABLE_CLASS_NAME,
-    pagination: tablePagination,
+    pagination: hiddenTablePagination,
     onPageChange: (nextCurrent, nextPageSize) => {
       tablePagination.onChange?.(nextCurrent, nextPageSize)
     },
@@ -299,6 +317,8 @@ export const StandardListPageRecipe = <
             <Tooltip title="刷新">
               <Button icon={<ReloadOutlined />} aria-label="刷新" onClick={handleReload} />
             </Tooltip>
+            <Divider orientation="vertical" className="mx-8" />
+            <Pagination {...headerPagination} />
           </div>
           <div className="list-card-header-right ml-auto flex shrink-0 items-center justify-end gap-2">
             <ListToolbarActions
