@@ -44,6 +44,7 @@ type SearchValues = {
 
 type RowView = MskQueryItem & {
   key: number
+  host_label: string
   delay_time_label: string
   is_run_label: string
   is_roll_label: string
@@ -324,7 +325,7 @@ export const MskQueryListPage = () => {
       return {
         ...item,
         key: item.id,
-        host: item.host ?? resolveHostByDestination(item.destinationcity_name) ?? '',
+        host_label: resolveHostByDestination(item.destinationcity_name) ?? item.host ?? '',
         early_date: item.early_date ? dayjs(item.early_date).format('YYYY-MM-DD') : '',
         delay_time_label: findLabel(DELAY_OPTIONS, item.delay_time),
         is_run_label: findLabel(IS_RUN_OPTIONS, item.is_run),
@@ -332,7 +333,9 @@ export const MskQueryListPage = () => {
       }
     })
 
-    const filteredByHost = filters.shipping_line ? list.filter((item) => item.host === filters.shipping_line) : list
+    const filteredByHost = filters.shipping_line
+      ? list.filter((item) => item.host_label === filters.shipping_line)
+      : list
 
     return {
       data: filteredByHost,
@@ -382,7 +385,7 @@ export const MskQueryListPage = () => {
                     id: item.id,
                     origincity_name: item.origincity_name,
                     destinationcity_name: item.destinationcity_name,
-                    host: item.host,
+                    host: item.host_label,
                     box_type: item.box_type,
                     delay_time: item.delay_time_label,
                     is_run: item.is_run_label,
@@ -457,11 +460,11 @@ export const MskQueryListPage = () => {
           },
           {
             title: '航线',
-            dataIndex: 'host',
+            dataIndex: 'host_label',
             key: 'host',
             width: MSK_QUERY_TABLE_COLUMN_WIDTHS.host,
             onHeaderCell: () => NO_WRAP_HEADER_CELL_PROPS,
-            sorter: createTextSorter((record) => record.host),
+            sorter: createTextSorter((record) => record.host_label),
           },
           {
             title: '箱型',

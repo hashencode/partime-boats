@@ -112,10 +112,32 @@ describe('MskQueryListPage', () => {
     await waitFor(() => {
       expect(screen.getAllByText('NINGBO').length).toBeGreaterThan(0)
       expect(screen.getByText('账号数: 12')).toBeTruthy()
+      expect(screen.getByText('欧洲')).toBeTruthy()
     })
 
     expect(screen.getByRole('button', { name: '修改' })).toBeTruthy()
     expect(screen.queryByRole('link', { name: '订舱' })).toBeNull()
+  })
+
+  it('should fall back to the api shipping line when destination has no configured mapping', async () => {
+    server.use(
+      http.get('*/check/show', () =>
+        HttpResponse.json([
+          {
+            id: 1,
+            origincity_name: 'NINGBO',
+            destinationcity_name: 'UNKNOWN PORT',
+            host: '接口航线',
+          },
+        ])
+      )
+    )
+
+    render(<ThemeProvider><MskQueryListPage /></ThemeProvider>)
+
+    await waitFor(() => {
+      expect(screen.getByText('接口航线')).toBeTruthy()
+    })
   })
 
   it('should show all returned rows on first render by default', async () => {
@@ -370,6 +392,7 @@ describe('MskQueryListPage', () => {
     await waitFor(() => {
       expect(latestSingleUpdatePayload).toMatchObject({
         id: 1,
+        host: 'MSK',
         is_run: -1,
         delay_time: 30,
         is_roll: 1,
