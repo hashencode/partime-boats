@@ -13,6 +13,7 @@ export const AppRouter = () => {
       theme={{
         algorithm: resolvedTheme === 'dark' ? theme.darkAlgorithm : theme.defaultAlgorithm,
         token: {
+          fontFamily: 'var(--font-body)',
           colorPrimary: '#1677ff',
           borderRadius: 8,
           colorBgLayout: resolvedTheme === 'dark' ? '#141414' : '#f5f7fa',

@@ -8,7 +8,7 @@ import {
   SmileOutlined,
   SunOutlined,
 } from '@ant-design/icons'
-import { Avatar, Breadcrumb, Dropdown, Layout, Menu, Switch, message, theme, Typography } from 'antd'
+import { Avatar, Breadcrumb, ConfigProvider, Dropdown, Layout, Menu, Switch, message, theme, Typography } from 'antd'
 import type { MenuProps } from 'antd'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
@@ -106,7 +106,7 @@ export const AppShell = ({ routes = [], headerExtra }: AppShellProps) => {
   const navigate = useNavigate()
   const location = useLocation()
   const { role, displayName, logout } = useAuth()
-  const { mode, resolvedTheme, searchCompactLayout, setMode, setSearchCompactLayout } = useTheme()
+  const { mode, searchCompactLayout, setMode, setSearchCompactLayout } = useTheme()
   const { token } = theme.useToken()
   const isDevelopmentEnv = import.meta.env.PUBLIC_MODE === 'development'
 
@@ -356,27 +356,44 @@ export const AppShell = ({ routes = [], headerExtra }: AppShellProps) => {
       <Header
         className="sticky top-0 z-10 flex h-14 items-center justify-between gap-3 px-5 pl-4 shadow-none"
         style={{
-          background: token.colorBgContainer,
-          borderBottom: `1px solid ${token.colorBorderSecondary}`,
+          background: 'var(--nav-bg)',
+          borderBottom: '1px solid var(--nav-border)',
+          color: 'var(--nav-text)',
         }}
       >
         <div className="flex min-w-0 flex-1 items-center">
           <div
             className="flex shrink-0 cursor-pointer items-center gap-2.5 pr-4"
-            style={{ color: token.colorText }}
+            style={{ color: 'var(--nav-text)' }}
             onClick={() => navigate('/')}
           >
-            <span className="text-base tracking-[0.2px]">Boats</span>
+            <span className="app-brand text-base tracking-[0.2px]">Boats</span>
           </div>
-          <Menu
-            className="min-w-0 flex-1 border-0 [&_.ant-menu-item]:!h-14 [&_.ant-menu-item]:!leading-[56px] [&_.ant-menu-overflow-item]:!h-14 [&_.ant-menu-overflow-item]:!leading-[56px]"
-            style={{ background: token.colorBgContainer }}
-            theme={resolvedTheme === 'dark' ? 'dark' : 'light'}
-            mode="horizontal"
-            triggerSubMenuAction="click"
-            selectedKeys={selectedKey ? [selectedKey] : []}
-            items={topNavItems}
-          />
+          <ConfigProvider
+            theme={{
+              components: {
+                Menu: {
+                  darkItemBg: 'var(--nav-bg)',
+                  darkPopupBg: 'var(--nav-bg)',
+                  darkSubMenuItemBg: 'var(--nav-bg)',
+                  darkItemColor: 'var(--nav-text)',
+                  darkItemHoverColor: 'var(--nav-text)',
+                  darkItemSelectedColor: 'var(--nav-text)',
+                  darkItemSelectedBg: 'var(--nav-active-bg)',
+                  darkItemHoverBg: 'var(--nav-active-bg)',
+                },
+              },
+            }}
+          >
+            <Menu
+              className="min-w-0 flex-1 border-0 [&_.ant-menu-item]:!h-14 [&_.ant-menu-item]:!leading-[56px] [&_.ant-menu-overflow-item]:!h-14 [&_.ant-menu-overflow-item]:!leading-[56px]"
+              theme="dark"
+              mode="horizontal"
+              triggerSubMenuAction="click"
+              selectedKeys={selectedKey ? [selectedKey] : []}
+              items={topNavItems}
+            />
+          </ConfigProvider>
         </div>
 
         <div className="flex items-center gap-2">
