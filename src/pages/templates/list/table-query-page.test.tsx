@@ -168,8 +168,8 @@ describe('TableQueryPage', () => {
     })
   })
 
-  it('moves batch actions into the card header when rows are selected', async () => {
-    render(<ThemeProvider><TableQueryPage /></ThemeProvider>)
+  it('should keep actions centered and preserve the title when rows are selected and cleared', async () => {
+    const view = render(<ThemeProvider><TableQueryPage /></ThemeProvider>)
 
     await waitFor(() => {
       expect(screen.getByText('TradeCode 0')).toBeTruthy()
@@ -178,15 +178,28 @@ describe('TableQueryPage', () => {
 
     const table = screen.getByRole('table')
     const checkbox = within(table).getAllByRole('checkbox')[1]
+    const centerHeader = view.container.querySelector('.list-card-header-center')
+    const toolbar = within(centerHeader as HTMLElement)
+    const createButton = toolbar.getByRole('button', { name: /新增规则/ })
     fireEvent.click(checkbox)
 
     await waitFor(() => {
-      expect(screen.getByText(/^已选 1 项，服务调用总量 \d+$/)).toBeTruthy()
-      expect(screen.getByRole('button', { name: '批量删除' })).toBeTruthy()
-      expect(screen.getByRole('button', { name: '批量审批' })).toBeTruthy()
+      expect(toolbar.getByText(/^已选 1 项，服务调用总量 \d+$/)).toBeTruthy()
+      expect(toolbar.getByRole('button', { name: '批量删除' }).closest('.list-card-header-center')).toBe(centerHeader)
+      expect(toolbar.getByRole('button', { name: '批量审批' }).closest('.list-card-header-center')).toBe(centerHeader)
     })
 
-    expect(screen.queryByText('规则列表')).toBeNull()
-    expect(screen.queryByText('已选择')).toBeNull()
+    expect(screen.getByText('规则列表').closest('.list-card-header-left')).toBeTruthy()
+    expect(toolbar.getByRole('button', { name: /新增规则/ })).toBe(createButton)
+
+    fireEvent.click(checkbox)
+
+    await waitFor(() => {
+      expect(toolbar.queryByRole('button', { name: '批量删除' })).toBeNull()
+      expect(toolbar.queryByRole('button', { name: '批量审批' })).toBeNull()
+      expect(toolbar.queryByText(/^已选/)).toBeNull()
+    })
+    expect(screen.getByText('规则列表')).toBeTruthy()
+    expect(toolbar.getByRole('button', { name: /新增规则/ })).toBe(createButton)
   }, 30000)
 })

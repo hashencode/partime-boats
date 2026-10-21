@@ -217,6 +217,12 @@ export const MskApiListPage = () => {
           <Button type="primary" onClick={() => setAddingVisible(true)}>
             新增一行
           </Button>
+          {selectedCount > 0 ? (
+            <>
+              <Button onClick={() => setBatchVisible(true)}>批量修改</Button>
+              <Typography.Text>已选 {selectedCount} 项</Typography.Text>
+            </>
+          ) : null}
         </Space>
       ),
       renderBeforeFilter: (
@@ -407,20 +413,13 @@ export const MskApiListPage = () => {
       filterFields,
       handleToggleAll,
       requestList,
+      selectedCount,
     ]
   )
 
-  const cardTitleOverride =
-    selectedCount > 0 ? (
-      <div className="flex flex-wrap items-center gap-3">
-        <Typography.Text>已选 {selectedCount} 项</Typography.Text>
-        <Button onClick={() => setBatchVisible(true)}>批量修改</Button>
-      </div>
-    ) : undefined
-
   return (
     <>
-      <StandardListPageRecipe spec={spec} cardTitleOverride={cardTitleOverride} />
+      <StandardListPageRecipe spec={spec} />
 
       {addingVisible ? (
         <Modal

@@ -17,6 +17,7 @@ export type StandardListPageSpec<
   pageTitle: string
   cardTitle?: ReactNode
   tableId: string
+  newColumnKeys?: string[]
   formRoute: string
   initialFilters: TRequestFilters
   toFilters: (values: TFilterValues) => TRequestFilters
@@ -30,6 +31,8 @@ export type StandardListPageSpec<
   mapError?: (error: unknown) => TError
   isPartial?: (response: TResponse | null) => boolean
   onError?: (error: TError, filters: TRequestFilters) => void
+  onQueryChange?: () => void
+  showStaleDataError?: boolean
   transformResponse?: (response: TResponse) => TResponse
   refreshChannel?: {
     channelName: string

@@ -62,6 +62,32 @@ describe('StandardListPageRecipe', () => {
       </ThemeProvider>
     )
 
+  it('should identify retained data as stale after an update fails and recover on retry', async () => {
+    let calls = 0
+    const spec: StandardListPageSpec<FilterValues, RequestFilters, Response, { id: number; name: string }, Error> = {
+      pageTitle: '测试列表', tableId: 'stale-data-test', formRoute: '/test/form', initialFilters: {},
+      showStaleDataError: true,
+      toFilters: (values) => values,
+      request: async () => {
+        calls += 1
+        if (calls === 2) throw new Error('更新失败')
+        return { data: [{ id: 1, name: calls === 1 ? '旧记录' : '新记录' }], current: 1, size: 10, total: 1 }
+      },
+      selectItems: (response) => response?.data ?? [],
+      filterFields: [{ type: 'input', name: 'name', label: '名称' }],
+      buildColumns: () => [{ key: 'name', dataIndex: 'name', title: '名称' }],
+      buildTableNode: ({ dataSource }) => <div>{dataSource[0]?.name}</div>,
+    }
+    renderWithTheme(<StandardListPageRecipe spec={spec} />)
+    await screen.findByText('旧记录')
+    fireEvent.click(screen.getByRole('button', { name: /查\s*询/ }))
+    await screen.findByText('本次列表未更新')
+    expect(screen.getByText('旧记录')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: /重\s*试/ }))
+    await screen.findByText('新记录')
+    expect(screen.queryByText('本次列表未更新')).toBeNull()
+  })
+
   it('does not auto request on filter value change and re-queries on every submit click', async () => {
     const requestCalls: RequestFilters[] = []
     const spec: StandardListPageSpec<FilterValues, RequestFilters, Response, { id: number; name: string }, Error> = {

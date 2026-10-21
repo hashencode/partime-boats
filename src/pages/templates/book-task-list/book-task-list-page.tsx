@@ -38,8 +38,6 @@ import {
   batchUpdateBookTask,
   buildBookTaskBatchPayload,
   buildBookTaskUpdatePayload,
-  clearBookTaskRouter,
-  closeBookTaskInitialization,
   fetchAllBookTaskIds,
   fetchBookTaskList,
   fetchEndPortOptions,
@@ -71,6 +69,7 @@ type EditableBookTask = BookTaskItem & {
 }
 
 type BookTaskFormValues = {
+  list_type?: number | null
   order_id?: string
   account_name?: string
   quantity?: number
@@ -175,7 +174,8 @@ const BOOK_TASK_TABLE_COLUMN_WIDTHS = {
   nac_concurrent: 112,
   nac_sleep: 112,
   limit_day: 88,
-  cid_group: 72,
+  cid_group: 88,
+  list_type: 88,
   group_id: 72,
 } as const
 const NO_WRAP_HEADER_CELL_PROPS = {
@@ -292,6 +292,7 @@ const toQueryFilters = (values: BookTaskFilterValues): BookTaskQueryFilters => (
 })
 
 const toFormValues = (record: EditableBookTask): BookTaskFormValues => ({
+  list_type: record.list_type === null || record.list_type === undefined ? undefined : Number(record.list_type),
   order_id: normalizeTextValue(record.order_id) || undefined,
   account_name: record.account_name ?? '',
   quantity:
@@ -369,27 +370,6 @@ const hasScopedFilters = (filters: BookTaskQueryFilters) => {
     Boolean(filters.order_id) ||
     Boolean(filters.origincity_name)
   )
-}
-
-const buildScopedIds = async (
-  filters: BookTaskQueryFilters,
-  rows: EditableBookTask[],
-  selectedIds: number[]
-) => {
-  if (selectedIds.length > 0) {
-    return selectedIds.join(',')
-  }
-
-  if (hasScopedFilters(filters)) {
-    if (rows.length === 0) {
-      return undefined
-    }
-
-    const allIds = await fetchAllBookTaskIds(filters)
-    return allIds.join(',')
-  }
-
-  return undefined
 }
 
 const buildCidTypeOption = (value: number) => {
@@ -594,7 +574,12 @@ export const BookTaskFormFields = ({
       </Form.Item>
     </Col>
     <Col span={8}>
-      <Form.Item label="分组2" name="cid_group">
+      <Form.Item label="账号分组" name="cid_group">
+        <InputNumber className="!w-full" precision={0} />
+      </Form.Item>
+    </Col>
+    <Col span={8}>
+      <Form.Item label="列表分组" name="list_type">
         <InputNumber className="!w-full" precision={0} />
       </Form.Item>
     </Col>
@@ -667,6 +652,11 @@ export const BookTaskListPage = () => {
   const [selectedRowKeys, setSelectedRowKeys] = useState<number[]>([])
   const [batchVisible, setBatchVisible] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [preparingClose, setPreparingClose] = useState(false)
+  const [pendingClose, setPendingClose] = useState<{ ids: number[]; scope: string; version: number } | null>(null)
+  const [batchAction, setBatchAction] = useState<'open' | 'close'>('open')
+  const preparingCloseRef = useRef(false)
+  const queryVersionRef = useRef(0)
   const latestFiltersRef = useRef<BookTaskQueryFilters>({})
   const currentRowsRef = useRef<EditableBookTask[]>([])
   const reloadRef = useRef<() => Promise<void>>(async () => {})
@@ -698,8 +688,8 @@ export const BookTaskListPage = () => {
       {
         type: 'input',
         name: 'cid_group',
-        label: 'CID分组',
-        inputProps: { placeholder: '请输入CID分组' },
+        label: '账号分组',
+        inputProps: { placeholder: '请输入账号分组' },
       },
       { type: 'input', name: 'group_id', label: '分组', inputProps: { placeholder: '请输入分组' } },
       {
@@ -727,6 +717,7 @@ export const BookTaskListPage = () => {
 
   const handleSave = useCallback(
     async (record: EditableBookTask, reload: () => Promise<void>) => {
+      if (!canWrite) return
       try {
         setSaving(true)
         const payload: BookTaskSavePayload = buildBookTaskUpdatePayload(editForm.getFieldsValue(true))
@@ -742,11 +733,12 @@ export const BookTaskListPage = () => {
         setSaving(false)
       }
     },
-    [editForm]
+    [canWrite, editForm]
   )
 
   const handleBatchSubmit = useCallback(
     async (reload: () => Promise<void>) => {
+      if (!canWrite) return
       if (selectedRowKeys.length === 0) {
         message.error('请选择要修改的数据')
         return
@@ -768,10 +760,12 @@ export const BookTaskListPage = () => {
         setSaving(false)
       }
     },
-    [batchForm, selectedRowKeys]
+    [batchForm, canWrite, selectedRowKeys]
   )
 
   const handleBatchOpen = useCallback(async () => {
+    if (!canWrite || preparingCloseRef.current || pendingClose || batchQueueTask.progress.status === 'running') return
+    setBatchAction('open')
     const selectedIds = [...selectedRowKeys]
 
     if (selectedIds.length > 0) {
@@ -813,7 +807,47 @@ export const BookTaskListPage = () => {
         await batchUpdateBookTask({ ids: ids.join(', '), is_order: 1 })
       },
     })
-  }, [batchQueueTask, selectedRowKeys])
+  }, [batchQueueTask, canWrite, pendingClose, selectedRowKeys])
+
+  const handlePrepareClose = useCallback(async () => {
+    if (!canWrite || preparingCloseRef.current || pendingClose || batchQueueTask.progress.status !== 'idle') return
+    preparingCloseRef.current = true
+    setPreparingClose(true)
+    const version = queryVersionRef.current
+    const filters = { ...latestFiltersRef.current }
+    const selectedIds = [...selectedRowKeys]
+    try {
+      const ids = selectedIds.length > 0 ? [...new Set(selectedIds)] : await fetchAllBookTaskIds(filters)
+      if (version !== queryVersionRef.current) {
+        message.warning('筛选条件已变化，请重新操作。')
+        return
+      }
+      if (ids.length === 0) {
+        message.warning('当前筛选结果中没有可操作的数据')
+        return
+      }
+      setPendingClose({ ids, version, scope: selectedIds.length > 0 ? '已选任务' : hasScopedFilters(filters) ? '当前筛选结果' : '全部任务' })
+    } catch (error) {
+      message.error(error instanceof Error ? error.message : '任务加载失败，请重试。')
+    } finally {
+      preparingCloseRef.current = false
+      setPreparingClose(false)
+    }
+  }, [batchQueueTask.progress.status, canWrite, pendingClose, selectedRowKeys])
+
+  const handleConfirmClose = async () => {
+    if (!canWrite || !pendingClose || pendingClose.version !== queryVersionRef.current || batchQueueTask.progress.status !== 'idle') return
+    const ids = pendingClose.ids
+    setPendingClose(null)
+    setBatchAction('close')
+    await batchQueueTask.start({
+      pageSize: 100,
+      loadPage: async (page, pageSize) => ({ ids: ids.slice((page - 1) * pageSize, page * pageSize), total: ids.length }),
+      processPage: async (batchIds) => {
+        await batchUpdateBookTask({ ids: batchIds.join(', '), is_order: 0 })
+      },
+    })
+  }
 
   useEffect(() => {
     if (batchQueueTask.progress.status !== 'success') {
@@ -822,9 +856,9 @@ export const BookTaskListPage = () => {
 
     void reloadRef.current()
     setSelectedRowKeys([])
-    message.success('批量打开成功')
+    message.success(batchAction === 'close' ? '批量关闭成功' : '批量打开成功')
     batchQueueTask.reset()
-  }, [batchQueueTask.progress.status, batchQueueTask.reset])
+  }, [batchAction, batchQueueTask.progress.status, batchQueueTask.reset])
 
   const batchOpenProgressPercent =
     batchQueueTask.progress.total > 0
@@ -839,7 +873,7 @@ export const BookTaskListPage = () => {
       <>
         <Button
           loading={batchQueueTask.progress.status === 'running'}
-          disabled={!canWrite}
+          disabled={!canWrite || preparingClose || Boolean(pendingClose) || batchQueueTask.progress.status === 'paused'}
           onClick={() => {
             void handleBatchOpen()
           }}
@@ -847,38 +881,15 @@ export const BookTaskListPage = () => {
           批量打开
         </Button>
         <Button
-          disabled={!canWrite}
-          onClick={async () => {
-            const ids = await buildScopedIds(
-              latestFiltersRef.current,
-              currentRowsRef.current,
-              selectedRowKeys
-            )
-            await closeBookTaskInitialization(ids)
-            message.success('关闭初始化成功')
-            await reloadRef.current()
-          }}
+          loading={preparingClose}
+          disabled={!canWrite || Boolean(pendingClose) || batchQueueTask.progress.status !== 'idle'}
+          onClick={() => void handlePrepareClose()}
         >
-          关闭初始化
-        </Button>
-        <Button
-          disabled={!canWrite}
-          onClick={async () => {
-            const ids = await buildScopedIds(
-              latestFiltersRef.current,
-              currentRowsRef.current,
-              selectedRowKeys
-            )
-            await clearBookTaskRouter(ids)
-            message.success('清除路由成功')
-            await reloadRef.current()
-          }}
-        >
-          清除路由
+          批量关闭
         </Button>
       </>
     ),
-    [batchQueueTask.progress.status, canWrite, handleBatchOpen, selectedRowKeys]
+    [batchQueueTask.progress.status, canWrite, handleBatchOpen, handlePrepareClose, pendingClose, preparingClose]
   )
 
   const spec = useMemo<
@@ -893,6 +904,13 @@ export const BookTaskListPage = () => {
     () => ({
       pageTitle: PAGE_TITLE,
       tableId: TABLE_ID,
+      newColumnKeys: ['list_type'],
+      showStaleDataError: true,
+      onQueryChange: () => {
+        queryVersionRef.current += 1
+        setSelectedRowKeys([])
+        setPendingClose(null)
+      },
       formRoute: '/get_book_task_list/form',
       initialFilters: {},
       pagination: {
@@ -914,7 +932,13 @@ export const BookTaskListPage = () => {
       filterFields,
       toolbarExtra: (
         <Space wrap>
-          {canWrite && selectedRowKeys.length > 0 ? null : batchScopeActionButtons}
+          {batchScopeActionButtons}
+          {canWrite && selectedRowKeys.length > 0 ? (
+            <>
+              <Button onClick={() => setBatchVisible(true)}>批量修改</Button>
+              <Typography.Text>已选 {selectedRowKeys.length} 项</Typography.Text>
+            </>
+          ) : null}
         </Space>
       ),
       buildColumns: ({ reload }) => {
@@ -1178,11 +1202,19 @@ export const BookTaskListPage = () => {
           },
           {
             key: 'cid_group',
-            title: '分组2',
+            title: '账号分组',
             dataIndex: 'cid_group',
             width: BOOK_TASK_TABLE_COLUMN_WIDTHS.cid_group,
             onHeaderCell: () => NO_WRAP_HEADER_CELL_PROPS,
             sorter: (a, b) => compareNumberValue(a.cid_group, b.cid_group),
+          },
+          {
+            key: 'list_type',
+            title: '列表分组',
+            dataIndex: 'list_type',
+            width: BOOK_TASK_TABLE_COLUMN_WIDTHS.list_type,
+            onHeaderCell: () => NO_WRAP_HEADER_CELL_PROPS,
+            sorter: (a, b) => compareNumberValue(a.list_type, b.list_type),
           },
           {
             key: 'group_id',
@@ -1269,18 +1301,19 @@ export const BookTaskListPage = () => {
     ]
   )
 
-  const cardTitleOverride =
-    canWrite && selectedRowKeys.length > 0 ? (
-      <div className="flex flex-wrap items-center gap-3">
-        <Typography.Text>已选 {selectedRowKeys.length} 项</Typography.Text>
-        <Button onClick={() => setBatchVisible(true)}>批量修改</Button>
-        {batchScopeActionButtons}
-      </div>
-    ) : undefined
-
   return (
     <>
-      <StandardListPageRecipe spec={spec} cardTitleOverride={cardTitleOverride} />
+      <StandardListPageRecipe spec={spec} />
+      <Modal
+        title="确认批量关闭"
+        open={Boolean(pendingClose)}
+        okText="确认关闭"
+        cancelText="取消"
+        onOk={() => void handleConfirmClose()}
+        onCancel={() => setPendingClose(null)}
+      >
+        {pendingClose ? `即将关闭${pendingClose.scope}，共 ${pendingClose.ids.length} 条任务。` : null}
+      </Modal>
       {editingItem ? (
         <Modal
           title="修改"
@@ -1298,7 +1331,7 @@ export const BookTaskListPage = () => {
           styles={{ body: EDIT_MODAL_BODY_STYLE }}
           destroyOnHidden
         >
-          <Form form={editForm} layout="vertical">
+          <Form name="book-task-edit" form={editForm} layout="vertical">
             <BookTaskFormFields />
           </Form>
         </Modal>
@@ -1317,7 +1350,7 @@ export const BookTaskListPage = () => {
         styles={{ body: EDIT_MODAL_BODY_STYLE }}
         destroyOnHidden
       >
-        <Form form={batchForm} layout="vertical">
+        <Form name="book-task-batch" form={batchForm} layout="vertical">
           <BookTaskFormFields includeRepeatAdd />
           <div className="flex justify-end gap-2">
             <Button
@@ -1341,7 +1374,7 @@ export const BookTaskListPage = () => {
         </Form>
       </Modal>
       <Modal
-        title="批量打开进度"
+        title={batchAction === 'close' ? '批量关闭进度' : '批量打开进度'}
         open={
           batchQueueTask.progress.status === 'running' ||
           batchQueueTask.progress.status === 'paused'
@@ -1358,7 +1391,7 @@ export const BookTaskListPage = () => {
           />
           <Typography.Text>
             当前正在处理第 {batchQueueTask.progress.currentStart} 到{' '}
-            {batchQueueTask.progress.currentEnd} 条的开启任务队列
+            {batchQueueTask.progress.currentEnd} 条的{batchAction === 'close' ? '关闭' : '开启'}任务队列
           </Typography.Text>
           {batchQueueTask.progress.errorMessage ? (
             <Typography.Text type="danger">{batchQueueTask.progress.errorMessage}</Typography.Text>
@@ -1366,9 +1399,19 @@ export const BookTaskListPage = () => {
           {batchQueueTask.progress.status === 'paused' ? (
             <div className="flex justify-end">
               <Button
-                type="primary"
                 onClick={() => {
-                  void batchQueueTask.retry()
+                  batchQueueTask.reset()
+                  setSelectedRowKeys([])
+                  void reloadRef.current()
+                }}
+              >
+                结束本次
+              </Button>
+              <Button
+                type="primary"
+                disabled={!canWrite}
+                onClick={() => {
+                  if (canWrite) void batchQueueTask.retry()
                 }}
               >
                 重试

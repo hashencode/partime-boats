@@ -10,6 +10,21 @@ const NEW_STORAGE_KEY = `list:table-view-preferences:v1:${TABLE_ID}`
 const LEGACY_COLUMN_KEY = `list:table-columns:v1:${TABLE_ID}`
 
 describe('useListViewPreferences', () => {
+  it('shows an explicitly introduced column once while preserving later hiding and existing preferences', () => {
+    window.localStorage.clear()
+    window.localStorage.setItem(NEW_STORAGE_KEY, JSON.stringify({
+      density: 'small', visibleColumnKeys: ['name'], columnOrder: ['status', 'name'],
+    }))
+    const options = { tableId: TABLE_ID, defaultColumnKeys: ['name', 'status', 'list_type'], newColumnKeys: ['list_type'] }
+    const first = renderHook(() => useListViewPreferences(options))
+    expect(first.result.current.selectedColumnKeys).toEqual(['name', 'list_type'])
+    expect(first.result.current.columnOrder).toEqual(['status', 'name', 'list_type'])
+    expect(first.result.current.tableSize).toBe('small')
+    act(() => first.result.current.setSelectedColumnKeys(['name']))
+    first.unmount()
+    const second = renderHook(() => useListViewPreferences(options))
+    expect(second.result.current.selectedColumnKeys).toEqual(['name'])
+  })
   it('migrates legacy column visibility into the unified preferences model', () => {
     window.localStorage.clear()
     window.localStorage.setItem(LEGACY_COLUMN_KEY, JSON.stringify(['name', 'status']))

@@ -97,6 +97,8 @@ export const BookAccountListPage = () => {
       tableId: TABLE_ID,
       formRoute: '/book_account_list/form',
       initialFilters: {},
+      pagination: { pageSizeOptions: [10, 20, 50, 100, 500, 1000] },
+      showStaleDataError: true,
       toFilters,
       buildRequestFilters: ({ filters, current, pageSize }) => ({
         ...filters,

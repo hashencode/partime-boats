@@ -26,6 +26,7 @@ export const fetchBookAccountList = async (filters: BookAccountListFilters): Pro
     'maersk/book/list',
     {
       params: filters,
+      ...(filters.per_page === 500 || filters.per_page === 1000 ? { timeout: 20000 } : {}),
     }
   )
 

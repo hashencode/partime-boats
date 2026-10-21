@@ -151,6 +151,7 @@ export const RemindListPage = () => {
   const currentRowsRef = useRef<RemindRow[]>([])
   const latestFiltersRef = useRef<RemindListFilters>({})
   const reloadRef = useRef<() => Promise<void>>(async () => {})
+  const pendingRequestsRef = useRef(0)
 
   const filterFields = useMemo<TemplateListFilterField<RemindSearchValues>[]>(
     () => [
@@ -221,18 +222,23 @@ export const RemindListPage = () => {
 
   const requestList = useCallback(async (filters: RemindListFilters): Promise<RemindPageResponse> => {
     latestFiltersRef.current = filters
-    const response: RemindListResponse = await fetchRemindList(filters)
-    let rows = (response.data ?? []).map(mapRow)
+    pendingRequestsRef.current += 1
+    try {
+      const response: RemindListResponse = await fetchRemindList(filters)
+      let rows = (response.data ?? []).map(mapRow)
 
-    if (filters.shipping_line) {
-      rows = rows.filter((item) => item.ship_name === filters.shipping_line)
-    }
+      if (filters.shipping_line) {
+        rows = rows.filter((item) => item.ship_name === filters.shipping_line)
+      }
 
-    return {
-      data: rows,
-      total: filters.shipping_line ? rows.length : response.total ?? rows.length,
-      current: filters.page ?? 1,
-      size: (filters.per_page ?? rows.length) || 10,
+      return {
+        data: rows,
+        total: filters.shipping_line ? rows.length : response.total ?? rows.length,
+        current: filters.page ?? 1,
+        size: (filters.per_page ?? rows.length) || 10,
+      }
+    } finally {
+      pendingRequestsRef.current -= 1
     }
   }, [])
 
@@ -257,7 +263,7 @@ export const RemindListPage = () => {
 
   useEffect(() => {
     const timerId = window.setInterval(() => {
-      void reloadRef.current()
+      if (pendingRequestsRef.current === 0) void reloadRef.current()
     }, AUTO_REFRESH_INTERVAL_MS)
 
     return () => {
@@ -275,9 +281,9 @@ export const RemindListPage = () => {
       formRoute: '/get_remined_list/form',
       initialFilters: {},
       pagination: {
-        defaultCurrent: 1,
-        defaultPageSize: 10,
+        pageSizeOptions: [10, 20, 50, 100, 500, 1000],
       },
+      showStaleDataError: true,
       toFilters,
       buildRequestFilters: ({ filters, current, pageSize }) => ({
         ...filters,
@@ -290,7 +296,7 @@ export const RemindListPage = () => {
       filterFields,
       toolbarExtra: (
         <>
-          {selectedRowKeys.length === 0 ? batchInvalidateButton : null}
+          {batchInvalidateButton}
           <Dropdown
             menu={{
               items: [
@@ -310,6 +316,9 @@ export const RemindListPage = () => {
               <Space>Excel导出</Space>
             </Button>
           </Dropdown>
+          {selectedRowKeys.length > 0 ? (
+            <Typography.Text>已选 {selectedRowKeys.length} 项</Typography.Text>
+          ) : null}
         </>
       ),
       buildColumns: ({ reload }) => {
@@ -510,17 +519,9 @@ export const RemindListPage = () => {
     ]
   )
 
-  const cardTitleOverride =
-    selectedRowKeys.length > 0 ? (
-      <div className="flex flex-wrap items-center gap-3">
-        <Typography.Text>已选 {selectedRowKeys.length} 项</Typography.Text>
-        {batchInvalidateButton}
-      </div>
-    ) : undefined
-
   return (
     <>
-      <StandardListPageRecipe spec={spec} cardTitleOverride={cardTitleOverride} />
+      <StandardListPageRecipe spec={spec} />
     </>
   )
 }

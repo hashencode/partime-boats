@@ -10,6 +10,7 @@ type TableViewPreferences = {
   density: TableSize
   visibleColumnKeys: string[]
   columnOrder: string[]
+  appliedNewColumnKeys?: string[]
 }
 
 const isTableSize = (value: unknown): value is TableSize => {
@@ -80,12 +81,16 @@ const readLegacyDensity = (defaultDensity: TableSize) => {
 const readStoredTableViewPreferences = (
   tableId: string,
   defaultColumnKeys: string[],
-  defaultDensity: TableSize
+  defaultDensity: TableSize,
+  newColumnKeys: string[]
 ): TableViewPreferences => {
   const storedPreferences = readJson<Partial<TableViewPreferences>>(buildTableViewPreferencesStorageKey(tableId))
   const legacyVisibleColumns = readJson<unknown>(buildTableColumnsStorageKey(tableId))
+  const appliedNewColumnKeys = isStringArray(storedPreferences?.appliedNewColumnKeys) ? storedPreferences.appliedNewColumnKeys : []
 
-  return {
+  const additions = newColumnKeys.filter((key) =>
+    defaultColumnKeys.includes(key) && !appliedNewColumnKeys.includes(key))
+  const preferences: TableViewPreferences = {
     density: isTableSize(storedPreferences?.density) ? storedPreferences.density : readLegacyDensity(defaultDensity),
     visibleColumnKeys: sanitizeVisibleColumnKeys(
       isStringArray(storedPreferences?.visibleColumnKeys)
@@ -99,22 +104,32 @@ const readStoredTableViewPreferences = (
       isStringArray(storedPreferences?.columnOrder) ? storedPreferences.columnOrder : defaultColumnKeys,
       defaultColumnKeys
     ),
+    ...(newColumnKeys.length > 0 ? {
+      appliedNewColumnKeys: [...new Set([...appliedNewColumnKeys, ...additions])],
+    } : {}),
   }
+  if (additions.length > 0) {
+    preferences.visibleColumnKeys = [...new Set([...preferences.visibleColumnKeys, ...additions])]
+    writeJson(buildTableViewPreferencesStorageKey(tableId), preferences)
+  }
+  return preferences
 }
 
 type UseListViewPreferencesOptions = {
   tableId: string
   defaultColumnKeys: string[]
   defaultDensity?: TableSize
+  newColumnKeys?: string[]
 }
 
 export const useListViewPreferences = ({
   tableId,
   defaultColumnKeys,
   defaultDensity = 'middle',
+  newColumnKeys = [],
 }: UseListViewPreferencesOptions) => {
   const [preferences, setPreferencesState] = useState<TableViewPreferences>(() =>
-    readStoredTableViewPreferences(tableId, defaultColumnKeys, defaultDensity)
+    readStoredTableViewPreferences(tableId, defaultColumnKeys, defaultDensity, newColumnKeys)
   )
 
   const writePreferences = useCallback(

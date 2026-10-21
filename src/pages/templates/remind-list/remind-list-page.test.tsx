@@ -245,11 +245,13 @@ describe('RemindListPage', () => {
       expect(screen.getByText('已选 1 项')).toBeTruthy()
     })
 
-    expect(screen.getByRole('button', { name: '批量作废' }).closest('.list-card-header-left')).toBeTruthy()
-    expect(view.container.querySelector('.list-card-header-center')?.textContent).not.toContain('批量作废')
+    const toolbar = within(view.container.querySelector('.list-card-header-center') as HTMLElement)
+    const invalidateButton = toolbar.getByRole('button', { name: '批量作废' })
+    expect(invalidateButton.closest('.list-card-header-center')).toBeTruthy()
+    expect(view.container.querySelector('.list-card-header-left')?.textContent).not.toContain('批量作废')
 
     act(() => {
-      fireEvent.click(screen.getByRole('button', { name: '批量作废' }))
+      fireEvent.click(invalidateButton)
     })
 
     await waitFor(() => {
@@ -287,8 +289,14 @@ describe('RemindListPage', () => {
     })
   })
 
-  it('should keep the batch action in the card header when rows are selected', async () => {
-    renderPage()
+  it('should keep actions in the centered toolbar when rows are selected and cleared', async () => {
+    server.use(
+      http.get('*/maersk/remind/list', () => {
+        remindRequestCount += 1
+        return HttpResponse.json({ data: remindRows.slice(0, 2), total: 2 })
+      })
+    )
+    const view = renderPage()
 
     await waitFor(() => {
       expect(screen.getAllByText('NINGBO').length).toBeGreaterThan(0)
@@ -297,15 +305,31 @@ describe('RemindListPage', () => {
 
     const table = screen.getByRole('table')
     const checkbox = within(table).getAllByRole('checkbox')[1]
+    const centerHeader = view.container.querySelector('.list-card-header-center')
+    const toolbar = within(centerHeader as HTMLElement)
+    const batchButton = toolbar.getByRole('button', { name: '批量作废' })
+    const exportButton = toolbar.getByRole('button', { name: 'Excel导出' })
+    const initialTitle = view.container.querySelector('.list-card-header-left')?.textContent
+    const initialRequestCount = remindRequestCount
     fireEvent.click(checkbox)
 
     await waitFor(() => {
-      expect(screen.getByText('已选 1 项')).toBeTruthy()
-      expect(screen.getByRole('button', { name: '批量作废' })).toBeTruthy()
+      expect(toolbar.getByText('已选 1 项').closest('.list-card-header-center')).toBe(centerHeader)
     })
 
-    expect(screen.queryByText('已选择')).toBeNull()
-  })
+    expect(toolbar.getByRole('button', { name: '批量作废' })).toBe(batchButton)
+    expect(batchButton.closest('.list-card-header-center')).toBe(centerHeader)
+    expect(toolbar.getByRole('button', { name: 'Excel导出' })).toBe(exportButton)
+    expect(view.container.querySelector('.list-card-header-left')?.textContent).toBe(initialTitle)
+
+    fireEvent.click(checkbox)
+
+    await waitFor(() => {
+      expect(toolbar.queryByText('已选 1 项')).toBeNull()
+    })
+    expect(toolbar.getByRole('button', { name: '批量作废' })).toBe(batchButton)
+    expect(remindRequestCount).toBe(initialRequestCount)
+  }, 30000)
 
   it('should auto refresh every 30 seconds without changing submitted filters or pagination', async () => {
     const originalUseForm = Form.useForm
@@ -370,10 +394,32 @@ describe('RemindListPage', () => {
 
       filterForm.setFieldValue('boxcode', '40HDRY')
 
+      let releaseRefresh: (() => void) | undefined
+      const refreshResponse = new Promise<void>((resolve) => { releaseRefresh = resolve })
+      let refreshRequests = 0
+      server.use(http.get('*/maersk/remind/list', async ({ request }) => {
+        refreshRequests += 1
+        const url = new URL(request.url)
+        requestParamsHistory.push({
+          page: url.searchParams.get('page'),
+          perPage: url.searchParams.get('per_page'),
+          boxcode: url.searchParams.get('boxcode'),
+        })
+        await refreshResponse
+        return HttpResponse.json({ data: remindRows.slice(10), total: 11 })
+      }))
+
       expect(intervalCallback).toBeTruthy()
       await act(async () => {
         intervalCallback?.()
       })
+
+      await waitFor(() => expect(refreshRequests).toBe(1))
+      await act(async () => {
+        intervalCallback?.()
+      })
+      expect(refreshRequests).toBe(1)
+      await act(async () => { releaseRefresh?.() })
 
       await waitFor(() => {
         expect(requestParamsHistory.at(-1)).toEqual(submittedPageTwoParams)

@@ -3,6 +3,7 @@ import {
   Button,
   Drawer,
   Popconfirm,
+  Space,
   Table,
   Tag,
   Typography,
@@ -204,6 +205,23 @@ export const TableQueryPage = () => {
         eventType: LIST_REFRESH_EVENT.REFRESH_LIST,
       },
       filterFields,
+      toolbarExtra: selectedRows.length > 0 ? (
+        <Space wrap>
+          <Popconfirm
+            title="确认批量删除已选规则吗？"
+            description="删除后将从当前列表中移除。"
+            okText="确认删除"
+            cancelText="取消"
+            onConfirm={() => message.success('批量删除成功')}
+          >
+            <Button>批量删除</Button>
+          </Popconfirm>
+          <Button onClick={() => message.success('批量审批成功')}>批量审批</Button>
+          <Typography.Text>
+            已选 {selectedRows.length} 项，服务调用总量 {selectedRows.reduce((sum, item) => sum + item.callNo, 0)}
+          </Typography.Text>
+        </Space>
+      ) : null,
       buildColumns: ({ openFormPage, reload }) => [
         {
           key: 'name',
@@ -296,31 +314,12 @@ export const TableQueryPage = () => {
         icon: <PlusOutlined />,
       },
     }),
-    [applyDeletedRules, filterFields, handleDeleteRule]
+    [applyDeletedRules, filterFields, handleDeleteRule, selectedRows]
   )
-
-  const cardTitleOverride =
-    selectedRows.length > 0 ? (
-      <div className="flex flex-wrap items-center gap-3">
-        <Typography.Text>
-          已选 {selectedRows.length} 项，服务调用总量 {selectedRows.reduce((sum, item) => sum + item.callNo, 0)}
-        </Typography.Text>
-        <Popconfirm
-          title="确认批量删除已选规则吗？"
-          description="删除后将从当前列表中移除。"
-          okText="确认删除"
-          cancelText="取消"
-          onConfirm={() => message.success('批量删除成功')}
-        >
-          <Button>批量删除</Button>
-        </Popconfirm>
-        <Button onClick={() => message.success('批量审批成功')}>批量审批</Button>
-      </div>
-    ) : undefined
 
   return (
     <>
-      <StandardListPageRecipe spec={spec} cardTitleOverride={cardTitleOverride} />
+      <StandardListPageRecipe spec={spec} />
 
       <Drawer size={560} open={Boolean(drawerRow)} onClose={() => setDrawerRow(null)} title={drawerRow?.name}>
         {drawerRow ? (

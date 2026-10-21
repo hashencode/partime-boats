@@ -1,6 +1,6 @@
-import { Form } from 'antd'
+import { ConfigProvider, Form } from 'antd'
 import React from 'react'
-import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, cleanup, fireEvent, isInaccessible, render, screen, waitFor, within } from '@testing-library/react'
 import { afterAll, afterEach, beforeAll, describe, expect, it } from '@rstest/core'
 import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
@@ -47,6 +47,7 @@ let latestPage: string | null = null
 let latestPerPage: string | null = null
 let requestParamsHistory: Array<{ page: string | null; perPage: string | null; orderId: string | null }> = []
 let batchOpenPayloads: string[] = []
+let batchPayloads: Record<string, unknown>[] = []
 let latestUpdatePayload: Record<string, unknown> | null = null
 const buildTaskRows = (count: number) =>
   Array.from({ length: count }, (_, index) => ({
@@ -78,6 +79,7 @@ const buildTaskRows = (count: number) =>
     route_select: null,
     cid_group: null,
     group_id: 1,
+    list_type: 1,
   }))
 
 const server = setupServer(
@@ -116,6 +118,7 @@ const server = setupServer(
   http.post('*/maersk/group/task', async ({ request }) => {
     const payload = (await request.json()) as Record<string, unknown> & { ids?: string }
     batchOpenPayloads.push(payload.ids ?? '')
+    batchPayloads.push(payload)
     return HttpResponse.json({ bool_status: true, data: true })
   }),
   http.get('*/delay/cid', () => HttpResponse.json({ bool_status: true, data: true })),
@@ -133,6 +136,7 @@ afterEach(() => {
   latestPerPage = null
   requestParamsHistory = []
   batchOpenPayloads = []
+  batchPayloads = []
   latestUpdatePayload = null
   server.resetHandlers()
 })
@@ -154,9 +158,11 @@ const renderPage = (role: 'admin' | 'editor' | 'viewer' = 'admin') =>
         logout: () => undefined,
       }}
     >
-      <ThemeProvider>
-        <BookTaskListPage />
-      </ThemeProvider>
+      <ConfigProvider theme={{ token: { motion: false } }}>
+        <ThemeProvider>
+          <BookTaskListPage />
+        </ThemeProvider>
+      </ConfigProvider>
       </AuthContext.Provider>
   )
 
@@ -179,6 +185,164 @@ const CidTypeSelectHarness = ({ initialValue }: { initialValue?: number }) => {
 }
 
 describe('BookTaskListPage', () => {
+  it('should confirm the full scope and close fixed batches without using draft filters', async () => {
+    server.use(http.get('http://124.70.141.127:9111/maersk/book/task', ({ request }) => {
+      const url = new URL(request.url)
+      const page = Number(url.searchParams.get('page') || 1)
+      const size = Number(url.searchParams.get('per_page') || 100)
+      return HttpResponse.json({ data: buildTaskRows(201).slice((page - 1) * size, size === 100 ? 3 : page * size), pagination: { total: 201, page, per_page: size } })
+    }))
+    renderPage()
+    await screen.findByText('tester')
+    fireEvent.change(screen.getByPlaceholderText('请输入对应taskID'), { target: { value: '999' } })
+    fireEvent.click(screen.getByText('批量关闭').closest('button')!)
+    const confirmation = (await screen.findByText('确认批量关闭')).closest('[role=dialog]') as HTMLElement
+    expect(confirmation.textContent).toContain('全部任务，共 201 条')
+    expect(batchPayloads).toEqual([])
+    fireEvent.click(within(confirmation).getByRole('button', { name: '确认关闭' }))
+    await waitFor(() => expect(batchPayloads).toHaveLength(3))
+    expect(batchPayloads.map((p) => String(p.ids).split(',').length)).toEqual([100, 100, 1])
+    expect(batchPayloads.flatMap((p) => String(p.ids).split(',').map(Number))).toEqual(
+      Array.from({ length: 201 }, (_, index) => index + 1)
+    )
+    expect(batchPayloads.every((p) => p.is_order === 0)).toBe(true)
+  }, 15000)
+
+  it('should close only selected ids and send nothing when confirmation is cancelled', async () => {
+    server.use(http.get('http://124.70.141.127:9111/maersk/book/task', () =>
+      HttpResponse.json({ data: buildTaskRows(2), pagination: { total: 2, page: 1, per_page: 100 } })))
+    renderPage()
+    await screen.findByText('tester')
+    fireEvent.click(screen.getAllByRole('checkbox')[1] as Element)
+    fireEvent.click(screen.getByText('批量关闭').closest('button')!)
+    const confirmation = (await screen.findByText('确认批量关闭')).closest('[role=dialog]') as HTMLElement
+    expect(confirmation.textContent).toContain('已选任务，共 1 条')
+    fireEvent.click(within(confirmation).getByRole('button', { name: /取\s*消/ }))
+    expect(batchPayloads).toEqual([])
+    fireEvent.click(screen.getByText('批量关闭').closest('button')!)
+    const second = (await screen.findByText('确认批量关闭')).closest('[role=dialog]') as HTMLElement
+    fireEvent.click(within(second).getByRole('button', { name: '确认关闭' }))
+    await waitFor(() => expect(batchPayloads).toEqual([{ ids: '1', is_order: 0 }]))
+  }, 15000)
+
+  it('should retry only the failed close batch and retain the original ids', async () => {
+    const attempts: Record<string, unknown>[] = []
+    server.use(
+      http.get('http://124.70.141.127:9111/maersk/book/task', ({ request }) => {
+        const url = new URL(request.url)
+        const size = Number(url.searchParams.get('per_page') || 100)
+        return HttpResponse.json({
+          data: buildTaskRows(size === 100 ? 2 : 201),
+          pagination: { total: 201, page: 1, per_page: size },
+        })
+      }),
+      http.post('*/maersk/group/task', async ({ request }) => {
+        attempts.push((await request.json()) as Record<string, unknown>)
+        return HttpResponse.json({ bool_status: attempts.length !== 2, msg: '测试批次失败', data: true })
+      })
+    )
+    renderPage()
+    await screen.findByText('tester')
+    fireEvent.click(screen.getByText('批量关闭').closest('button')!)
+    const confirmation = (await screen.findByText('确认批量关闭')).closest('[role=dialog]') as HTMLElement
+    fireEvent.click(within(confirmation).getByRole('button', { name: '确认关闭' }))
+    await screen.findByText('测试批次失败')
+    expect(attempts).toHaveLength(2)
+    const progress = screen.getByText('批量关闭进度').closest('[role=dialog]') as HTMLElement
+    fireEvent.click(within(progress).getByRole('button', { name: /重\s*试/ }))
+    await waitFor(() => expect(attempts).toHaveLength(4))
+    expect(attempts[2]).toEqual(attempts[1])
+    expect(attempts[0].ids).toBe(Array.from({ length: 100 }, (_, i) => i + 1).join(', '))
+    expect(attempts[3]).toEqual({ ids: '201', is_order: 0 })
+    expect(attempts.every((payload) => payload.is_order === 0)).toBe(true)
+  }, 15000)
+
+  it('should refresh changed task states when a partially completed close is ended', async () => {
+    let closed = false
+    server.use(
+      http.get('http://124.70.141.127:9111/maersk/book/task', ({ request }) => {
+        const size = Number(new URL(request.url).searchParams.get('per_page') || 100)
+        return HttpResponse.json({
+          data: buildTaskRows(size === 100 ? 2 : 101).map((row) => ({ ...row, is_order: closed ? 0 : 1 })),
+          pagination: { total: 101, page: 1, per_page: size },
+        })
+      }),
+      http.post('*/maersk/group/task', async ({ request }) => {
+        batchPayloads.push((await request.json()) as Record<string, unknown>)
+        closed = true
+        return HttpResponse.json({ bool_status: batchPayloads.length === 1, msg: '测试关闭失败', data: true })
+      })
+    )
+    renderPage()
+    await screen.findByText('tester')
+    fireEvent.click(screen.getByText('批量关闭').closest('button')!)
+    const confirmation = (await screen.findByText('确认批量关闭')).closest('[role=dialog]') as HTMLElement
+    fireEvent.click(within(confirmation).getByRole('button', { name: '确认关闭' }))
+    await screen.findByText('测试关闭失败')
+    const progress = screen.getByText('批量关闭进度').closest('[role=dialog]') as HTMLElement
+    fireEvent.click(within(progress).getByRole('button', { name: '结束本次' }))
+    await screen.findAllByText('开启', { selector: 'button span' })
+    await waitFor(() => expect(isInaccessible(progress)).toBe(true))
+    expect(batchPayloads).toHaveLength(2)
+  }, 15000)
+
+  it('should discard selected ids when a new query is submitted', async () => {
+    server.use(http.get('http://124.70.141.127:9111/maersk/book/task', ({ request }) => {
+      const url = new URL(request.url)
+      const filtered = url.searchParams.get('order_id') === '999'
+      return HttpResponse.json({
+        data: filtered ? [{ ...buildTaskRows(1)[0], id: 9, account_name: 'filtered-task' }] : buildTaskRows(2),
+        pagination: { total: filtered ? 1 : 2, page: 1, per_page: Number(url.searchParams.get('per_page')) },
+      })
+    }))
+    renderPage()
+    await screen.findByText('tester')
+    fireEvent.click(screen.getAllByRole('checkbox')[1])
+    expect(await screen.findByText('已选 1 项')).toBeTruthy()
+    fireEvent.change(screen.getByPlaceholderText('请输入对应taskID'), { target: { value: '999' } })
+    fireEvent.click(screen.getByText(/查\s*询/, { selector: 'button span' }).closest('button')!)
+    await screen.findByText('filtered-task')
+    expect(screen.queryByText('已选 1 项')).toBeNull()
+    fireEvent.click(screen.getByText('批量关闭').closest('button')!)
+    const confirmation = (await screen.findByText('确认批量关闭')).closest('[role=dialog]') as HTMLElement
+    expect(confirmation.textContent).toContain('当前筛选结果，共 1 条')
+    fireEvent.click(within(confirmation).getByRole('button', { name: '确认关闭' }))
+    await waitFor(() => expect(batchPayloads).toEqual([{ ids: '9', is_order: 0 }]))
+  }, 15000)
+
+  it('should identify retained task states as stale when refresh fails after closing', async () => {
+    let reads = 0
+    server.use(http.get('http://124.70.141.127:9111/maersk/book/task', () => {
+      reads += 1
+      return reads === 1
+        ? HttpResponse.json({ data: buildTaskRows(2), pagination: { total: 2, page: 1, per_page: 100 } })
+        : HttpResponse.json({ message: '测试刷新失败' }, { status: 500 })
+    }))
+    renderPage()
+    await screen.findByText('tester')
+    fireEvent.click(screen.getAllByRole('checkbox')[1])
+    fireEvent.click(screen.getByText('批量关闭').closest('button')!)
+    const confirmation = (await screen.findByText('确认批量关闭')).closest('[role=dialog]') as HTMLElement
+    fireEvent.click(within(confirmation).getByRole('button', { name: '确认关闭' }))
+    await screen.findByText('本次列表未更新')
+    expect(screen.getByText('tester')).toBeTruthy()
+    expect(batchPayloads).toEqual([{ ids: '1', is_order: 0 }])
+  }, 15000)
+
+  it('should submit a list group from the batch edit form for selected tasks', async () => {
+    server.use(http.get('http://124.70.141.127:9111/maersk/book/task', () =>
+      HttpResponse.json({ data: buildTaskRows(2), pagination: { total: 2, page: 1, per_page: 100 } })))
+    const view = renderPage()
+    await screen.findByText('tester')
+    fireEvent.click(screen.getAllByRole('checkbox')[1])
+    const toolbar = within(view.container.querySelector('.list-card-header-center') as HTMLElement)
+    fireEvent.click(toolbar.getByRole('button', { name: '批量修改' }))
+    const form = within(await screen.findByRole('dialog'))
+    fireEvent.change(form.getByLabelText('列表分组'), { target: { value: '2' } })
+    fireEvent.click(form.getByRole('button', { name: /确\s*定/ }))
+    await waitFor(() => expect(batchPayloads).toEqual([{ ids: '1', list_type: 2 }]))
+  }, 15000)
+
   it('should render task rows when request succeeds', async () => {
     renderPage()
 
@@ -188,8 +352,9 @@ describe('BookTaskListPage', () => {
     expect(screen.getAllByText('tester').length).toBeGreaterThan(0)
     expect(latestPage).toBe('1')
     expect(latestPerPage).toBe('100')
-    expect(screen.getByRole('button', { name: '批量打开' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: '关闭初始化' })).toBeTruthy()
+    expect(screen.getByText('批量打开').closest('button')!).toBeTruthy()
+    expect(screen.getByText('批量关闭').closest('button')!).toBeTruthy()
+    expect(screen.queryByRole('button', { name: '清除路由' })).toBeNull()
     expect(screen.queryByRole('button', { name: '批量修改' })).toBeNull()
     expect(screen.queryByText(/最近刷新时间/)).toBeNull()
     expect(screen.getByText('100 条/页')).toBeTruthy()
@@ -211,7 +376,7 @@ describe('BookTaskListPage', () => {
       expect(listRequestCount).toBe(initialCount)
     })
 
-    fireEvent.click(screen.getByRole('button', { name: /查\s*询/ }))
+    fireEvent.click(screen.getByText(/查\s*询/, { selector: 'button span' }).closest('button')!)
 
     await waitFor(() => {
       expect(listRequestCount).toBe(initialCount + 1)
@@ -232,7 +397,7 @@ describe('BookTaskListPage', () => {
       expect(screen.getAllByText('tester').length).toBeGreaterThan(0)
     })
 
-    expect(screen.getByRole('button', { name: '关闭初始化' }).getAttribute('disabled')).not.toBeNull()
+    expect(screen.getByText('批量关闭').closest('button')!.getAttribute('disabled')).not.toBeNull()
     expect(screen.queryByText('修改')).toBeNull()
 
   })
@@ -394,7 +559,7 @@ describe('BookTaskListPage', () => {
       expect(screen.getAllByText('tester').length).toBeGreaterThan(0)
     })
 
-    fireEvent.click(screen.getByRole('button', { name: '批量打开' }))
+    fireEvent.click(screen.getByText('批量打开').closest('button')!)
 
     await waitFor(() => {
       expect(batchOpenPayloads).toHaveLength(2)
@@ -407,48 +572,70 @@ describe('BookTaskListPage', () => {
 
   }, 10000)
 
-  it('should show batch action in the card header when writable rows are selected', async () => {
+  it('should keep actions in the centered toolbar when writable rows are selected and cleared', async () => {
+    server.use(
+      http.get('http://124.70.141.127:9111/maersk/book/task', () => {
+        listRequestCount += 1
+        return HttpResponse.json({
+          data: buildTaskRows(2),
+          pagination: { total: 2, page: 1, per_page: 100 },
+        })
+      })
+    )
     const view = renderPage()
 
     await waitFor(() => {
       expect(screen.getAllByText('tester').length).toBeGreaterThan(0)
     })
 
-    const rowCheckboxes = screen.getAllByRole('checkbox')
-    fireEvent.click(rowCheckboxes[1] as Element)
+    const actionNames = ['批量打开', '批量关闭']
+    const centerHeader = view.container.querySelector('.list-card-header-center')
+    const toolbar = within(centerHeader as HTMLElement)
+    const originalButtons = actionNames.map((name) => toolbar.getByRole('button', { name }))
+    const initialRequestCount = listRequestCount
+    const checkbox = screen.getAllByRole('checkbox')[1] as Element
+    fireEvent.click(checkbox)
 
     await waitFor(() => {
-      const leftHeader = view.container.querySelector('.list-card-header-left')
-
-      expect(leftHeader?.textContent).toContain('批量修改')
-      expect(leftHeader?.textContent).toContain('已选 1 项')
+      expect(toolbar.getByRole('button', { name: '批量修改' }).closest('.list-card-header-center')).toBe(centerHeader)
+      expect(toolbar.getByText('已选 1 项').closest('.list-card-header-center')).toBe(centerHeader)
     })
 
-    const leftHeader = view.container.querySelector('.list-card-header-left')
-    const centerHeader = view.container.querySelector('.list-card-header-center')
+    actionNames.forEach((name, index) => {
+      const button = toolbar.getByRole('button', { name })
+      expect(button).toBe(originalButtons[index])
+      expect(button.closest('.list-card-header-center')).toBe(centerHeader)
+    })
+    expect(view.container.querySelector('.list-card-header-left')?.textContent).toBe('')
 
-    expect(leftHeader?.textContent).toContain('批量打开')
-    expect(leftHeader?.textContent).toContain('关闭初始化')
-    expect(leftHeader?.textContent).toContain('清除路由')
-    expect(centerHeader?.textContent).not.toContain('批量打开')
-    expect(screen.queryByText('已选择')).toBeNull()
+    fireEvent.click(checkbox)
 
-  }, 10000)
+    await waitFor(() => {
+      expect(toolbar.queryByRole('button', { name: '批量修改' })).toBeNull()
+      expect(toolbar.queryByText('已选 1 项')).toBeNull()
+    })
+    actionNames.forEach((name, index) => {
+      expect(toolbar.getByRole('button', { name })).toBe(originalButtons[index])
+    })
+    expect(listRequestCount).toBe(initialRequestCount)
+
+  }, 30000)
 
   it('should open edit modal with the repacked form fields', async () => {
     renderPage()
 
     await screen.findByText('tester')
 
-    fireEvent.click(screen.getAllByRole('button', { name: '修改' })[0] as Element)
+    fireEvent.click(screen.getAllByText('修改')[0]?.closest('button') as Element)
 
     await screen.findByDisplayValue('tester')
     expect(screen.getAllByText('下单方式').length).toBeGreaterThan(0)
     expect(screen.getAllByText('下单请求次数').length).toBeGreaterThan(0)
     expect(screen.getAllByText('下单并发次数').length).toBeGreaterThan(0)
     expect(screen.getAllByText('下单时间间隔').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('分组2').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('账号分组').length).toBeGreaterThan(0)
     expect(screen.getAllByText('分组1').length).toBeGreaterThan(0)
+    expect((within(screen.getByRole('dialog')).getByLabelText('列表分组') as HTMLInputElement).value).toBe('1')
     expect(screen.queryByText('cid类型')).toBeNull()
     expect(screen.getAllByText('nac间隔时间').length).toBeGreaterThan(0)
 
@@ -478,10 +665,12 @@ describe('BookTaskListPage', () => {
     await screen.findByText('tester')
 
     await act(async () => {
-      fireEvent.click(screen.getAllByRole('button', { name: '修改' })[0] as Element)
+      fireEvent.click(screen.getAllByText('修改')[0]?.closest('button') as Element)
     })
 
     expect(await screen.findByDisplayValue('101,102')).toBeTruthy()
+
+    fireEvent.change(within(screen.getByRole('dialog')).getByLabelText('列表分组'), { target: { value: '0' } })
 
     const submitButton = within(screen.getByRole('dialog'))
       .getAllByRole('button')
@@ -492,7 +681,7 @@ describe('BookTaskListPage', () => {
     })
 
     await waitFor(() => {
-      expect(latestUpdatePayload).toMatchObject({ order_id: '101,102' })
+      expect(latestUpdatePayload).toMatchObject({ order_id: '101,102', list_type: 0 })
     })
 
   }, 10000)

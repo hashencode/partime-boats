@@ -1,6 +1,6 @@
 import React from 'react'
 import { Form } from 'antd'
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterAll, afterEach, beforeAll, describe, expect, it } from '@rstest/core'
 import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
@@ -334,7 +334,7 @@ describe('MskQueryListPage', () => {
       )
     )
 
-    render(<ThemeProvider><MskQueryListPage /></ThemeProvider>)
+    const view = render(<ThemeProvider><MskQueryListPage /></ThemeProvider>)
 
     await waitFor(() => {
       expect(screen.getByText('NINGBO')).toBeTruthy()
@@ -344,7 +344,8 @@ describe('MskQueryListPage', () => {
     const rowCheckboxes = screen.getAllByRole('checkbox')
     fireEvent.click(rowCheckboxes[1] as Element)
 
-    fireEvent.click(screen.getByRole('button', { name: '关闭所有' }))
+    const toolbar = within(view.container.querySelector('.list-card-header-center') as HTMLElement)
+    fireEvent.click(toolbar.getByRole('button', { name: '关闭所有' }))
 
     await waitFor(() => {
       expect(latestToggleIds).toBe('1')
@@ -497,24 +498,36 @@ describe('MskQueryListPage', () => {
     expect(modalBody?.querySelectorAll('.ant-col').length).toBeGreaterThan(3)
   })
 
-  it('should move batch action into the card header when rows are selected', async () => {
-    render(<ThemeProvider><MskQueryListPage /></ThemeProvider>)
+  it('should keep actions in the centered toolbar when rows are selected and cleared', async () => {
+    const view = render(<ThemeProvider><MskQueryListPage /></ThemeProvider>)
 
     await waitFor(() => {
-      expect(screen.getByText('Maersk列表')).toBeTruthy()
+      expect(screen.getAllByText('NINGBO').length).toBeGreaterThan(0)
     })
 
+    const centerHeader = view.container.querySelector('.list-card-header-center')
+    const toolbar = within(centerHeader as HTMLElement)
+    const openButton = toolbar.getByRole('button', { name: '开启所有' })
     const rowCheckboxes = screen.getAllByRole('checkbox')
     fireEvent.click(rowCheckboxes[1] as Element)
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: '批量修改' })).toBeTruthy()
-      expect(screen.getByText('已选 1 项')).toBeTruthy()
+      expect(toolbar.getByRole('button', { name: '批量修改' }).closest('.list-card-header-center')).toBe(centerHeader)
+      expect(toolbar.getByText('已选 1 项').closest('.list-card-header-center')).toBe(centerHeader)
     })
 
+    expect(toolbar.getByRole('button', { name: '开启所有' })).toBe(openButton)
     expect(screen.getAllByText('Maersk列表')).toHaveLength(1)
-    expect(screen.queryByText('已选择')).toBeNull()
-  })
+    expect(view.container.querySelector('.list-card-header-left')?.textContent).toBe('')
+
+    fireEvent.click(rowCheckboxes[1] as Element)
+
+    await waitFor(() => {
+      expect(toolbar.queryByRole('button', { name: '批量修改' })).toBeNull()
+      expect(toolbar.queryByText('已选 1 项')).toBeNull()
+    })
+    expect(toolbar.getByRole('button', { name: '开启所有' })).toBe(openButton)
+  }, 30000)
 
   it('should render fields in multiple columns inside the batch modal', async () => {
     render(<ThemeProvider><MskQueryListPage /></ThemeProvider>)
@@ -541,7 +554,7 @@ describe('MskQueryListPage', () => {
   })
 
   it('should block batch submit when no fields are changed', async () => {
-    render(<ThemeProvider><MskQueryListPage /></ThemeProvider>)
+    const view = render(<ThemeProvider><MskQueryListPage /></ThemeProvider>)
 
     await waitFor(() => {
       expect(screen.getByText('Maersk列表')).toBeTruthy()
@@ -549,18 +562,19 @@ describe('MskQueryListPage', () => {
 
     const rowCheckboxes = screen.getAllByRole('checkbox')
     fireEvent.click(rowCheckboxes[1] as Element)
+    const toolbar = within(view.container.querySelector('.list-card-header-center') as HTMLElement)
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: '批量修改' })).toBeTruthy()
+      expect(toolbar.getByRole('button', { name: '批量修改' })).toBeTruthy()
     })
 
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: '批量修改' }))
+      fireEvent.click(toolbar.getByRole('button', { name: '批量修改' }))
     })
 
-    const submitButton = screen
-      .getAllByRole('button')
-      .find((button) => ['确 定', '确定', 'OK'].includes(button.textContent?.trim() ?? ''))
+    const modalTitle = await screen.findByText('批量修改', { selector: '.ant-modal-title' })
+    const modal = within(modalTitle.closest('[role=dialog]') as HTMLElement)
+    const submitButton = modal.getByText(/^(确\s*定|OK)$/, { selector: 'button span' }).closest('button')
 
     await act(async () => {
       fireEvent.click(submitButton as Element)

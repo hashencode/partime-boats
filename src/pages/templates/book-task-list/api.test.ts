@@ -6,9 +6,11 @@ import {
   buildBookTaskBatchPayload,
   buildBookTaskSavePayload,
   buildBookTaskUpdatePayload,
+  batchUpdateBookTask,
   fetchAllBookTaskIds,
   fetchBookTaskList,
   fetchStartPortOptions,
+  updateBookTask,
 } from './api'
 
 let requestPages: number[] = []
@@ -62,6 +64,53 @@ afterAll(() => {
 })
 
 describe('book task api', () => {
+  it('should submit numeric list groups without clearing an omitted batch value', () => {
+    expect(buildBookTaskUpdatePayload({ list_type: '2' }).list_type).toBe(2)
+    expect(buildBookTaskBatchPayload({ list_type: 0 }, [1, 2])).toMatchObject({ ids: '1, 2', list_type: 0 })
+    expect(JSON.parse(JSON.stringify(buildBookTaskBatchPayload({ list_type: '' }, [1])))).not.toHaveProperty('list_type')
+  })
+
+  it('should send a close request to the existing batch endpoint', async () => {
+    let body: unknown
+    server.use(http.post('http://124.70.141.127:9111/maersk/group/task', async ({ request }) => {
+      body = await request.json()
+      return HttpResponse.json({ bool_status: true })
+    }))
+    await batchUpdateBookTask({ ids: '1, 2', is_order: 0 })
+    expect(body).toEqual({ ids: '1, 2', is_order: 0 })
+  })
+
+  it('should reject business failures even when the server responds with HTTP 200', async () => {
+    server.use(http.post('http://124.70.141.127:9111/maersk/book/task', () =>
+      HttpResponse.json({ bool_status: false, msg: '修改失败' })))
+    await expect(updateBookTask(1, { list_type: 2 })).rejects.toThrow('修改失败')
+  })
+
+  it('should not confirm a write with an unknown success response', async () => {
+    server.use(http.post('http://124.70.141.127:9111/maersk/group/task', () => HttpResponse.json({})))
+    await expect(batchUpdateBookTask({ ids: '1', is_order: 0 })).rejects.toThrow('无法确认修改结果')
+  })
+
+  it('should collect every id using the page size actually returned by the server', async () => {
+    server.use(http.get('http://124.70.141.127:9111/maersk/book/task', ({ request }) => {
+      const page = Number(new URL(request.url).searchParams.get('page'))
+      requestPages.push(page)
+      return HttpResponse.json({
+        data: buildTaskRows(25).slice((page - 1) * 20, page * 20),
+        pagination: { total: 25, page, per_page: 20 },
+      })
+    }))
+    expect(await fetchAllBookTaskIds({})).toHaveLength(25)
+    expect(requestPages).toEqual([1, 2])
+  })
+
+  it('should reject an incomplete target set before any batch can run', async () => {
+    server.use(http.get('http://124.70.141.127:9111/maersk/book/task', ({ request }) => {
+      const page = Number(new URL(request.url).searchParams.get('page'))
+      return HttpResponse.json({ data: page === 1 ? [{ id: 1 }] : [], pagination: { total: 2, page, per_page: 1 } })
+    }))
+    await expect(fetchAllBookTaskIds({})).rejects.toThrow('未完整加载')
+  })
   it('should request only the current page for list loading', async () => {
     const response = await fetchBookTaskList({ page: 2, per_page: 10 })
 

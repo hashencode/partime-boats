@@ -52,6 +52,7 @@ export type BookTaskQueryFilters = {
 
 export type BookTaskItem = {
   id: number
+  list_type?: number | string | null
   order_id?: number | string
   account_name?: string
   quantity?: number | string
@@ -92,6 +93,7 @@ export type BookTaskListResponse = {
 }
 
 export type BookTaskSavePayload = {
+  list_type?: number
   order_id?: number | string | null
   account_name?: string | null
   quantity?: number | null
@@ -194,41 +196,26 @@ export const fetchBookTaskList = async (filters: BookTaskQueryFilters): Promise<
 }
 
 export const fetchAllBookTaskIds = async (filters: BookTaskQueryFilters): Promise<number[]> => {
-  const requestFilters = {
-    ...filters,
-    page: 1,
-    per_page: 1000,
+  const firstPage = await fetchBookTaskList({ ...filters, page: 1, per_page: 1000 })
+  const incompleteMessage = '任务列表发生变化或未完整加载，请重新查询后重试。'
+  if (firstPage.size <= 0 || firstPage.current !== 1 || firstPage.total < 0) {
+    throw new Error(incompleteMessage)
   }
-
-  const firstPageResponse = await apiClient.get<LegacyNestedListEnvelope<BookTaskItem> | LegacyListResponse<BookTaskItem>>(
-    BOOK_TASK_API_URL,
-    {
-      params: requestFilters,
-    }
-  )
-
-  const firstPage = parseBookTaskListResponse(firstPageResponse.data, requestFilters)
-  const ids = firstPage.data.map((item) => item.id)
-  const totalPages = Math.max(1, Math.ceil(firstPage.total / requestFilters.per_page))
+  const ids = new Set(firstPage.data.map((item) => item.id))
+  const totalPages = Math.max(1, Math.ceil(firstPage.total / firstPage.size))
 
   for (let page = 2; page <= totalPages; page += 1) {
-    const nextResponse = await apiClient.get<LegacyNestedListEnvelope<BookTaskItem> | LegacyListResponse<BookTaskItem>>(
-      BOOK_TASK_API_URL,
-      {
-        params: {
-          ...requestFilters,
-          page,
-        },
-      }
-    )
-    const nextPage = parseBookTaskListResponse(nextResponse.data, {
-      page,
-      per_page: requestFilters.per_page,
-    })
-    ids.push(...nextPage.data.map((item) => item.id))
+    const nextPage = await fetchBookTaskList({ ...filters, page, per_page: firstPage.size })
+    if (nextPage.current !== page || nextPage.size !== firstPage.size || nextPage.total !== firstPage.total || nextPage.data.length === 0) {
+      throw new Error(incompleteMessage)
+    }
+    nextPage.data.forEach((item) => ids.add(item.id))
   }
 
-  return ids
+  if (ids.size !== firstPage.total || [...ids].some((id) => !Number.isInteger(id) || id <= 0)) {
+    throw new Error(incompleteMessage)
+  }
+  return [...ids]
 }
 
 export const fetchStartPortOptions = async (location = 0): Promise<string[]> => {
@@ -241,29 +228,31 @@ export const fetchEndPortOptions = async (location = 0): Promise<string[]> => {
   return toArrayOrEmpty(unwrapLegacyEnvelopeOr<string[]>(response.data, []))
 }
 
+const assertBookTaskWriteSucceeded = (response: LegacyEnvelope<unknown>) => {
+  unwrapLegacyEnvelopeOr(response, null)
+  if (response?.bool_status !== true) {
+    throw new Error('无法确认修改结果，请刷新列表查看。')
+  }
+}
+
 export const updateBookTask = async (id: number, payload: BookTaskSavePayload): Promise<void> => {
-  await apiClient.post(
+  const response = await apiClient.post<LegacyEnvelope<unknown>>(
     BOOK_TASK_API_URL,
     {
       ...payload,
       id,
     }
   )
+  assertBookTaskWriteSucceeded(response.data)
 }
 
 export const batchUpdateBookTask = async (payload: BookTaskBatchPayload): Promise<void> => {
-  await apiClient.post('/maersk/group/task', payload)
-}
-
-export const closeBookTaskInitialization = async (ids?: string): Promise<void> => {
-  await apiClient.get(ids ? `/delay/cid?ids=${ids}` : '/delay/cid')
-}
-
-export const clearBookTaskRouter = async (ids?: string): Promise<void> => {
-  await apiClient.get(ids ? `/delay/route?ids=${ids}` : '/delay/route')
+  const response = await apiClient.post<LegacyEnvelope<unknown>>('/maersk/group/task', payload)
+  assertBookTaskWriteSucceeded(response.data)
 }
 
 export const buildBookTaskSavePayload = (values: Record<string, unknown>): BookTaskSavePayload => ({
+  list_type: toNumber(values.list_type),
   order_id: toOptionalString(values.order_id),
   account_name: toOptionalString(values.account_name),
   quantity: toNumber(values.quantity),
@@ -295,6 +284,7 @@ export const buildBookTaskSavePayload = (values: Record<string, unknown>): BookT
 
 // 单条编辑接口对缺失字段很敏感，需维持旧页面的完整 payload 形状与 null 语义。
 export const buildBookTaskUpdatePayload = (values: Record<string, unknown>): BookTaskSavePayload => ({
+  list_type: toNumber(values.list_type),
   order_id: toNullableString(values.order_id),
   account_name: toNullableString(values.account_name),
   quantity: toNullableNumber(values.quantity),

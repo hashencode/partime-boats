@@ -1,6 +1,6 @@
 import React from 'react'
 import { Form } from 'antd'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterAll, afterEach, beforeAll, describe, expect, it } from '@rstest/core'
 import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
@@ -204,21 +204,33 @@ describe('MskApiListPage', () => {
     })
   })
 
-  it('should move batch action into the card header when rows are selected', async () => {
-    render(<ThemeProvider><MskApiListPage /></ThemeProvider>)
+  it('should keep actions in the centered toolbar when rows are selected and cleared', async () => {
+    const view = render(<ThemeProvider><MskApiListPage /></ThemeProvider>)
 
     await waitFor(() => {
-      expect(screen.getByText('Maersk API列表')).toBeTruthy()
+      expect(screen.getAllByText('NINGBO').length).toBeGreaterThan(0)
     })
 
+    const centerHeader = view.container.querySelector('.list-card-header-center')
+    const toolbar = within(centerHeader as HTMLElement)
+    const addButton = toolbar.getByRole('button', { name: '新增一行' })
     const rowCheckboxes = screen.getAllByRole('checkbox')
     fireEvent.click(rowCheckboxes[1] as Element)
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: '批量修改' })).toBeTruthy()
-      expect(screen.getByText('已选 1 项')).toBeTruthy()
+      expect(toolbar.getByRole('button', { name: '批量修改' }).closest('.list-card-header-center')).toBe(centerHeader)
+      expect(toolbar.getByText('已选 1 项').closest('.list-card-header-center')).toBe(centerHeader)
     })
 
-    expect(screen.queryByText('已选择')).toBeNull()
-  })
+    expect(toolbar.getByRole('button', { name: '新增一行' })).toBe(addButton)
+    expect(view.container.querySelector('.list-card-header-left')?.textContent).toBe('')
+
+    fireEvent.click(rowCheckboxes[1] as Element)
+
+    await waitFor(() => {
+      expect(toolbar.queryByRole('button', { name: '批量修改' })).toBeNull()
+      expect(toolbar.queryByText('已选 1 项')).toBeNull()
+    })
+    expect(toolbar.getByRole('button', { name: '新增一行' })).toBe(addButton)
+  }, 30000)
 })

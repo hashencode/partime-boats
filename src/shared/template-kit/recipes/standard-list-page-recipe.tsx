@@ -3,6 +3,7 @@ import {
 } from '@ant-design/icons'
 import {
   Button,
+  Alert,
   Card,
   Divider,
   Form,
@@ -196,8 +197,8 @@ export const StandardListPageRecipe = <
     clearColumnOrder,
   } = useListViewPreferences({
     tableId: spec.tableId,
+    newColumnKeys: spec.newColumnKeys,
     defaultColumnKeys,
-    defaultDensity: 'middle',
   })
 
   const orderedColumns = useMemo(() => {
@@ -222,6 +223,7 @@ export const StandardListPageRecipe = <
   )
 
   const handleResetAll = () => {
+    spec.onQueryChange?.()
     onResetFilters()
     resetPage()
   }
@@ -290,6 +292,7 @@ export const StandardListPageRecipe = <
             actionsColProps={searchColProps.actions}
             compactLayout={searchCompactLayout}
             onSubmit={(values) => {
+              spec.onQueryChange?.()
               onSubmitFilters(values)
               resetPage()
             }}
@@ -303,11 +306,11 @@ export const StandardListPageRecipe = <
       <Card
         variant="borderless"
       >
-        <div className="list-card-header mb-4 flex flex-wrap items-start justify-between gap-3">
+        <div className="list-card-header mb-[calc(1rem+2lh)] flex flex-wrap items-start justify-between gap-3">
           <div className="list-card-header-left min-w-0 shrink-0">
             {resolvedCardTitle ? <div className="flex min-w-0 flex-wrap items-center gap-3">{resolvedCardTitle}</div> : null}
           </div>
-          <div className="list-card-header-center flex grow flex-wrap items-center justify-center gap-2">
+          <div className="list-card-header-center flex grow flex-wrap items-start justify-center gap-2">
             {spec.createAction ? (
               <Button type="primary" icon={spec.createAction.icon} onClick={() => openFormPage('add')}>
                 {spec.createAction.label}
@@ -320,7 +323,7 @@ export const StandardListPageRecipe = <
             <Divider orientation="vertical" className="mx-8" />
             <Pagination {...headerPagination} />
           </div>
-          <div className="list-card-header-right ml-auto flex shrink-0 items-center justify-end gap-2">
+          <div className="list-card-header-right ml-auto flex shrink-0 items-start justify-end gap-2">
             <ListToolbarActions
               showReload={false}
               tableSize={tableSize}
@@ -336,6 +339,15 @@ export const StandardListPageRecipe = <
             />
           </div>
         </div>
+        {spec.showStaleDataError && response && error ? (
+          <Alert
+            className="mb-4"
+            type="error"
+            showIcon
+            title="本次列表未更新"
+            action={<Button size="small" onClick={() => void load()}>重试</Button>}
+          />
+        ) : null}
         <TemplateListContent
           showInitialLoading={showInitialLoading}
           showError={showError}
