@@ -12,6 +12,7 @@ dist
 dist-ssr
 *.local
 .gstack/
+/.artifacts/
 
 # Editor directories and files
 .vscode/*

@@ -7,6 +7,9 @@
 - 如需候选提升到 `ACTIVE.md`，在行尾加 `#promote`。
 
 ## Entries
+- 2026-10-21: 本项目 Rsbuild 会解析 CSS 的 `url()`：在 `src/index.css` 引入 `public/` 中字体时使用相对路径，由构建生成哈希资源；直接写 `/fonts/...` 曾导致 css-loader 无法解析。以生产构建及实际 Rendered Fonts 验证结果为准。
+- 2026-10-21: 筛选区与 Modal 复用同名 AntD 字段时，为各 Form 设置独立 `name`，避免重复 DOM id 导致 label 指向错误控件。jsdom 验证 Modal 收起时可在测试 ConfigProvider 关闭 motion，保留可访问性和业务断言，避免等待不会自然完成的 CSS 动画。
+- 2026-10-21: 字体选型已明确时，不把“尚未下载验证”写成“资源缺失”或新的用户确认项。Maersk 官方字体入口为 `https://assets.maerskline.com/mds/fonts/fonts-cdn.css`；当日已读取 Text 400/500/600/700 与 Headline 400/700 的 WOFF2，均返回 200。资源获取、实际渲染和中文回退分别核查，不将它们混作需求未定。
 - 2026-05-07: 列表检索统一采用“筛选项变更不自动请求，仅点击查询触发（重置除外）”，可显著降低误请求与状态抖动。 #promote
 - 2026-05-07: 页面实现应先对齐稳定骨架再填业务差异；列表按“筛选区/内容区/反馈区/权限区”，表单按“编辑工作条 + 只读阻断”组织，能降低回归风险。 #promote
 - 2026-05-07: 列表与表单都要把状态反馈做全：列表固定 `loading/empty/error`，写操作固定成功/失败明确提示。
