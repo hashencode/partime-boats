@@ -24,3 +24,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Agent task scratch files; keep only the directory placeholder.
+/.agents/tmp/*
+!/.agents/tmp/.gitkeep

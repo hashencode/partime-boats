@@ -1,24 +1,24 @@
 # ERRORS
 
+> 以下记录按原日期保留历史故障、根因和当次验证边界；“当前”指原记录环境，除明确标注的收尾核对外不代表今日仍失败。临时绕行不构成长期免检，本轮已审查保留，不再列入下一批清理。
+
 ## Instructions
 
 - 记录错误现象、根因、修复方式，使用简短中文条目。
 - 推荐格式：`- YYYY-MM-DD: [错误] 现象 -> 根因 -> 修复`
-- 可跨任务复用的排错策略可加 `#promote`。
 
 ## Entries
 - 2026-04-28（ai-tools）：`bun run -s <script>` 在当前 Bun 版本不可用，会报 `Invalid Argument '-s'`；改用 `bun run <script>` 或 `bun run --silent <script>`。
 - 2026-04-30（gmxgy-admin-new迁移分析）：终端无 `python` 命令，脚本统计会直接失败（`command not found: python`）-> 运行环境未提供 python 别名 -> 统一改用 `node - <<'NODE'` 执行临时分析脚本。
 - 2026-04-30（auth-route-guard测试）：组件在测试中报 `React is not defined` -> 文件使用 JSX 但未导入 React，且当前测试链路仍依赖旧 JSX 运行时兼容 -> 在组件文件补 `import React from 'react'`（并 `void React`）后恢复。
-- 2026-05-06: 在本项目运行单测应使用 `bun run test <files>`（走 rstest/jsdom），直接 `bun test <file>` 会落到 bun 默认环境导致 `window is not defined`。
+- 2026-05-06（同主题来源：2026-05-13、2026-05-19）: 本项目单测通过 bun run test <files> 调用 rstest run/jsdom；裸 bun test 绕过项目环境及 Rstest 生命周期注册，历史上出现 window is not defined 等初始化失败。三份来源已合并，日期和原因保留，当前命令说明见 [测试标准](../../docs/testing-standards.md#2-test-layering-mandatory)；资料合并不代表新增三次独立复发。
 - 2026-05-09（基础端口列表迁移）：全量 `bun run tsc -p tsconfig.app.json --noEmit` 会被仓库历史问题拦住：`ImportMetaEnv.PUBLIC_API_BASE` 未声明、`js-export-excel` 缺少类型、部分旧测试 Promise 类型不匹配 -> 本次页面验证改为“新增文件定向 ESLint + 定向 rstest”，避免把历史噪音误判为本次回归。
 - 2026-05-09（codex-admin-quick-start）：运行 `bunx eslint` 可能直接报 `Cannot find package 'eslint-plugin-unused-imports'` -> 仓库本地 ESLint 依赖未装全 -> 先用定向 rstest 验证代码逻辑，静态检查需补齐依赖后再跑。
 - 2026-05-10（提醒列表迁移）：全量 `bunx tsc -b --pretty false` 仍会被仓库既有类型问题拦住，且 `js-export-excel` 在多个列表页都缺少声明文件 -> 当前迁移验证优先使用“定向 rstest + 定向 eslint”，不要把全量类型红灯误判为本次改动回归。
-- 2026-05-13（MSK/订舱批量操作）：在本项目跑前端单测应使用 `bun run test <file>`，直接 `bun test <file>` 会绕过 rstest 的 jsdom 环境，触发 `window is not defined` 或浏览器依赖模块初始化失败。
 - 2026-05-13（MSK列表导出）：`js-export-excel` 顶层静态导入会在测试环境因 `document` 缺失直接报错 -> 改为点击导出时再 `import('js-export-excel')` 动态加载，既保功能也避免测试环境副作用。
 - 2026-05-24（订舱管理页面测试）：`src/pages/templates/book-task-list/book-task-list-page.test.tsx` 在单测里即使断言已通过，也会继续卡到超时退出（如 `should render task rows when request succeeds`）-> 该文件存在未释放的页面副作用/测试清理问题，当前功能验证优先依赖 `api.test.ts`，后续若要恢复页面级验证需单独排查定时器或异步清理链路。
 - 2026-05-25（列表视图偏好重构）：仓库级 `bun run test` 在当前环境 60 秒内未完成并被 `timeout` 终止，但共享层定向 rstest 与 `bunx tsc -p tsconfig.app.json --noEmit` 可稳定通过 -> 先用“共享层定向测试 + 类型检查”验证本次改动，不把全量测试超时直接归因到当前提交。 #promote
-- 2026-05-30（接口对照）：`docs/api/api.md` 当前为空文件，按 AGENTS 流程读取时拿不到任何接口契约 -> 涉及迁移/联调需求时不能把该文件当成有效来源，应回退到已接通页面实现或旧项目源码做接口对照。
+- 2026-05-30（接口对照）: 当时 docs/api/api.md 为空，拿不到接口契约，曾结合已接通页面和旧项目源码对照。2026-10-22 核对：该文件现已记录 2026-10-21 的部分接口，不是完整后端目录；当前先读 [API 导航](../../docs/api/README.md) 与已核实范围，未覆盖部分再结合实际调用及可信后端资料核实，不直接以旧源码替代契约，也不把本轮文档核对当真实写入验收。
 - 2026-05-30（antd表格排序测试）：给列表列加 `sorter` 后，测试里原先用 `getByLabelText/getByText` 选筛选项或弹窗字段，容易和可排序表头同名节点冲突而误报 -> 列表页测试优先改用 `placeholder/role=columnheader/findByDisplayValue`，表格顺序断言优先读 `tbody tr.ant-table-row` 的真实数据行。 #promote
 - 2026-05-30（生产打包）：`bun run build:production` 会先跑 `tsc -b`，因此 `src/**/*.test.tsx` 的类型错误也会直接拦住打包；本次报错为 `remind-list-page.test.tsx` 中闭包变量 `capturedForm` 经非空判断后仍被推断异常，修复方式是收口到返回明确类型的 helper，再调用 `setFieldValue`。同时仓库需保留标准 `build` 脚本，避免 `npm run build` 直接报 `Missing script: "build"`。
 - 2026-06-06（标准列表 virtual 改造）：当前仓库跑定向 `bunx eslint` 时，会被 `src/pages/templates/book-task-list/book-task-list-page.tsx:374` 的既有 `react-hooks/set-state-in-effect` 错误拦住；跑 `bunx tsc -b --pretty false` 时，会被 `src/infrastructure/http/legacy-envelope.ts:32` 的既有泛型返回类型错误拦住 -> 本次列表虚拟滚动改造应以“定向 rstest 通过”作为主验证，静态检查需将这两处历史问题与当前改动分开判断。

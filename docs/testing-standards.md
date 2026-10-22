@@ -8,6 +8,8 @@
 2. Rstest Browser Mode: 用于真实浏览器行为验证，补齐 jsdom 盲区。
 3. Playwright E2E: 用于关键业务链路的端到端冒烟验证，少而精。
 
+测试通过 `bun run test <files>` 调用项目的 `rstest run`，不要使用裸 `bun test`；后者绕过 Rstest 生命周期与项目 jsdom 配置，历史上出现过 `window is not defined` 等环境初始化错误。2026-05-06、2026-05-13、2026-05-19 的同主题记录已合并保留其来源日期，不据此新增复发计数。
+
 ## 3. Naming and Placement (Mandatory)
 - Unit/Component: `src/**/*.test.ts(x)` 或 `src/**/*.spec.ts(x)`
 - Browser Mode: `src/**/*.browser.test.ts(x)`

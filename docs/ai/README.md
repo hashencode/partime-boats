@@ -4,15 +4,15 @@
 
 ## 统一文档入口
 
-[文档总导航](../README.md) 说明目录职责、命名和保留的项目例外；[开发规则](development-rules.md) 承接本项目持续约束。原必读顺序、记忆入口和各场景权威链继续按下文执行，文档整理不改变原验收状态。
+[文档总导航](../README.md) 说明目录职责、命名和保留的项目例外；[开发规则](development-rules.md) 承接本项目持续约束。原必读顺序与各场景权威链继续按下文执行，文档整理不改变原验收状态。
 
 本项目为 React / TypeScript / Rsbuild / Ant Design 6 / TailwindCSS 管理后台。沿用本仓库的页面、路由、权限、接口与记忆规则，不照搬其他后台或 Flutter 项目的交互规范。
 
 ## 每次任务先读
 
-1. [.agents/memories/PROFILE.md](../../.agents/memories/PROFILE.md) 与 [ACTIVE.md](../../.agents/memories/ACTIVE.md)，先应用现有项目记忆。
+1. 根 AGENTS、本导航与核心开发规范，按本次任务范围选择资料。
 2. [协作与实施规则](development-rules.md)，保留原 AGENTS 中的最小改动、目录创建、默认参数、计划输出与业务默认策略。
-3. [项目记忆流程](project-memory.md)，决定哪些结果需要记录；不为文档分层迁移或清理现有记忆。
+3. 核心规范的“经验与记忆维护”章节；存量有效约束按相关任务核对，清理须另获具体批次确认。
 
 ## 按任务继续阅读
 
@@ -39,3 +39,11 @@
 `docs/ai/` 保存长期规则和导航；`docs/api/` 保存接口资料；[docs/testing-standards.md](../testing-standards.md) 保持原位；[docs/plans/](../plans/) 保留实施计划和验收记录，原有项目记忆继续留在 `.agents/memories/`。
 
 纯文档任务检查链接、原规则与记录是否保留、diff 是否只含目标文档；不因此运行业务实现流程。代码与行为修改仍须先计划、按现有规则测试，并区分实际接口验证与本地 MSW 验证。
+
+## 经验与记忆入口
+
+[经验与记忆维护](development-rules.md#经验与记忆维护) 统一规定按需复核、候选确认、正式承接与去重；本项目不设置定时复核。
+
+2026-10-22 本轮存量整理已完成，见 [结项记录](../plans/2026-10-22-memory-cleanup-proposals.md)。保留项均已审查结项，不再列为“下一批待清理”；只有相关新证据或用户明确的新任务才复核受影响条目。
+
+目录位置见 [Agent 工作目录](../../.agents/README.md)；候选与存量入口见 [.agents/memories/README.md](../../.agents/memories/README.md)，临时材料放在 `.agents/tmp/`。
