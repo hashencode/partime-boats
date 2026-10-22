@@ -47,10 +47,15 @@ A reusable admin template built with React, TypeScript, Ant Design v6, Tailwind 
 ## Documentation
 
 - [AI development navigation](docs/ai/README.md)
-- [Collaboration and implementation rules](docs/ai/collaboration-rules.md)
+- [Collaboration and implementation rules](docs/ai/development-rules.md)
 - [Project memory workflow](docs/ai/project-memory.md)
 - [Business routing map](docs/ai/business-map.yaml), [component catalog](docs/ai/component-catalog.yaml), [page recipes](docs/ai/page-recipes.yaml), and [implementation rules](docs/ai/ai-rules.md)
 - [API navigation](docs/api/README.md) and [testing standards](docs/testing-standards.md)
 - Existing [plans and verification records](docs/plans/) remain in place.
 
 Commands above follow the current package.json scripts; development uses `bun run dev:development`.
+
+## 文档入口
+
+- [项目文档总导航](docs/README.md)：开发规则、接口或协议、验证要求及项目专题。
+- [AI 开发文档导航](docs/ai/README.md)：按任务读取适用规则；既有约束和历史验收继续按原范围生效。

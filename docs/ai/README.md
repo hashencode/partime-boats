@@ -1,11 +1,15 @@
 # AI 开发文档导航
 
+## 统一文档入口
+
+[文档总导航](../README.md) 说明目录职责、命名和保留的项目例外；[开发规则](development-rules.md) 承接本项目持续约束。原必读顺序、记忆入口和各场景权威链继续按下文执行，文档整理不改变原验收状态。
+
 本项目为 React / TypeScript / Rsbuild / Ant Design 6 / TailwindCSS 管理后台。沿用本仓库的页面、路由、权限、接口与记忆规则，不照搬其他后台或 Flutter 项目的交互规范。
 
 ## 每次任务先读
 
 1. [.agents/memories/PROFILE.md](../../.agents/memories/PROFILE.md) 与 [ACTIVE.md](../../.agents/memories/ACTIVE.md)，先应用现有项目记忆。
-2. [协作与实施规则](collaboration-rules.md)，保留原 AGENTS 中的最小改动、目录创建、默认参数、计划输出与业务默认策略。
+2. [协作与实施规则](development-rules.md)，保留原 AGENTS 中的最小改动、目录创建、默认参数、计划输出与业务默认策略。
 3. [项目记忆流程](project-memory.md)，决定哪些结果需要记录；不为文档分层迁移或清理现有记忆。
 
 ## 按任务继续阅读
