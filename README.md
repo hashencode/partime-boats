@@ -1,5 +1,7 @@
 # Boats
 
+核心开发规范：[docs/ai/development-rules.md](docs/ai/development-rules.md)。项目任务、接口和验收资料仍从原文档导航按范围读取。
+
 A reusable admin template built with React, TypeScript, Ant Design v6, Tailwind CSS, ESLint, and Prettier.
 
 ## Stack
@@ -49,7 +51,7 @@ A reusable admin template built with React, TypeScript, Ant Design v6, Tailwind 
 - [AI development navigation](docs/ai/README.md)
 - [Collaboration and implementation rules](docs/ai/development-rules.md)
 - [Project memory workflow](docs/ai/project-memory.md)
-- [Business routing map](docs/ai/business-map.yaml), [component catalog](docs/ai/component-catalog.yaml), [page recipes](docs/ai/page-recipes.yaml), and [implementation rules](docs/ai/ai-rules.md)
+- [Business routing map](docs/ai/business-map.yaml), [component catalog](docs/ai/component-catalog.yaml), [page recipes](docs/ai/page-recipes.yaml), and [implementation rules](docs/ai/development-rules.md)
 - [API navigation](docs/api/README.md) and [testing standards](docs/testing-standards.md)
 - Existing [plans and verification records](docs/plans/) remain in place.
 

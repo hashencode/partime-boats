@@ -4,7 +4,7 @@
 `DESIGN.md` is now a lightweight design note file.
 The authoritative, executable UI/UX rules are maintained in:
 
-- `docs/ai/ai-rules.md` -> `Design Baseline (Authoritative)`
+- `docs/ai/development-rules.md` -> `Design Baseline (Authoritative)`
 
 ## Why
 - Avoid rule drift between multiple documents.
