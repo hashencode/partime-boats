@@ -13,16 +13,13 @@ A reusable admin template built with React, TypeScript, Ant Design v6, Tailwind 
 
 ## Scripts (Bun)
 
-- `bun run dev` - start development server
 - `bun run dev:development` - start development server with `.env.development`
 - `bun run dev:test` - start development server with `.env.test`
 - `bun run dev:production` - start development server with `.env.production`
 - `bun run build` - typecheck and build production bundle
-- `bun run build:development` - build with `.env.development`
 - `bun run build:test` - build with `.env.test`
 - `bun run build:production` - build with `.env.production`
 - `bun run preview` - preview production build
-- `bun run preview:development` - preview with `.env.development`
 - `bun run preview:test` - preview with `.env.test`
 - `bun run preview:production` - preview with `.env.production`
 - `bun run test` - run unit tests
@@ -47,10 +44,13 @@ A reusable admin template built with React, TypeScript, Ant Design v6, Tailwind 
 - Routing, permissions, and menu are driven by typed route contracts.
 - Theme mode supports `light` / `dark` / `system`; avoid hardcoded light-only background colors in new UI code.
 
-## AI Documentation Pack
+## Documentation
 
-- Index: `docs/ai/README.md`
-- Business routing map: `docs/ai/business-map.yaml`
-- Component catalog: `docs/ai/component-catalog.yaml`
-- Page recipes: `docs/ai/page-recipes.yaml`
-- Rules: `docs/ai/ai-rules.md`
+- [AI development navigation](docs/ai/README.md)
+- [Collaboration and implementation rules](docs/ai/collaboration-rules.md)
+- [Project memory workflow](docs/ai/project-memory.md)
+- [Business routing map](docs/ai/business-map.yaml), [component catalog](docs/ai/component-catalog.yaml), [page recipes](docs/ai/page-recipes.yaml), and [implementation rules](docs/ai/ai-rules.md)
+- [API navigation](docs/api/README.md) and [testing standards](docs/testing-standards.md)
+- Existing [plans and verification records](docs/plans/) remain in place.
+
+Commands above follow the current package.json scripts; development uses `bun run dev:development`.
