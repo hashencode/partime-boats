@@ -9,6 +9,7 @@
 | 仓库规则与授权 | [../AGENTS.md](../AGENTS.md) |
 | 按任务读取开发文档 | [ai/README.md](ai/README.md) |
 | 核心开发规范 | [development-rules.md](ai/development-rules.md) |
+| 服务器访问与重新部署 | [server-deployment.md](server-deployment.md) |
 | 接口、协议或资源契约 | [api/README.md](api/README.md) |
 | 验证要求 | [testing-standards.md](testing-standards.md) |
 | 启动与项目说明 | [../README.md](../README.md) |

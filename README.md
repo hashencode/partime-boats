@@ -48,6 +48,7 @@ A reusable admin template built with React, TypeScript, Ant Design v6, Tailwind 
 
 ## Documentation
 
+- [Server access and redeployment](docs/server-deployment.md)
 - [AI development navigation](docs/ai/README.md)
 - [Collaboration and implementation rules](docs/ai/development-rules.md)
 - [Project memory workflow](docs/ai/development-rules.md#经验与记忆维护)
