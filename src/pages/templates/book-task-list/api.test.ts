@@ -25,7 +25,7 @@ const buildTaskRows = (count: number) =>
   }))
 
 const server = setupServer(
-  http.get('http://124.70.141.127:9111/maersk/book/task', ({ request }) => {
+  http.get('http://124.70.141.127:9112/maersk/book/task', ({ request }) => {
     const url = new URL(request.url)
     const page = Number(url.searchParams.get('page') || 1)
     const perPage = Number(url.searchParams.get('per_page') || 10)
@@ -41,14 +41,14 @@ const server = setupServer(
       },
     })
   }),
-  http.get('http://124.70.141.127:9111/startport', ({ request }) => {
+  http.get('http://124.70.141.127:9112/startport', ({ request }) => {
     latestStartPortRequestUrl = request.url
     return HttpResponse.json(['上海'])
   })
 )
 
 beforeAll(() => {
-  apiClient.defaults.baseURL = 'http://124.70.141.127:9111'
+  apiClient.defaults.baseURL = 'http://124.70.141.127:9112'
   server.listen({ onUnhandledRequest: 'error' })
 })
 
@@ -72,7 +72,7 @@ describe('book task api', () => {
 
   it('should send a close request to the existing batch endpoint', async () => {
     let body: unknown
-    server.use(http.post('http://124.70.141.127:9111/maersk/group/task', async ({ request }) => {
+    server.use(http.post('http://124.70.141.127:9112/maersk/group/task', async ({ request }) => {
       body = await request.json()
       return HttpResponse.json({ bool_status: true })
     }))
@@ -81,18 +81,18 @@ describe('book task api', () => {
   })
 
   it('should reject business failures even when the server responds with HTTP 200', async () => {
-    server.use(http.post('http://124.70.141.127:9111/maersk/book/task', () =>
+    server.use(http.post('http://124.70.141.127:9112/maersk/book/task', () =>
       HttpResponse.json({ bool_status: false, msg: '修改失败' })))
     await expect(updateBookTask(1, { list_type: 2 })).rejects.toThrow('修改失败')
   })
 
   it('should not confirm a write with an unknown success response', async () => {
-    server.use(http.post('http://124.70.141.127:9111/maersk/group/task', () => HttpResponse.json({})))
+    server.use(http.post('http://124.70.141.127:9112/maersk/group/task', () => HttpResponse.json({})))
     await expect(batchUpdateBookTask({ ids: '1', is_order: 0 })).rejects.toThrow('无法确认修改结果')
   })
 
   it('should collect every id using the page size actually returned by the server', async () => {
-    server.use(http.get('http://124.70.141.127:9111/maersk/book/task', ({ request }) => {
+    server.use(http.get('http://124.70.141.127:9112/maersk/book/task', ({ request }) => {
       const page = Number(new URL(request.url).searchParams.get('page'))
       requestPages.push(page)
       return HttpResponse.json({
@@ -105,7 +105,7 @@ describe('book task api', () => {
   })
 
   it('should reject an incomplete target set before any batch can run', async () => {
-    server.use(http.get('http://124.70.141.127:9111/maersk/book/task', ({ request }) => {
+    server.use(http.get('http://124.70.141.127:9112/maersk/book/task', ({ request }) => {
       const page = Number(new URL(request.url).searchParams.get('page'))
       return HttpResponse.json({ data: page === 1 ? [{ id: 1 }] : [], pagination: { total: 2, page, per_page: 1 } })
     }))
@@ -123,7 +123,7 @@ describe('book task api', () => {
 
   it('should treat null data as an empty task list', async () => {
     server.use(
-      http.get('http://124.70.141.127:9111/maersk/book/task', () =>
+      http.get('http://124.70.141.127:9112/maersk/book/task', () =>
         HttpResponse.json({
           data: null,
           pagination: {
@@ -154,7 +154,7 @@ describe('book task api', () => {
     const options = await fetchStartPortOptions()
 
     expect(options).toEqual(['上海'])
-    expect(latestStartPortRequestUrl).toBe('http://124.70.141.127:9111/startport?location=0')
+    expect(latestStartPortRequestUrl).toBe('http://124.70.141.127:9112/startport?location=0')
   })
 
   it('should convert a custom cid type string into a numeric payload', () => {
