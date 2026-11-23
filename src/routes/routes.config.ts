@@ -17,6 +17,7 @@ import {
 } from '@ant-design/icons'
 import { createElement, type ReactNode } from 'react'
 import { type PermissionKey } from '../infrastructure/auth/permissions'
+import { MSK_ACCOUNT_CONFIG } from '../pages/templates/msk-account-management/account-config'
 import { lazyPage } from '../shared/components/lazy-page.tsx'
 
 export type TemplateRoute = {
@@ -198,6 +199,50 @@ export const templateRoutes: TemplateRoute[] = [
           default: m.BookAccountListPage,
         }))
       ),
+  },
+  {
+    key: 'msk-book-account-list',
+    path: MSK_ACCOUNT_CONFIG.booking.listPath,
+    title: MSK_ACCOUNT_CONFIG.booking.title,
+    icon: createElement(TeamOutlined),
+    permission: 'list.read',
+    inMenu: true,
+    menuVisibility: 'always',
+    menuMode: 'grouped',
+    menuGroup: '系统设置',
+    component: () => lazyPage(() => import('../pages/templates/msk-account-management/msk-account-list-page').then((m) => ({ default: m.MskBookAccountListPage }))),
+  },
+  {
+    key: 'msk-book-account-list-form',
+    path: `${MSK_ACCOUNT_CONFIG.booking.listPath}/form`,
+    title: MSK_ACCOUNT_CONFIG.booking.title,
+    icon: createElement(FormOutlined),
+    permission: 'form.read',
+    inMenu: false,
+    breadcrumb: [MSK_ACCOUNT_CONFIG.booking.title, '账号表单'],
+    component: () => lazyPage(() => import('../pages/templates/msk-account-management/msk-account-form-page').then((m) => ({ default: m.MskBookAccountFormPage }))),
+  },
+  {
+    key: 'msk-query-account-list',
+    path: MSK_ACCOUNT_CONFIG.query.listPath,
+    title: MSK_ACCOUNT_CONFIG.query.title,
+    icon: createElement(TeamOutlined),
+    permission: 'list.read',
+    inMenu: true,
+    menuVisibility: 'always',
+    menuMode: 'grouped',
+    menuGroup: '系统设置',
+    component: () => lazyPage(() => import('../pages/templates/msk-account-management/msk-account-list-page').then((m) => ({ default: m.MskQueryAccountListPage }))),
+  },
+  {
+    key: 'msk-query-account-list-form',
+    path: `${MSK_ACCOUNT_CONFIG.query.listPath}/form`,
+    title: MSK_ACCOUNT_CONFIG.query.title,
+    icon: createElement(FormOutlined),
+    permission: 'form.read',
+    inMenu: false,
+    breadcrumb: [MSK_ACCOUNT_CONFIG.query.title, '账号表单'],
+    component: () => lazyPage(() => import('../pages/templates/msk-account-management/msk-account-form-page').then((m) => ({ default: m.MskQueryAccountFormPage }))),
   },
   {
     key: 'basic-form',

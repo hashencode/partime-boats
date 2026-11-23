@@ -19,3 +19,24 @@ describe('routes.config menu labels', () => {
     expect(getRouteByKey('book-account-list')?.menuGroup).toBe('系统设置')
   })
 })
+
+describe('MSK account management routes', () => {
+  it('appends two account entries while preserving the existing system settings entry', () => {
+    const entries = templateRoutes.filter((route) => route.inMenu && route.menuGroup === '系统设置')
+    expect(entries.map((route) => route.key)).toEqual(['base-port-list', 'book-account-list', 'msk-book-account-list', 'msk-query-account-list'])
+    expect(getRouteByKey('book-account-list')?.path).toBe('/book_account_list')
+    expect(getRouteByKey('book-account-list')?.title).toBe('系统设置')
+    expect(getRouteByKey('msk-book-account-list')?.title).toBe('MSK订舱账号')
+    expect(getRouteByKey('msk-query-account-list')?.title).toBe('MSK查询账号')
+    expect(getRouteByKey('msk-query-account-list')?.permission).toBe('list.read')
+  })
+
+  it('keeps account form routes beneath each list with form access and no menu entries', () => {
+    for (const prefix of ['msk-book-account-list', 'msk-query-account-list']) {
+      const form = getRouteByKey(`${prefix}-form`)
+      expect(form?.path).toBe(`/${prefix}/form`)
+      expect(form?.inMenu).toBe(false)
+      expect(form?.permission).toBe('form.read')
+    }
+  })
+})

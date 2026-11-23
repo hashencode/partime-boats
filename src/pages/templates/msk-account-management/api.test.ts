@@ -53,7 +53,8 @@ describe('MSK account API', () => {
     apiClient.defaults.adapter = async (config) => {
       calls.push(config)
       const page = Number(config.params.page)
-      return { data: list([{ ...account, _id: page === 1 ? 'other' : 'target' }], page, 101), status: 200, statusText: 'OK', headers: {}, config }
+      const rows = page === 1 ? Array.from({ length: 100 }, (_, index) => ({ ...account, _id: `other-${index}` })) : [{ ...account, _id: 'target' }]
+      return { data: list(rows, page, 101), status: 200, statusText: 'OK', headers: {}, config }
     }
     const result = await fetchMskAccountDetail('query', 'target', { account_type: 0, original_account: 'demo' })
     expect(result._id).toBe('target')
@@ -62,9 +63,17 @@ describe('MSK account API', () => {
   })
 
   it('does not loop when the backend repeats a page', async () => {
-    respond(list([account], 1, 101))
+    respond(list(Array.from({ length: 100 }, (_, index) => ({ ...account, _id: `other-${index}` })), 1, 101))
     await expect(fetchMskAccountDetail('booking', 'missing', { account_type: 1 })).rejects.toThrow()
     expect(calls.length).toBeLessThanOrEqual(2)
+  })
+
+  it('marks a nonempty truncated page partial and refuses incomplete detail lookup', async () => {
+    respond(list([account], 1, 101))
+    expect((await fetchMskAccountList('query', { account_type: 1 })).partial).toBe(true)
+    await expect(fetchMskAccountDetail('query', 'missing')).rejects.toThrow('返回不完整')
+    respond(list([account], 2, 101))
+    expect((await fetchMskAccountList('query', { account_type: 1, page: 2 })).partial).toBe(false)
   })
 
   it('keeps password whitespace and omits an unchanged empty password on updates', async () => {

@@ -30,7 +30,7 @@
 
 请求继续复用 apiClient 的同源代理和 Bearer 认证。列表参数为 page、per_page、account_type、account、is_refresh_use、is_use、use_type；账号模糊匹配，两个布尔字段取 0/1，类型字段是非负整数。默认 page=1、per_page=100、account_type=1，0 不当作空值省略。
 
-文档中的列表行位于响应 `data.data`，分页位于 `data.pagination`，字段为 total、page、per_page、total_pages。客户端同时兼容现有列表的直接 data 数组与 pagination 结构、current_page/last_page 别名及 bool_status 包装，兼容分支不代表新文档承诺这些字段。列表缺少实体身份时展示不完整结果，不能用行号代替写操作目标。
+文档中的列表行位于响应 `data.data`，分页位于 `data.pagination`，字段为 total、page、per_page、total_pages。客户端同时兼容现有列表的直接 data 数组与 pagination 结构、current_page/last_page 别名及 bool_status 包装，兼容分支不代表新文档承诺这些字段。列表缺少实体身份，或返回行数少于分页总数对应的当前页数量时，展示不完整结果并暂停导出；不能用行号代替写操作目标。
 
 成功响应没有统一的业务成功标志；按操作需要验证结构和结果。文档失败响应含 error_code 和 message，即使 HTTP 200 也按失败处理；不猜 error_code=0 就是成功。订舱修改、删除示例将结果放在 data，查询修改、新增和两个导入示例直接返回结果对象，领域适配兼容这两种已文档化结构。旧 bool_status=false 仍按失败处理，原有公共解包函数不变。
 
@@ -40,4 +40,4 @@
 
 两类导入均通过 multipart/form-data 的 file 字段上传 `.xlsx`，优先读取 maersk_book_account 工作表，否则使用活动表。表头必含 account、password，列顺序不限；新增行密码必填，空单元格保留原值，账号和客户代码使用文本格式以保留前导零。匹配账号则修改，否则新增；同文件重复账号按顺序处理，后续非空值覆盖前值。所有行先校验再写入，写入中断仍可能保留已处理行，因此超时后不自动重传。服务端返回 total/inserted/matched/modified，分别展示实际处理数量。查询账号导入文档明确忽略 `_id` 列，订舱文档未明确该细节，导入文件不依赖 `_id` 修改目标。
 
-没有专用导出接口。当前页导出只使用最近成功读取的当前页，显式列出业务字段，按用户确认包含明文密码。导出不请求其他分页；结果加载中、部分结果或读取失败未更新时禁用。真实凭据不用于自动化测试和验收截图。
+没有专用导出接口。当前页导出只使用最近成功读取的当前页，显式列出业务字段，按用户确认包含明文密码。导出不请求其他分页；结果加载中、部分结果或读取失败未更新时禁用。所有单元格使用文本原值，保留空格、前导零及 `hyperlink:` 等前缀，不将内容解释成链接或公式。真实凭据不用于自动化测试和验收截图。

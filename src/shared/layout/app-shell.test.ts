@@ -1,4 +1,5 @@
 import { describe, expect, it } from '@rstest/core'
+import { templateRoutes } from '../../routes/routes.config'
 import {
   isMenuVisibleInCurrentEnv,
   moveMenuGroupToEnd,
@@ -160,5 +161,14 @@ describe('app-shell menu visibility helpers', () => {
 
     expect(resolveNavigationTitle(menuRoutes, '/get_base_list/form')).toBe('基础端口列表')
     expect(resolveNavigationTitle(menuRoutes, '/')).toBe('欢迎')
+  })
+})
+
+describe('account form menu selection', () => {
+  it('keeps each new form under its list without selecting legacy Maersk query pages', () => {
+    const menuRoutes = templateRoutes.filter((route) => route.inMenu)
+    for (const path of ['/msk-book-account-list', '/msk-query-account-list']) {
+      expect(resolveRouteByPath(menuRoutes, `${path}/form`)?.path).toBe(path)
+    }
   })
 })

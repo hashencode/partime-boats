@@ -80,7 +80,8 @@ export const fetchMskAccountList = async (kind: MskAccountKind, filters: MskAcco
   const lastPage = pagination.total_pages ?? pagination.last_page ?? Math.max(1, Math.ceil(pagination.total / size))
   if (!isCount(current) || current < 1 || !isCount(size) || size < 1 || !isCount(lastPage)) throw invalidResponse()
   const rows = data.filter((row): row is MskAccount => isObject(row) && typeof row._id === 'string' && row._id.length > 0 && typeof row.account === 'string')
-  const partial = rows.length !== data.length || (data.length === 0 && pagination.total > 0 && current <= lastPage)
+  const expectedRows = Math.min(size, Math.max(0, pagination.total - (current - 1) * size))
+  const partial = rows.length !== data.length || data.length < expectedRows
   return {
     data: rows,
     total: pagination.total,
@@ -89,7 +90,7 @@ export const fetchMskAccountList = async (kind: MskAccountKind, filters: MskAcco
     lastPage: Math.max(1, lastPage),
     accountType: filters.account_type ?? 1,
     partial,
-    ...(partial ? { partialMessage: '部分账号信息缺失，请重新加载完整数据。' } : {}),
+    ...(partial ? { partialMessage: '部分账号信息缺失，当前页无法导出。' } : {}),
   }
 }
 
