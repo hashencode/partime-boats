@@ -4,37 +4,13 @@
 
 ## Execution Principles
 
-These principles are merged as cross-task behavior guidelines.
+通用编码执行原则统一在 Codex 用户级全局 `AGENTS.md` 维护；本节只维护项目补充与验证要求。
 
-### 1. Think Before Coding
+### 项目实施约束
 
-- State key assumptions explicitly before implementation.
-- If multiple valid interpretations exist, present them instead of picking silently.
-- If a simpler approach exists, call it out.
-
-### 2. Simplicity First
-
-- Implement the minimum code needed to solve the requested problem.
 - 优先选择实用、低延迟的方案，保持实现简单。
-- Do not add speculative features, configurability, or abstractions that were not requested.
-- Avoid single-use abstractions unless there is clear near-term expansion.
-- Keep error handling proportional to realistic failure modes in this project stage.
-
-### 3. Surgical Changes
-
-- Touch only lines directly related to the request.
-- Do not refactor or restyle unrelated nearby code without explicit request.
-- Match existing local style and conventions.
 - 建议和改动保持范围明确、直接可执行。
 - 保留既有主题结构，仅在确有需要时增加新的主题变量。
-- Remove only unused code/imports introduced by your own changes.
-- If unrelated dead code is found, mention it separately instead of deleting it by default.
-
-### 4. Goal-Driven Execution
-
-- Define concrete, verifiable success criteria for non-trivial tasks.
-- For bug fixes, prefer: reproduce first, fix second, verify third.
-- For multi-step work, briefly list steps with corresponding verification checks.
 
 ## Root Folder Creation Rule
 
