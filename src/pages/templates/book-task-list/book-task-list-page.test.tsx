@@ -85,7 +85,7 @@ const buildTaskRows = (count: number) =>
 const server = setupServer(
   http.get('*/startport', () => HttpResponse.json(['上海'])),
   http.get('*/endport', () => HttpResponse.json(['纽约'])),
-  http.get('http://124.70.141.127:9112/maersk/book/task', async ({ request }) => {
+  http.get('*/maersk/book/task', async ({ request }) => {
     listRequestCount += 1
     const url = new URL(request.url)
     const orderId = url.searchParams.get('order_id')
@@ -111,7 +111,7 @@ const server = setupServer(
       },
     })
   }),
-  http.post('http://124.70.141.127:9112/maersk/book/task', async ({ request }) => {
+  http.post('*/maersk/book/task', async ({ request }) => {
     latestUpdatePayload = (await request.json()) as Record<string, unknown>
     return HttpResponse.json({ bool_status: true, data: true })
   }),
@@ -186,7 +186,7 @@ const CidTypeSelectHarness = ({ initialValue }: { initialValue?: number }) => {
 
 describe('BookTaskListPage', () => {
   it('should confirm the full scope and close fixed batches without using draft filters', async () => {
-    server.use(http.get('http://124.70.141.127:9112/maersk/book/task', ({ request }) => {
+    server.use(http.get('*/maersk/book/task', ({ request }) => {
       const url = new URL(request.url)
       const page = Number(url.searchParams.get('page') || 1)
       const size = Number(url.searchParams.get('per_page') || 100)
@@ -209,7 +209,7 @@ describe('BookTaskListPage', () => {
   }, 15000)
 
   it('should close only selected ids and send nothing when confirmation is cancelled', async () => {
-    server.use(http.get('http://124.70.141.127:9112/maersk/book/task', () =>
+    server.use(http.get('*/maersk/book/task', () =>
       HttpResponse.json({ data: buildTaskRows(2), pagination: { total: 2, page: 1, per_page: 100 } })))
     renderPage()
     await screen.findByText('tester')
@@ -228,7 +228,7 @@ describe('BookTaskListPage', () => {
   it('should retry only the failed close batch and retain the original ids', async () => {
     const attempts: Record<string, unknown>[] = []
     server.use(
-      http.get('http://124.70.141.127:9112/maersk/book/task', ({ request }) => {
+      http.get('*/maersk/book/task', ({ request }) => {
         const url = new URL(request.url)
         const size = Number(url.searchParams.get('per_page') || 100)
         return HttpResponse.json({
@@ -260,7 +260,7 @@ describe('BookTaskListPage', () => {
   it('should refresh changed task states when a partially completed close is ended', async () => {
     let closed = false
     server.use(
-      http.get('http://124.70.141.127:9112/maersk/book/task', ({ request }) => {
+      http.get('*/maersk/book/task', ({ request }) => {
         const size = Number(new URL(request.url).searchParams.get('per_page') || 100)
         return HttpResponse.json({
           data: buildTaskRows(size === 100 ? 2 : 101).map((row) => ({ ...row, is_order: closed ? 0 : 1 })),
@@ -287,7 +287,7 @@ describe('BookTaskListPage', () => {
   }, 15000)
 
   it('should discard selected ids when a new query is submitted', async () => {
-    server.use(http.get('http://124.70.141.127:9112/maersk/book/task', ({ request }) => {
+    server.use(http.get('*/maersk/book/task', ({ request }) => {
       const url = new URL(request.url)
       const filtered = url.searchParams.get('order_id') === '999'
       return HttpResponse.json({
@@ -312,7 +312,7 @@ describe('BookTaskListPage', () => {
 
   it('should identify retained task states as stale when refresh fails after closing', async () => {
     let reads = 0
-    server.use(http.get('http://124.70.141.127:9112/maersk/book/task', () => {
+    server.use(http.get('*/maersk/book/task', () => {
       reads += 1
       return reads === 1
         ? HttpResponse.json({ data: buildTaskRows(2), pagination: { total: 2, page: 1, per_page: 100 } })
@@ -330,7 +330,7 @@ describe('BookTaskListPage', () => {
   }, 15000)
 
   it('should submit a list group from the batch edit form for selected tasks', async () => {
-    server.use(http.get('http://124.70.141.127:9112/maersk/book/task', () =>
+    server.use(http.get('*/maersk/book/task', () =>
       HttpResponse.json({ data: buildTaskRows(2), pagination: { total: 2, page: 1, per_page: 100 } })))
     const view = renderPage()
     await screen.findByText('tester')
@@ -404,7 +404,7 @@ describe('BookTaskListPage', () => {
 
   it('should show error state when list request fails', async () => {
     server.use(
-      http.get('http://124.70.141.127:9112/maersk/book/task', () =>
+      http.get('*/maersk/book/task', () =>
         HttpResponse.json({ message: 'server err' }, { status: 500 })
       )
     )
@@ -420,7 +420,7 @@ describe('BookTaskListPage', () => {
 
   it('should sort text and numeric columns when clicking the column headers', async () => {
     server.use(
-      http.get('http://124.70.141.127:9112/maersk/book/task', () =>
+      http.get('*/maersk/book/task', () =>
         HttpResponse.json({
           data: [
             {
@@ -574,7 +574,7 @@ describe('BookTaskListPage', () => {
 
   it('should keep actions in the centered toolbar when writable rows are selected and cleared', async () => {
     server.use(
-      http.get('http://124.70.141.127:9112/maersk/book/task', () => {
+      http.get('*/maersk/book/task', () => {
         listRequestCount += 1
         return HttpResponse.json({
           data: buildTaskRows(2),
@@ -643,7 +643,7 @@ describe('BookTaskListPage', () => {
 
   it('should preserve comma-separated order ids when reopening an edited row', async () => {
     server.use(
-      http.get('http://124.70.141.127:9112/maersk/book/task', () =>
+      http.get('*/maersk/book/task', () =>
         HttpResponse.json({
           data: [
             {

@@ -6,7 +6,7 @@ import {
   unwrapLegacyEnvelopeOr,
 } from '../../../infrastructure/http/legacy-envelope'
 
-const BOOK_TASK_API_URL = 'http://124.70.141.127:9112/maersk/book/task'
+const BOOK_TASK_API_URL = '/maersk/book/task'
 
 type LegacyPagination = {
   total?: number
